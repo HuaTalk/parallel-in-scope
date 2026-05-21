@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: parForEach with executor name
-`ParallelHelper` SHALL provide exactly one public static method `parForEach(String executorName, Collection<T> list, Consumer<? super T> consumer, ParallelOptions options)` that resolves the executor from `StructuredParallel.getExecutor(executorName)` and delegates to the internal parallel execution pipeline. The executor name SHALL also be used for purge service integration.
+`ParallelHelper` SHALL provide exactly one public static method `parForEach(String executorName, Collection<T> list, Consumer<? super T> consumer, ParallelOptions options)` that resolves the executor from `Par.getExecutor(executorName)` and delegates to the internal parallel execution pipeline. The executor name SHALL also be used for purge service integration.
 
 #### Scenario: Successful parForEach by name
 - **WHEN** an executor is registered with name "io-pool" and `ParallelHelper.parForEach("io-pool", list, consumer, options)` is called
@@ -12,7 +12,7 @@
 - **THEN** an `IllegalArgumentException` SHALL be thrown with a message indicating the executor name is not registered
 
 ### Requirement: parMap with executor name
-`ParallelHelper` SHALL provide exactly one public static method `parMap(String executorName, List<T> list, Function<? super T, ? extends R> function, ParallelOptions options)` that resolves the executor from `StructuredParallel.getExecutor(executorName)` and delegates to the internal parallel execution pipeline. The executor name SHALL also be used for purge service integration.
+`ParallelHelper` SHALL provide exactly one public static method `parMap(String executorName, List<T> list, Function<? super T, ? extends R> function, ParallelOptions options)` that resolves the executor from `Par.getExecutor(executorName)` and delegates to the internal parallel execution pipeline. The executor name SHALL also be used for purge service integration.
 
 #### Scenario: Successful parMap by name
 - **WHEN** an executor is registered with name "io-pool" and `ParallelHelper.parMap("io-pool", list, function, options)` is called

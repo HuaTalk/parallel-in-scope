@@ -4,18 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.github.linzee1</groupId>
-    <artifactId>vformation-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <groupId>io.github.huatalk</groupId>
+    <artifactId>parallel-in-scope-parent</artifactId>
+    <version>0.0.1</version>
     <packaging>pom</packaging>
 
-    <name>VFormation Parent</name>
+    <name>parallel-in-scope Parent</name>
     <description>
-        VFormation — a structured concurrency toolkit for Java 8+ built on Guava ListenableFuture and TransmittableThreadLocal.
-        Provides cooperative cancellation, livelock detection, sliding-window concurrency control,
-        task-type-aware scheduling, and pluggable metrics/monitoring.
+        Structured concurrency and scoped parallel execution for Java 8+, with cooperative cancellation, timeouts, context propagation, and livelock detection.
     </description>
-    <url>https://github.com/linzee1/vformation</url>
+    <url>https://github.com/HuaTalk/parallel-in-scope</url>
 
     <licenses>
         <license>
@@ -25,8 +23,8 @@
     </licenses>
 
     <modules>
-        <module>vformation</module>
-        <module>vformation-demo</module>
+        <module>parallel-in-scope</module>
+        <module>parallel-in-scope-demo</module>
     </modules>
 
     <properties>

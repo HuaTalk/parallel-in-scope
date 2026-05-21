@@ -14,15 +14,16 @@ mvn clean package        # Package JAR
 
 ## Project Overview
 
-**vformation** is a structured concurrency toolkit for Java 8+, built on Guava `ListenableFuture` and Alibaba `TransmittableThreadLocal`. It provides parallel collection processing with cooperative cancellation, sliding-window concurrency control, livelock detection, cross-thread context propagation, and pluggable monitoring via SPI.
+**parallel-in-scope** is a structured concurrency and scoped parallel execution toolkit for Java 8+. It provides cooperative cancellation, timeouts, context propagation, livelock detection, and pluggable monitoring for bounded parallel work.
 
-- **Maven coordinates:** `io.github.linzee1:vformation:1.0.0-SNAPSHOT`
+- **Maven coordinates:** `io.github.huatalk:parallel-in-scope:0.0.1`
+- **Java package namespace:** `io.github.huatalk.parallelinscope`
 - **Java version:** source/target 1.8 (Java 8 compatible)
 - **Test framework:** JUnit 5, run via Maven Surefire Plugin
 
 ## Architecture
 
-Base package: `io.github.linzee1.vformation` with 7 sub-packages:
+Base package: `io.github.huatalk.parallelinscope` with 7 sub-packages:
 
 | Package | Purpose | Classes |
 |---|---|---|

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Package layout
-The project SHALL organize all classes into the following 7 packages under the base `io.github.linzee1.vformation`:
+The project SHALL organize all classes into the following 7 packages under the base `io.github.huatalk.parallelinscope`:
 - `scope` — API facade classes
 - `context` — TTL/TL context propagation classes
 - `context.graph` — Livelock detection classes
@@ -17,7 +17,7 @@ The project SHALL organize all classes into the following 7 packages under the b
 ### Requirement: Class-to-package mapping
 The system SHALL place classes into packages as follows:
 
-**scope:** ParallelHelper, ParallelOptions, AsyncBatchResult, TaskType, StructuredParallel
+**scope:** ParallelHelper, ParallelOptions, AsyncBatchResult, TaskType, Par
 **context:** ThreadRelay, TaskScopeTl
 **context.graph:** TaskGraph, TaskEdge, TaskEdgeEntry
 **cancel:** CancellationToken, CancellationTokenState, Checkpoints, FatCancellationException, LeanCancellationException, PurgeService
@@ -25,9 +25,9 @@ The system SHALL place classes into packages as follows:
 **queue:** SmartBlockingQueue, VariableLinkedBlockingQueue
 **spi:** TaskListener, ExecutorResolver, LivelockListener, ParallelLogger
 
-#### Scenario: No class remains in the old package
-- **WHEN** the refactoring is complete
-- **THEN** no `.java` file SHALL have package declaration `io.github.linzee1.vformation` or `io.github.linzee1.vformation.exception`
+#### Scenario: All framework classes use the canonical package prefix
+- **WHEN** the project is inspected
+- **THEN** every framework `.java` file SHALL have a package declaration that starts with `io.github.huatalk.parallelinscope`
 
 ### Requirement: All classes are public
 All classes and interfaces SHALL have `public` visibility after the refactoring.
@@ -37,18 +37,19 @@ All classes and interfaces SHALL have `public` visibility after the refactoring.
 - **THEN** each SHALL have the `public` access modifier
 
 ### Requirement: Maven coordinates updated
-The Maven artifactId SHALL be `vformation` and the project name SHALL reflect "Structured Concurrency".
+The Maven artifactId SHALL be `parallel-in-scope` and the project name SHALL be `parallel-in-scope`.
 
 #### Scenario: pom.xml reflects new identity
 - **WHEN** the pom.xml is read
-- **THEN** the artifactId SHALL be `vformation`
+- **THEN** the artifactId SHALL be `parallel-in-scope`
 
-### Requirement: Old packages deleted
-The old package directories `io.github.linzee1.vformation` and `io.github.linzee1.vformation.exception` SHALL be completely removed after all classes are migrated.
+### Requirement: Canonical source tree
+The framework source tree SHALL use the canonical `io.github.huatalk.parallelinscope` package prefix in both main and test sources.
 
-#### Scenario: No residual files in old locations
-- **WHEN** migration is complete
-- **THEN** the directory `src/main/java/io/github/linzee1/parallel/` SHALL not exist
+#### Scenario: Canonical directories exist
+- **WHEN** the source tree is inspected
+- **THEN** the directory `src/main/java/io/github/huatalk/parallelinscope/` SHALL exist
+- **AND** the directory `src/test/java/io/github/huatalk/parallelinscope/` SHALL exist
 
 ### Requirement: Tests updated
 All test files SHALL update their package declarations and imports to reference the new package structure, and all tests SHALL pass after the refactoring.

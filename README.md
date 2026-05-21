@@ -1,33 +1,24 @@
-# VFormation
+# parallel-in-scope
 
 > **⚠️ 项目状态：开发中（Pre-release）**
 >
 > 本项目仍在积极开发中，API 可能会发生变化。目前尚未发布到 Maven Central，正在收集社区反馈以完善设计，待稳定后发布正式版本。
 >
-> 如需使用，请 fork 本仓库后自行构建：
+> 如需体验当前版本，请直接从源码构建：
 > ```bash
-> git clone https://github.com/<your-fork>/vformation.git
-> cd vformation
+> git clone https://github.com/HuaTalk/parallel-in-scope.git
+> cd parallel-in-scope
 > mvn clean install -DskipTests
 > ```
 > 欢迎通过 Issue 提交反馈和建议。
 
-## 名称由来
+**Java 8+ 的结构化并发与 scoped parallel execution 工具包。**
 
-**V-Formation**（V 字阵型）是大雁迁徙时采用的经典飞行编队。领头雁破开气流，后方的雁借助前方翅膀产生的上升气流减少阻力，每只雁只需承担一部分空气阻力，整个雁群便能以远超个体的效率完成长途飞行。当领头雁疲劳时，队形会自动轮换，实现协作式的负载均衡。
-
-这与本项目的并发设计理念高度契合：
-
-- **滑动窗口调度** — 如同雁阵中每个位置依次轮替，任务完成一个、补入一个，始终保持最优并发度
-- **协作式取消** — 如同领头雁发出转向信号后整个编队同步响应，父任务取消时子任务级联终止
-- **跨线程上下文传播** — 如同雁阵中每只雁都能感知整体队形的变化，子线程自动继承父线程的执行上下文
-- **活锁检测** — 如同雁群避免编队冲突，框架自动检测任务间的循环依赖
+把一组并行任务收束在一个显式 scope 中，统一处理协作取消、超时、上下文传播，以及活锁/死锁风险检测。
 
 ---
 
-**基于 Guava ListenableFuture 和 TransmittableThreadLocal 的结构化并发工具包**
-
-专为 Java 8+ 设计，提供协作取消、活锁检测、滑动窗口并发控制、任务感知调度和可插拔监控。
+基于 Guava `ListenableFuture` 和 `TransmittableThreadLocal`，提供并行集合处理、滑动窗口调度、任务类型感知执行和可插拔监控。
 
 ---
 
@@ -138,16 +129,16 @@
 
 ```xml
 <dependency>
-    <groupId>io.github.linzee1</groupId>
-    <artifactId>vformation</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <groupId>io.github.huatalk</groupId>
+    <artifactId>parallel-in-scope</artifactId>
+    <version>0.0.1</version>
 </dependency>
 ```
 
 ### 基本用法
 
 ```java
-import io.github.linzee1.vformation.scope.*;
+import io.github.huatalk.parallelinscope.scope.*;
 import com.google.common.util.concurrent.*;
 
 // 创建并注册线程池
@@ -301,8 +292,10 @@ ParallelOptions ioOptions = ParallelOptions.ioTask("fetchRemote")
 
 ## 包结构
 
-```
-io.github.linzee1.vformation
+当前源码包命名空间为 `io.github.huatalk.parallelinscope`。
+
+``` 
+io.github.huatalk.parallelinscope
 ├── scope/
 │   ├── ParallelHelper              # 主入口门面
 │   ├── ParallelOptions             # 任务配置 (Builder)
