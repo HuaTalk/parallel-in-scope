@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -108,6 +109,25 @@ public class CancellationTokenTest {
         // Allow callback propagation
         Thread.sleep(50);
         assertEquals(CancellationTokenState.FAIL_FAST_CANCELED, token.getState());
+    }
+
+    @Test
+    public void testLateBind_failFast_cancelsSiblingAndSubmitCanceller() {
+        CancellationToken token = CancellationToken.create();
+
+        SettableFuture<String> failed = SettableFuture.create();
+        SettableFuture<String> sibling = SettableFuture.create();
+        SettableFuture<Void> submitCanceller = SettableFuture.create();
+
+        token.lateBind(Arrays.asList(failed, sibling), Duration.ofSeconds(5), submitCanceller);
+
+        failed.setException(new RuntimeException("boom"));
+
+        await().untilAsserted(() -> {
+            assertEquals(CancellationTokenState.FAIL_FAST_CANCELED, token.getState());
+            assertTrue(sibling.isCancelled(), "sibling future should be cancelled by fail-fast");
+            assertTrue(submitCanceller.isCancelled(), "submit canceller should be cancelled by fail-fast");
+        });
     }
 
     @Test
