@@ -5,11 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build Commands
 
 ```bash
+# 主项目
 mvn clean compile        # Compile
 mvn test                 # Run all tests
 mvn test -Dtest=ParTest              # Run a single test class
 mvn test -Dtest=ParTest#testParMap    # Run a single test method
 mvn clean package        # Package JAR
+
+# Demo 子项目（独立模块）
+cd demo
+mvn clean compile        # Compile demo
+mvn test                 # Run tests
+mvn exec:java -Dexec.mainClass=demo.basic.BasicParDemo
 ```
 
 ## Project Overview
