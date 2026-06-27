@@ -25,12 +25,18 @@ demo (消费者) → parallel-in-scope (发布版本)
 | `io.github.huatalk.parallelinscope.scope` | 核心 API（Par, ParOptions, AsyncBatchResult, ParConfig） |
 | `io.github.huatalk.parallelinscope.spi` | 扩展点（TaskListener, ExecutorResolver） |
 
+#### 允许访问的类（例外）
+
+| 类名 | 说明 |
+|------|------|
+| `io.github.huatalk.parallelinscope.cancel.Checkpoints` | 协作式取消的用户 API — `Checkpoints.sleep()` 是取消检查点 |
+
 #### 禁止访问的包（内部实现）
 
 | 包名 | 说明 |
 |------|------|
 | `io.github.huatalk.parallelinscope.internal` | 内部实现细节 |
-| `io.github.huatalk.parallelinscope.cancel` | 取消机制内部实现 |
+| `io.github.huatalk.parallelinscope.cancel` | 取消机制内部实现（**Checkpoints 除外**） |
 | `io.github.huatalk.parallelinscope.context` | 上下文传播内部实现 |
 | `io.github.huatalk.parallelinscope.context.graph` | 死锁检测内部实现 |
 | `io.github.huatalk.parallelinscope.queue` | 调度队列内部实现 |

@@ -1,76 +1,120 @@
 package demo.advanced;
 
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.ParConfig;
+import io.github.huatalk.parallelinscope.scope.ParOptions;
+import io.github.huatalk.parallelinscope.scope.TaskType;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import com.google.common.util.concurrent.Futures;
 
 /**
- * 高级示例：演示死锁检测功能
+ * 死锁检测示例：演示线程池嵌套调用导致的死锁
  *
- * <p>这个示例展示了 parallel-in-scope 的死锁检测机制：
+ * <p>场景：同一个固定大小线程池（4 线程）被嵌套调用占用，导致循环等待：
+ * <pre>
+ *   task-A [1,2,3,4] 占满 4 个线程
+ *     └── 每个 task-A 子任务内部调用 task-B [x,y]
+ *           └── task-B 需要线程池分配线程 → 被阻塞
+ *                 └── task-A 要等 task-B 完成才释放线程 → 循环等待！
+ * </pre>
+ *
+ * <p>解决方案：
  * <ul>
- *   <li>嵌套任务执行</li>
- *   <li>任务依赖关系记录</li>
- *   <li>死锁检测和报告</li>
+ *   <li>拆分线程池 — 内外层使用不同池（推荐）</li>
+ *   <li>增大线程池 — 确保线程数 > 嵌套层总并发数</li>
+ *   <li>使用 CachedThreadPool — 框架自动排除死锁检测</li>
  * </ul>
- *
- * <p>注意：这是高级功能，通常在复杂嵌套场景中使用。
  */
 public class DeadlockDetectionDemo {
 
     public static void main(String[] args) {
         System.out.println("=== DeadlockDetectionDemo ===");
-        System.out.println("演示死锁检测功能\n");
+        System.out.println("演示线程池嵌套调用死锁\n");
 
+        // 故意使用小线程池（4 线程），嵌套调用时会死锁
         ExecutorService pool = Executors.newFixedThreadPool(4);
+
         ParConfig config = ParConfig.builder()
-                .executor("deadlock-demo", pool)
+                .executor("shared-pool", pool)
                 .build();
         Par par = new Par(config);
 
         try {
-            // 1. 模拟嵌套任务场景
-            System.out.println("创建嵌套任务结构...");
-            System.out.println("（此示例演示正常执行，实际死锁检测在复杂场景中触发）\n");
+            System.out.println("线程池大小: 4（固定）");
+            System.out.println("task-A 并行度=4，占满全部线程");
+            System.out.println("每个 task-A 子任务内部调用 task-B，需要同一个池分配线程");
+            System.out.println("→ 循环等待，死锁！\n");
 
-            List<String> tasks = Arrays.asList("任务A", "任务B", "任务C");
-
-            ParOptions options = ParOptions.of("deadlock-demo")
-                    .parallelism(2)
+            ParOptions optionsA = ParOptions.of("task-A")
+                    .parallelism(4)
+                    .timeout(5_000)
+                    .taskType(TaskType.IO_BOUND)
                     .build();
 
-            // 2. 执行任务（并行处理会自动记录任务依赖）
-            AsyncBatchResult<String> result = par.map("deadlock-demo", tasks, task -> {
-                String threadName = Thread.currentThread().getName();
-                System.out.println("  [" + threadName + "] 执行: " + task);
+            long start = System.currentTimeMillis();
 
-                // 模拟一些处理时间
-                try {
-                    TimeUnit.MILLISECONDS.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return task + "(中断)";
-                }
+            // task-A: 占满 4 个线程，每个子任务内部调用 task-B
+            AsyncBatchResult<Void> result = par.map("shared-pool",
+                    Arrays.asList(1, 2, 3, 4), item -> {
+                        System.out.println("[task-A-" + item + "] 启动于 " + Thread.currentThread().getName());
+                        callTaskB(par, item);
+                        return null;
+                    }, optionsA);
 
-                return task + "(完成)";
-            }, options);
+            // 等待完成 — 由于死锁，会超时
+            try {
+                Futures.allAsList(result.getResults()).get(6, TimeUnit.SECONDS);
+                System.out.println("[main] 所有任务完成（意外！）");
+            } catch (TimeoutException e) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[main] 死锁！超时 " + elapsed + "ms");
+                System.out.println("[main] 4 个线程全被 task-A 占住");
+                System.out.println("[main] task-B 需要线程但永远分配不到 → 循环等待");
+            } catch (Exception e) {
+                long elapsed = System.currentTimeMillis() - start;
+                System.out.println("[main] 异常完成: " + e.getMessage() + " (" + elapsed + "ms)");
+            }
 
-            // 3. 查看结果
-            System.out.println("\n执行完成!");
-            System.out.println("结果: " + result.reportString());
+            System.out.println("\n=== 解决方案 ===");
+            System.out.println("1. 拆分线程池：task-A 和 task-B 使用不同的池");
+            System.out.println("2. 增大线程池：确保线程数 > 所有嵌套层总并发数");
+            System.out.println("3. 使用 CachedThreadPool：无界线程池不会死锁");
 
-            System.out.println("\n注意: 死锁检测功能在复杂嵌套场景中自动触发。");
-            System.out.println("当检测到潜在死锁时，框架会抛出异常并报告死锁链。");
+            System.out.println("\n=== 示例完成 ===");
 
         } finally {
             pool.shutdownNow();
+        }
+    }
+
+    /**
+     * task-B：从 task-A 内部调用，向同一个线程池提交任务 → 死锁
+     */
+    private static void callTaskB(Par par, int parentItem) {
+        ParOptions optionsB = ParOptions.of("task-B")
+                .parallelism(2)
+                .timeout(5_000)
+                .taskType(TaskType.IO_BOUND)
+                .build();
+
+        List<String> items = Arrays.asList("x", "y");
+        AsyncBatchResult<String> resultB = par.map("shared-pool", items, sub -> {
+            System.out.println("  [task-B-" + parentItem + "-" + sub + "] 启动于 " + Thread.currentThread().getName());
+            return "B-" + parentItem + "-" + sub;
+        }, optionsB);
+
+        try {
+            Futures.allAsList(resultB.getResults()).get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            System.out.println("  [task-B-" + parentItem + "] 失败: " + e.getClass().getSimpleName());
         }
     }
 }

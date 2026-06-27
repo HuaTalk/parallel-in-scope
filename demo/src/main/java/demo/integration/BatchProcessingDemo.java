@@ -69,8 +69,16 @@ public class BatchProcessingDemo {
             // 5. 查看结果
             System.out.println("执行报告: " + result.reportString());
 
-            // 6. 性能分析
-            analyzePerformance(largeDataset);
+            // 6. 性能分析（使用实际计算结果，而非输入数据）
+            List<Integer> computedResults = new ArrayList<>();
+            for (java.util.concurrent.Future<Integer> future : result.getResults()) {
+                try {
+                    computedResults.add(future.get());
+                } catch (Exception e) {
+                    computedResults.add(-1);
+                }
+            }
+            analyzePerformance(computedResults);
 
         } finally {
             pool.shutdownNow();

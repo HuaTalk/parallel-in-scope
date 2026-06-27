@@ -36,11 +36,10 @@ class ArchitectureConstraintsTest {
     );
 
     /**
-     * 允许访问的公共 API 包
+     * 允许的例外类（来自禁止包的白名单）
      */
-    private static final List<String> ALLOWED_PACKAGES = Arrays.asList(
-            "io.github.huatalk.parallelinscope.scope",
-            "io.github.huatalk.parallelinscope.spi"
+    private static final List<String> ALLOWED_EXCEPTIONS = Arrays.asList(
+            "io.github.huatalk.parallelinscope.cancel.Checkpoints"
     );
 
     @Test
@@ -96,6 +95,8 @@ class ArchitectureConstraintsTest {
                     .filter(line -> line.trim().startsWith("import "))
                     .filter(line -> FORBIDDEN_PACKAGES.stream()
                             .anyMatch(pkg -> line.contains(pkg)))
+                    .filter(line -> ALLOWED_EXCEPTIONS.stream()
+                            .noneMatch(ex -> line.contains(ex)))
                     .map(line -> String.format(
                             "%s: forbidden import: %s",
                             fileName,

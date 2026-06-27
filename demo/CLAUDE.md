@@ -27,12 +27,18 @@ demo (消费者) → parallel-in-scope (发布版本)
 | `io.github.huatalk.parallelinscope.scope` | 核心 API（Par, ParOptions, AsyncBatchResult, ParConfig） |
 | `io.github.huatalk.parallelinscope.spi` | 扩展点（TaskListener, ExecutorResolver） |
 
+#### 允许的例外类
+
+| 类名 | 说明 |
+|------|------|
+| `io.github.huatalk.parallelinscope.cancel.Checkpoints` | 协作式取消的用户 API |
+
 #### 禁止访问的包（内部实现）
 
 | 包名 | 说明 |
 |------|------|
 | `io.github.huatalk.parallelinscope.internal` | 内部实现细节 |
-| `io.github.huatalk.parallelinscope.cancel` | 取消机制内部实现 |
+| `io.github.huatalk.parallelinscope.cancel` | 取消机制内部实现（**Checkpoints 除外**） |
 | `io.github.huatalk.parallelinscope.context` | 上下文传播内部实现 |
 | `io.github.huatalk.parallelinscope.context.graph` | 死锁检测内部实现 |
 | `io.github.huatalk.parallelinscope.queue` | 调度队列内部实现 |
@@ -113,9 +119,9 @@ java -cp target/classes:target/dependency/* demo.basic.BasicParDemo
 | Demo | 包 | 功能 |
 |------|-----|------|
 | BasicParDemo | basic | 演示 Par.map() 基本用法 |
-| CancellationDemo | basic | 演示任务超时取消机制 |
-| DeadlockDetectionDemo | advanced | 演示死锁检测功能 |
-| BatchProcessingDemo | integration | 演示批量数据处理 |
+| CancellationDemo | basic | 演示协作式取消（Checkpoints.sleep + 超时触发） |
+| DeadlockDetectionDemo | advanced | 演示线程池嵌套调用死锁（A→B 共享池） |
+| BatchProcessingDemo | integration | 演示批量数据处理与结果分析 |
 
 ## 架构验证
 

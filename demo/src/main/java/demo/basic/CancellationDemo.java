@@ -1,28 +1,29 @@
 package demo.basic;
 
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
+import io.github.huatalk.parallelinscope.cancel.Checkpoints;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.ParConfig;
+import io.github.huatalk.parallelinscope.scope.ParOptions;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
- * 取消机制示例：演示任务取消的基本用法
+ * 取消机制示例：演示协作式取消（cooperative cancellation）
  *
- * <p>这个示例展示了如何使用 parallel-in-scope 的超时机制实现任务取消：
+ * <p>这个示例展示了 parallel-in-scope 的核心取消机制：
  * <ul>
- *   <li>配置超时时间</li>
- *   <li>在任务中处理超时</li>
- *   <li>查看执行结果</li>
+ *   <li>使用 {@link Checkpoints#sleep(long)} 替代 Thread.sleep — 可被取消中断</li>
+ *   <li>配置 {@link ParOptions} 超时时间触发取消</li>
+ *   <li>被取消的任务抛出 {@code FatCancellationException}</li>
+ *   <li>通过 {@code reportString()} 查看最终状态</li>
  * </ul>
  *
- * <p>注意：CancellationToken 是内部实现，不建议直接使用。
- * 推荐使用 ParOptions 的 timeout 配置来控制任务超时。
+ * <p>关键区别：普通 Thread.sleep() 不响应取消信号，而 Checkpoints.sleep()
+ * 会检查 CancellationToken 状态并抛出异常，实现协作式取消。
  */
 public class CancellationDemo {
 
@@ -55,14 +56,8 @@ public class CancellationDemo {
 
                 System.out.println("  [" + threadName + "] 处理: " + n);
 
-                // 模拟耗时操作
-                try {
-                    TimeUnit.MILLISECONDS.sleep(500);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    System.out.println("  [" + threadName + "] 任务 " + n + " 被中断");
-                    return -1;
-                }
+                // 使用 Checkpoints.sleep() — 当超时触发取消时，这里会抛出 FatCancellationException
+                Checkpoints.sleep(500);
                 return n * n;
             }, options);
 
@@ -72,6 +67,7 @@ public class CancellationDemo {
             System.out.println("\n处理完成!");
             System.out.println("耗时: " + (endTime - startTime) + " 毫秒");
             System.out.println("执行报告: " + result.reportString());
+            System.out.println("（超时触发后，Checkpoints.sleep() 抛出 FatCancellationException 实现协作式取消）");
 
         } finally {
             pool.shutdownNow();
