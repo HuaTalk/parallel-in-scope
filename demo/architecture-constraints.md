@@ -46,10 +46,13 @@ demo (消费者) → parallel-in-scope (发布版本)
 demo 子项目使用独立的包命名空间：
 
 ```
-demo/
-├── basic/          # 基础示例
-├── advanced/       # 高级示例
-└── integration/    # 集成示例
+src/
+├── main/java/demo/
+│   ├── basic/          # 基础示例
+│   ├── advanced/       # 高级示例
+│   └── integration/    # 集成示例
+└── test/java/demo/
+    └── article/        # 文章配套测试
 ```
 
 **禁止使用**: `io.github.huatalk.parallelinscope.*` 包名
@@ -62,11 +65,9 @@ demo/
 
 ## 验证规则
 
-### 自动验证（建议集成到 CI）
+### 自动验证
 
-1. **依赖检查**: 确保 pom.xml 只依赖发布版本
-2. **包访问检查**: 确保不访问禁止的内部包
-3. **包命名检查**: 确保使用 demo 包名空间
+`ArchitectureConstraintsTest` 已检查主源码不访问禁止的内部包，并确保使用 `demo.*` 包命名空间。Maven 依赖边界仍需通过 POM 审查和 `dependency:tree` 验证。
 
 ### 手动验证
 
@@ -154,6 +155,6 @@ package demo.basic;
 
 ## 维护指南
 
-1. **添加新示例**: 创建在 `demo/basic/`、`demo/advanced/` 或 `demo/integration/` 包下
+1. **添加新示例**: 创建在 `src/main/java/demo/basic/`、`src/main/java/demo/advanced/` 或 `src/main/java/demo/integration/` 包下
 2. **更新依赖**: 只更新 parallel-in-scope 的版本号
 3. **架构验证**: 定期运行 `mvn clean compile` 确保不违反约束

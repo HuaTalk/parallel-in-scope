@@ -1,3 +1,5 @@
+**中文** | [**English**](README.en.md)
+
 # parallel-in-scope-demo
 
 独立示例项目，演示如何使用 parallel-in-scope 并发工具库。
@@ -102,6 +104,8 @@ mvn test -Dtest=ArchitectureConstraintsTest
 
 ## 相关文档
 
+- [Demo 文章索引](docs/zh-CN/README.md)
+- [项目中文文档中心](../docs/zh-CN/README.md)
 - [parallel-in-scope 主项目](../README.md)
 - [架构约束详细说明](architecture-constraints.md)
 - [CLAUDE.md](CLAUDE.md)
