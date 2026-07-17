@@ -1,5 +1,6 @@
 package demo.article;
 
+import com.google.common.util.concurrent.Futures;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.ParConfig;
@@ -117,7 +118,7 @@ public class B2_FunctionSignatureBloatTest {
     // ==================== 解决方案 ====================
 
     @Test
-    void parMap_cleanSignature_onlyBusinessParam() {
+    void parMap_cleanSignature_onlyBusinessParam() throws Exception {
         // 解决方案：Par.map() 隐式传播上下文，lambda 只需业务参数
         ParOptions opts = ParOptions.of("fetch-data")
                 .parallelism(3)
@@ -136,6 +137,9 @@ public class B2_FunctionSignatureBloatTest {
             // 只关注业务逻辑，无需关心 traceId、timeout、cancelFlag
             return "fetched-" + url;
         }, opts);
+
+        // Par.map() returns immediately; wait for the terminal states before reporting.
+        Futures.allAsList(result.getResults()).get();
 
         // 验证所有任务成功完成
         String report = result.reportString();

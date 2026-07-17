@@ -149,8 +149,8 @@ ParConfig config = ParConfig.builder()
     .taskListener(event -> {
         System.out.printf("Task [%s] completed in %dms (waited %dms in queue)%n",
             event.getTaskName(),
-            event.executionTimeMillis(),
-            event.waitTimeMillis());
+            event.executionTime().toMillis(),
+            event.waitTime().toMillis());
 
         if (event.getException() != null) {
             System.err.println("Task failed: " + event.getException().getMessage());
