@@ -93,7 +93,7 @@ public class G1_TaskListenerMonitoringTest {
      * 解决方法：Par.map() 配合 TaskListener，零侵入监控。
      *
      * <p>注册 TaskListener 后，每个任务完成时自动回调 onTaskComplete(TaskEvent)，
-     * 包含 taskName、executionTimeNanos、totalTimeNanos、exception 等完整信息。
+     * 包含 taskName、executionTime()、totalTime()、exception 等完整信息。
      * 业务 lambda 无需任何监控代码。
      */
     @Test
@@ -136,16 +136,16 @@ public class G1_TaskListenerMonitoringTest {
 
         // 验证：执行耗时 >= 40ms（因为我们忙等了 50ms）
         for (TaskListener.TaskEvent event : events) {
-            assertThat(event.executionTimeMillis())
+            assertThat(event.executionTime().toMillis())
                     .as("Task %s execution time", event.getTaskName())
                     .isGreaterThanOrEqualTo(40);
         }
 
         // 验证：总耗时 >= 执行耗时（total = wait + execution）
         for (TaskListener.TaskEvent event : events) {
-            assertThat(event.totalTimeNanos())
+            assertThat(event.totalTime().toNanos())
                     .as("Task %s total time >= execution time", event.getTaskName())
-                    .isGreaterThanOrEqualTo(event.executionTimeNanos());
+                    .isGreaterThanOrEqualTo(event.executionTime().toNanos());
         }
 
         // 验证：所有任务成功，没有异常

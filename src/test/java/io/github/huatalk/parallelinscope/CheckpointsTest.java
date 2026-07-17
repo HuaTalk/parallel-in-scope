@@ -22,6 +22,7 @@ public class CheckpointsTest {
 
     @AfterEach
     public void cleanup() {
+        Thread.interrupted();
         TaskScopeTl.remove();
     }
 
@@ -83,16 +84,16 @@ public class CheckpointsTest {
     // ==================== rawCheckpoint / sleep / propagateCancellation tests ====================
 
     @Test
-    public void testRawCheckpoint_interruptedThread_throwsFatCancellationException() {
+    public void testRawCheckpoint_interruptedThread_throwsLeanCancellationException() {
         Thread.currentThread().interrupt();
         assertThatThrownBy(Checkpoints::rawCheckpoint)
-                .isInstanceOf(FatCancellationException.class);
+                .isInstanceOf(LeanCancellationException.class);
         // interrupt flag should have been consumed by Thread.interrupted()
         assertThat(Thread.currentThread().isInterrupted()).isFalse();
     }
 
     @Test
-    public void testSleep_interrupted_throwsFatCancellationException() throws Exception {
+    public void testSleep_interrupted_throwsLeanCancellationException() throws Exception {
         java.util.concurrent.CountDownLatch started = new java.util.concurrent.CountDownLatch(1);
         java.util.concurrent.atomic.AtomicReference<Throwable> caught = new java.util.concurrent.atomic.AtomicReference<>();
 
@@ -110,7 +111,152 @@ public class CheckpointsTest {
         t.interrupt();
         t.join(2000);
 
-        assertThat(caught.get()).isInstanceOf(FatCancellationException.class);
+        assertThat(caught.get()).isInstanceOf(LeanCancellationException.class);
+    }
+
+    @Test
+    public void testCheckSupplier_returnsValue() {
+        String result = Checkpoints.checkSupplier(() -> "VALUE", IllegalStateException.class);
+
+        assertThat(result).isEqualTo("VALUE");
+    }
+
+    @Test
+    public void testCheckSupplier_runtimeExceptionTriggersFatCancellation() {
+        IllegalStateException failure = new IllegalStateException("failure");
+
+        assertThatThrownBy(() -> Checkpoints.checkSupplier(() -> {
+            throw failure;
+        }, IllegalStateException.class))
+                .isInstanceOf(FatCancellationException.class)
+                .hasCause(failure);
+    }
+
+    @Test
+    public void testCheckRunnable_runtimeExceptionTriggersFatCancellation() {
+        assertThatThrownBy(() -> Checkpoints.checkRunnable(() -> {
+            throw new IllegalStateException("failure");
+        }, IllegalStateException.class)).isInstanceOf(FatCancellationException.class);
+    }
+
+    @Test
+    public void testCheckSupplier_nonMatchingRuntimeExceptionIsPropagated() {
+        IllegalArgumentException failure = new IllegalArgumentException("failure");
+
+        assertThatThrownBy(() -> Checkpoints.checkSupplier(() -> {
+            throw failure;
+        }, IllegalStateException.class)).isSameAs(failure);
+    }
+
+    @Test
+    public void testCheckRunnable_supertypeMatchesSubclass() {
+        assertThatThrownBy(() -> Checkpoints.checkRunnable(() -> {
+            throw new IllegalStateException("failure");
+                }, RuntimeException.class)).isInstanceOf(FatCancellationException.class);
+    }
+
+    @Test
+    public void testCheckRunnable_errorTypeTriggersFatCancellation() {
+        AssertionError failure = new AssertionError("failure");
+
+        assertThatThrownBy(() -> Checkpoints.checkRunnable(() -> {
+            throw failure;
+        }, AssertionError.class))
+                .isInstanceOf(FatCancellationException.class)
+                .hasCause(failure);
+    }
+
+    @Test
+    public void testCheckRunnable_nonMatchingErrorIsPropagated() {
+        AssertionError failure = new AssertionError("failure");
+
+        assertThatThrownBy(() -> Checkpoints.checkRunnable(() -> {
+            throw failure;
+        }, OutOfMemoryError.class))
+                .isSameAs(failure);
+    }
+
+    @Test
+    public void testCheckSupplier_errorTypeTriggersFatCancellation() {
+        AssertionError failure = new AssertionError("failure");
+
+        assertThatThrownBy(() -> Checkpoints.checkSupplier(() -> {
+            throw failure;
+        }, AssertionError.class))
+                .isInstanceOf(FatCancellationException.class)
+                .hasCause(failure);
+    }
+
+    @Test
+    public void testCheckGet_interruptedTriggersLeanCancellationAndRestoresFlag() {
+        java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
+        Thread.currentThread().interrupt();
+
+        assertThatThrownBy(() -> Checkpoints.checkGet(future))
+                .isInstanceOf(LeanCancellationException.class);
+        assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    }
+
+    @Test
+    public void testCheckMethods_coverUninterruptiblesObjectTypes() throws Exception {
+        java.time.Duration zero = java.time.Duration.ZERO;
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(0);
+        Checkpoints.checkAwait(latch);
+        assertThat(Checkpoints.checkAwait(latch, zero)).isTrue();
+        assertThat(Checkpoints.checkAwait(latch, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+
+        java.util.concurrent.locks.ReentrantLock lock = new java.util.concurrent.locks.ReentrantLock();
+        lock.lock();
+        try {
+            assertThat(Checkpoints.checkAwait(lock.newCondition(), zero)).isFalse();
+            assertThat(Checkpoints.checkAwait(
+                    lock.newCondition(), 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isFalse();
+        } finally {
+            lock.unlock();
+        }
+
+        Thread completed = new Thread(() -> { });
+        completed.start();
+        completed.join();
+        Checkpoints.checkJoin(completed);
+        Checkpoints.checkJoin(completed, zero);
+        Checkpoints.checkJoin(completed, 0, java.util.concurrent.TimeUnit.NANOSECONDS);
+
+        java.util.concurrent.CompletableFuture<String> future =
+                java.util.concurrent.CompletableFuture.completedFuture("done");
+        assertThat(Checkpoints.checkGet(future)).isEqualTo("done");
+        assertThat(Checkpoints.checkGet(future, zero)).isEqualTo("done");
+        assertThat(Checkpoints.checkGet(future, 0, java.util.concurrent.TimeUnit.NANOSECONDS))
+                .isEqualTo("done");
+
+        java.util.concurrent.BlockingQueue<String> queue =
+                new java.util.concurrent.ArrayBlockingQueue<>(1);
+        Checkpoints.checkPut(queue, "item");
+        assertThat(Checkpoints.checkTake(queue)).isEqualTo("item");
+        Checkpoints.checkSleep(zero);
+        Checkpoints.checkSleep(0, java.util.concurrent.TimeUnit.NANOSECONDS);
+
+        java.util.concurrent.Semaphore semaphore = new java.util.concurrent.Semaphore(4);
+        assertThat(Checkpoints.checkTryAcquire(semaphore, zero)).isTrue();
+        assertThat(Checkpoints.checkTryAcquire(
+                semaphore, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+        assertThat(Checkpoints.checkTryAcquire(semaphore, 1, zero)).isTrue();
+        assertThat(Checkpoints.checkTryAcquire(
+                semaphore, 1, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+
+        assertThat(Checkpoints.checkTryLock(lock, zero)).isTrue();
+        lock.unlock();
+        assertThat(Checkpoints.checkTryLock(
+                lock, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+        lock.unlock();
+
+        java.util.concurrent.ExecutorService executor =
+                java.util.concurrent.Executors.newSingleThreadExecutor();
+        executor.shutdown();
+        Checkpoints.checkAwaitTermination(executor);
+        assertThat(Checkpoints.checkAwaitTermination(executor, zero)).isTrue();
+        assertThat(Checkpoints.checkAwaitTermination(
+                executor, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
     }
 
     @Test

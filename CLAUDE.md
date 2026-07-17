@@ -62,6 +62,12 @@ Base package: `io.github.huatalk.parallelinscope` with 7 sub-packages:
 - **SPI Decoupling**: `TaskListener`, `ExecutorResolver`, `LivelockListener` registered on `ParConfig` — no hard-coded business dependencies
 - **JUL Logging**: Framework uses `java.util.logging.Logger` directly; users bridge to SLF4J/Log4j2 via standard JUL handlers
 
+### API Stability
+
+The project is currently pre-stable. Public APIs, including SPI types, may change
+without backward-compatibility shims between revisions. API reviews should focus
+on the intended current contract rather than preserving prior method signatures.
+
 ### Key Dependencies
 
 | Dependency | Purpose |

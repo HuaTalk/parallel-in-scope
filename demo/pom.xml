@@ -69,6 +69,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <configuration>
+                    <mainClass>demo.basic.BasicParDemo</mainClass>
                     <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
@@ -86,6 +87,7 @@
                         <executions>
                             <execution>
                                 <id>run-basic</id>
+                                <phase>verify</phase>
                                 <goals><goal>java</goal></goals>
                                 <configuration>
                                     <mainClass>demo.basic.BasicParDemo</mainClass>
@@ -93,6 +95,7 @@
                             </execution>
                             <execution>
                                 <id>run-cancellation</id>
+                                <phase>verify</phase>
                                 <goals><goal>java</goal></goals>
                                 <configuration>
                                     <mainClass>demo.basic.CancellationDemo</mainClass>
@@ -100,6 +103,7 @@
                             </execution>
                             <execution>
                                 <id>run-deadlock</id>
+                                <phase>verify</phase>
                                 <goals><goal>java</goal></goals>
                                 <configuration>
                                     <mainClass>demo.advanced.DeadlockDetectionDemo</mainClass>
@@ -107,6 +111,7 @@
                             </execution>
                             <execution>
                                 <id>run-batch</id>
+                                <phase>verify</phase>
                                 <goals><goal>java</goal></goals>
                                 <configuration>
                                     <mainClass>demo.integration.BatchProcessingDemo</mainClass>

@@ -1,6 +1,7 @@
 package io.github.huatalk.parallelinscope.spi;
 
 import javax.annotation.Nullable;
+import java.time.Duration;
 
 /**
  * SPI: Task lifecycle listener for metrics collection and monitoring.
@@ -8,7 +9,7 @@ import javax.annotation.Nullable;
  * Implementations can record task execution times, queue wait times, etc.
  * Register via {@link io.github.huatalk.parallelinscope.scope.ParConfig.Builder#taskListener(TaskListener)}.
  * <p>
- * All time values are in nanoseconds.
+ * Timing methods return {@link Duration}. Raw nanos timestamps are available via getters.
  *
  * @author Eric Lin (linqinghua4 at gmail dot com)
  */
@@ -51,22 +52,14 @@ public interface TaskListener {
         @Nullable
         public Throwable getException() { return exception; }
 
-        /** Execution duration in nanoseconds */
-        public long executionTimeNanos() { return endTimeNanos - startTimeNanos; }
+        /** Execution duration */
+        public Duration executionTime() { return Duration.ofNanos(endTimeNanos - startTimeNanos); }
 
-        /** Queue wait duration in nanoseconds */
-        public long waitTimeNanos() { return startTimeNanos - submitTimeNanos; }
+        /** Queue wait duration */
+        public Duration waitTime() { return Duration.ofNanos(startTimeNanos - submitTimeNanos); }
 
-        /** Total duration from submit to completion in nanoseconds */
-        public long totalTimeNanos() { return endTimeNanos - submitTimeNanos; }
+        /** Total duration from submit to completion */
+        public Duration totalTime() { return Duration.ofNanos(endTimeNanos - submitTimeNanos); }
 
-        /** Execution duration in milliseconds */
-        public long executionTimeMillis() { return executionTimeNanos() / 1_000_000L; }
-
-        /** Queue wait duration in milliseconds */
-        public long waitTimeMillis() { return waitTimeNanos() / 1_000_000L; }
-
-        /** Total duration in milliseconds */
-        public long totalTimeMillis() { return totalTimeNanos() / 1_000_000L; }
     }
 }

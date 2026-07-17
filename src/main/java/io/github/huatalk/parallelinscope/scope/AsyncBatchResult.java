@@ -7,6 +7,7 @@ import io.github.huatalk.parallelinscope.internal.FutureState;
 
 import javax.annotation.Nullable;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -92,15 +93,16 @@ public final class AsyncBatchResult<T> {
      * Immutable report of batch task execution state.
      */
     public static final class BatchReport {
-        private final Map<FutureState, Integer> stateCounts;
+        private final @Nullable Map<FutureState, Integer> stateCounts;
         private final Throwable firstException;
 
-        public BatchReport(Map<FutureState, Integer> stateCounts, @Nullable Throwable firstException) {
-            this.stateCounts = stateCounts;
+        public BatchReport(@Nullable Map<FutureState, Integer> stateCounts, @Nullable Throwable firstException) {
+            this.stateCounts = immutableStateCounts(stateCounts);
             this.firstException = firstException;
         }
 
         /** State count map (e.g. SUCCESS=3, FAILED=1). */
+        @Nullable
         public Map<FutureState, Integer> getStateCounts() { return stateCounts; }
 
         /** First exception from failed tasks, or null if none failed. */
@@ -110,6 +112,16 @@ public final class AsyncBatchResult<T> {
         @Override
         public String toString() {
             return "BatchReport{stateCounts=" + stateCounts + ", firstException=" + firstException + '}';
+        }
+
+        private static @Nullable Map<FutureState, Integer> immutableStateCounts(
+                @Nullable Map<FutureState, Integer> stateCounts) {
+            if (stateCounts == null) {
+                return null;
+            }
+            EnumMap<FutureState, Integer> copy = new EnumMap<>(FutureState.class);
+            copy.putAll(stateCounts);
+            return Collections.unmodifiableMap(copy);
         }
     }
 }

@@ -160,7 +160,7 @@ public class ScopedCallable<V> implements Callable<V> {
         for (TaskListener listener : listeners) {
             try {
                 listener.onTaskComplete(event);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.log(Level.WARNING, "TaskListener callback failed: " + listener.getClass().getName(), e);
             }
         }

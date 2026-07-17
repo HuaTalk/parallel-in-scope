@@ -59,7 +59,7 @@ par.map("myExecutor", dataList, item -> {
 | 方法 | 用途 | 典型场景 |
 |---|---|---|
 | `Checkpoints.checkpoint(taskName, lean)` | 检查 `CancellationToken` 状态，已取消则抛异常 | CPU 密集型循环中的周期性检查 |
-| `Checkpoints.sleep(millis)` | 取消感知的 sleep，将 `InterruptedException` 统一转换为 `FatCancellationException` | 替代 `Thread.sleep()` |
+| `Checkpoints.sleep(millis)` | 取消感知的 sleep，将 `InterruptedException` 统一转换为 `LeanCancellationException` | 替代 `Thread.sleep()` |
 | `Checkpoints.rawCheckpoint()` | 仅检查线程 interrupt 标志 | 不在 `Par` scope 内但仍需响应中断的场景 |
 | `Checkpoints.propagateCancellation(ex)` | 在 catch 块中重新抛出取消异常 | 需要区分处理"取消"和"其他异常"时 |
 
@@ -132,10 +132,10 @@ par.map("myExecutor", items, item -> {
 Thread.sleep(1000);  // InterruptedException 需要你自己处理
 
 // 推荐
-Checkpoints.sleep(1000);  // 自动将 InterruptedException 转换为 FatCancellationException
+Checkpoints.sleep(1000);  // 自动将 InterruptedException 转换为 LeanCancellationException
 ```
 
-`Checkpoints.sleep()` 将 `InterruptedException` 统一转换为 `FatCancellationException`，使得中断驱动的取消和协作式取消在异常类型上保持一致，简化上层处理逻辑。
+`Checkpoints.sleep()` 将 `InterruptedException` 统一转换为 `LeanCancellationException`，使得中断驱动的取消和协作式取消在异常类型上保持一致，同时避免为正常取消采集无用堆栈。
 
 ## 取消的四种触发源
 
