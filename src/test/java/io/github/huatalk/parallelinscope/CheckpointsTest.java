@@ -10,8 +10,10 @@ import io.github.huatalk.parallelinscope.spi.*;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 /**
  * Tests for cooperative cancellation checkpoints.
@@ -67,6 +69,60 @@ public class CheckpointsTest {
 
         // Different task name - should not throw
         Checkpoints.checkpoint("taskB", true);
+    }
+
+    @Test
+    public void testPublicMethods_cancelBeforePerformingOperation() {
+        CancellationToken token = CancellationToken.create();
+        token.cancel(false);
+        TaskScopeTl.init(token, ParOptions.of("myTask").build());
+
+        java.time.Duration zero = java.time.Duration.ZERO;
+        java.util.concurrent.TimeUnit nanos = java.util.concurrent.TimeUnit.NANOSECONDS;
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(0);
+        java.util.concurrent.locks.ReentrantLock lock = new java.util.concurrent.locks.ReentrantLock();
+        java.util.concurrent.locks.Condition condition = lock.newCondition();
+        Thread completed = new Thread(() -> { });
+        java.util.concurrent.CompletableFuture<String> future =
+                java.util.concurrent.CompletableFuture.completedFuture("done");
+        java.util.concurrent.BlockingQueue<String> queue =
+                new java.util.concurrent.ArrayBlockingQueue<>(1);
+        java.util.concurrent.Semaphore semaphore = new java.util.concurrent.Semaphore(4);
+        java.util.concurrent.ExecutorService executor =
+                java.util.concurrent.Executors.newSingleThreadExecutor();
+        executor.shutdown();
+
+        assertAll("all public checkpoint operations observe the current cancellation token",
+                () -> assertCancelled(Checkpoints::rawCheckpoint),
+                () -> assertCancelled(() -> Checkpoints.sleep(0)),
+                () -> assertCancelled(() -> Checkpoints.checkAwait(latch)),
+                () -> assertCancelled(() -> Checkpoints.checkAwait(latch, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkAwait(latch, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkAwait(condition, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkAwait(condition, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkJoin(completed)),
+                () -> assertCancelled(() -> Checkpoints.checkJoin(completed, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkJoin(completed, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkGet(future)),
+                () -> assertCancelled(() -> Checkpoints.checkGet(future, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkGet(future, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkTake(queue)),
+                () -> assertCancelled(() -> Checkpoints.checkPut(queue, "item")),
+                () -> assertCancelled(() -> Checkpoints.checkSleep(zero)),
+                () -> assertCancelled(() -> Checkpoints.checkSleep(0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkTryAcquire(semaphore, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkTryAcquire(semaphore, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkTryAcquire(semaphore, 1, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkTryAcquire(semaphore, 1, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkTryLock(lock, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkTryLock(lock, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkAwaitTermination(executor)),
+                () -> assertCancelled(() -> Checkpoints.checkAwaitTermination(executor, zero)),
+                () -> assertCancelled(() -> Checkpoints.checkAwaitTermination(executor, 0, nanos)),
+                () -> assertCancelled(() -> Checkpoints.checkRunnable(() -> { }, RuntimeException.class)),
+                () -> assertCancelled(() -> Checkpoints.checkSupplier(() -> "done", RuntimeException.class)),
+                () -> assertCancelled(() -> Checkpoints.propagateCancellation(
+                        new RuntimeException("not a cancellation"))));
     }
 
     @Test
@@ -278,5 +334,11 @@ public class CheckpointsTest {
         RuntimeException ex = new RuntimeException("not a cancellation");
         // Should not throw
         Checkpoints.propagateCancellation(ex);
+    }
+
+    private static void assertCancelled(Executable executable) {
+        assertThatThrownBy(executable::execute)
+                .isInstanceOf(LeanCancellationException.class)
+                .hasMessage("Cancel during running");
     }
 }
