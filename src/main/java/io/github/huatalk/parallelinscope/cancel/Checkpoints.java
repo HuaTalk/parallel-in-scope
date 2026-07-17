@@ -19,26 +19,14 @@ import java.util.concurrent.locks.Lock;
 import java.util.function.Supplier;
 
 /**
- * Cooperative cancellation checkpoint utility.
+ * Cooperative cancellation checkpoints and interruption-aware blocking operations.
  * <p>
- * Since Java's {@link Thread#interrupt()} only affects blocking operations,
- * this class provides explicit checkpoint methods that CPU-bound code can call
- * to check whether it should abort early.
+ * Blocking-operation adapters restore the interrupt flag and translate
+ * {@link InterruptedException} into {@link LeanCancellationException}.
  * <p>
- * Cancellation exception selection is based on whether the observed exception
- * is the cancellation source or only a propagated cancellation signal:
- * <ul>
- *   <li>An {@link InterruptedException} is normally caused by an upstream timeout,
- *       fail-fast failure, parent cancellation, or explicit cancellation. Because
- *       the root cause is recorded upstream, interruption-aware methods throw
- *       {@link LeanCancellationException} without another redundant stack trace.</li>
- *   <li>An exception matched by {@link #checkRunnable(Runnable, Class)} or
- *       {@link #checkSupplier(Supplier, Class)} is itself the cancellation source.
- *       These methods throw {@link FatCancellationException} and retain the matched
- *       exception as the cause so the cancellation origin remains diagnosable.</li>
- *   <li>A non-matching runtime exception or {@link Error} is propagated unchanged;
- *       an unexpected checked throwable is surfaced as an {@link AssertionError}.</li>
- * </ul>
+ * {@link #checkRunnable(Runnable, Class)} and {@link #checkSupplier(Supplier, Class)}
+ * instead translate a matching failure into {@link FatCancellationException}, retaining
+ * the original failure as its cause.
  *
  * @author Eric Lin (linqinghua4 at gmail dot com)
  */
@@ -48,12 +36,10 @@ public final class Checkpoints {
     }
 
     /**
-     * Standard checkpoint: checks CancellationToken state from TaskScopeTl.
-     * Throws cancellation exception if the task has been canceled.
+     * Checks whether the named task has been canceled in the current scope.
      *
-     * @param taskName the task name for validation
-     * @param lean     true to throw LeanCancellationException (no stack trace),
-     *                 false to throw FatCancellationException (full stack trace)
+     * @param taskName the task expected in the current scope
+     * @param lean     whether to omit the cancellation stack trace
      */
     public static void checkpoint(String taskName, boolean lean) {
         ParOptions options = TaskScopeTl.getParallelOptions();
@@ -72,8 +58,7 @@ public final class Checkpoints {
     }
 
     /**
-     * Raw checkpoint: only checks thread interrupt flag.
-     * For scenarios not using CancellationToken.
+     * Checks the current thread's interrupt status without requiring a token.
      */
     public static void rawCheckpoint() {
         if (Thread.interrupted()) {
@@ -82,9 +67,7 @@ public final class Checkpoints {
     }
 
     /**
-     * Cancellation-aware sleep. Converts {@link InterruptedException} into
-     * a {@link LeanCancellationException} so that task cancellation via
-     * thread interrupt is treated uniformly as a cooperative cancellation.
+     * Sleeps for the given number of milliseconds.
      *
      * @param millis sleep duration in milliseconds
      */
@@ -92,7 +75,11 @@ public final class Checkpoints {
         checkSleep(millis, TimeUnit.MILLISECONDS);
     }
 
-    /** Checks an interruptible {@link CountDownLatch#await()} operation. */
+    /**
+     * Waits until the latch reaches zero.
+     *
+     * @param latch the latch to await
+     */
     public static void checkAwait(CountDownLatch latch) {
         try {
             latch.await();
@@ -101,12 +88,25 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible timed {@link CountDownLatch#await(long, TimeUnit)} operation. */
+    /**
+     * Waits up to the given duration for the latch to reach zero.
+     *
+     * @param latch   the latch to await
+     * @param timeout the maximum time to wait
+     * @return {@code true} if the latch reached zero, or {@code false} on timeout
+     */
     public static boolean checkAwait(CountDownLatch latch, Duration timeout) {
         return checkAwait(latch, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed {@link CountDownLatch#await(long, TimeUnit)} operation. */
+    /**
+     * Waits up to the given timeout for the latch to reach zero.
+     *
+     * @param latch   the latch to await
+     * @param timeout the maximum time to wait
+     * @param unit    the unit of {@code timeout}
+     * @return {@code true} if the latch reached zero, or {@code false} on timeout
+     */
     public static boolean checkAwait(CountDownLatch latch, long timeout, TimeUnit unit) {
         try {
             return latch.await(timeout, unit);
@@ -115,12 +115,25 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible timed {@link Condition#await(long, TimeUnit)} operation. */
+    /**
+     * Waits up to the given duration for the condition to be signalled.
+     *
+     * @param condition the condition to await
+     * @param timeout   the maximum time to wait
+     * @return {@code false} if the wait elapsed before being signalled; otherwise {@code true}
+     */
     public static boolean checkAwait(Condition condition, Duration timeout) {
         return checkAwait(condition, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed {@link Condition#await(long, TimeUnit)} operation. */
+    /**
+     * Waits up to the given timeout for the condition to be signalled.
+     *
+     * @param condition the condition to await
+     * @param timeout   the maximum time to wait
+     * @param unit      the unit of {@code timeout}
+     * @return {@code false} if the wait elapsed before being signalled; otherwise {@code true}
+     */
     public static boolean checkAwait(Condition condition, long timeout, TimeUnit unit) {
         try {
             return condition.await(timeout, unit);
@@ -129,7 +142,11 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible {@link Thread#join()} operation. */
+    /**
+     * Waits for the thread to terminate.
+     *
+     * @param thread the thread whose termination to await
+     */
     public static void checkJoin(Thread thread) {
         try {
             thread.join();
@@ -138,12 +155,23 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible timed {@link Thread#join(long, int)} operation. */
+    /**
+     * Waits up to the given duration for the thread to terminate.
+     *
+     * @param thread  the thread whose termination to await
+     * @param timeout the maximum time to wait
+     */
     public static void checkJoin(Thread thread, Duration timeout) {
         checkJoin(thread, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed join operation. */
+    /**
+     * Waits up to the given timeout for the thread to terminate.
+     *
+     * @param thread  the thread whose termination to await
+     * @param timeout the maximum time to wait
+     * @param unit    the unit of {@code timeout}
+     */
     public static void checkJoin(Thread thread, long timeout, TimeUnit unit) {
         try {
             unit.timedJoin(thread, timeout);
@@ -152,7 +180,14 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible {@link Future#get()} operation. */
+    /**
+     * Waits for and returns the future result.
+     *
+     * @param <V>    the future result type
+     * @param future the future to await
+     * @return the completed future value
+     * @throws ExecutionException if the future completed exceptionally
+     */
     public static <V> V checkGet(Future<V> future) throws ExecutionException {
         try {
             return future.get();
@@ -161,13 +196,32 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible timed {@link Future#get(long, TimeUnit)} operation. */
+    /**
+     * Waits up to the given duration for the future result.
+     *
+     * @param <V>     the future result type
+     * @param future  the future to await
+     * @param timeout the maximum time to wait
+     * @return the completed future value
+     * @throws ExecutionException if the future completed exceptionally
+     * @throws TimeoutException if the wait timed out
+     */
     public static <V> V checkGet(Future<V> future, Duration timeout)
             throws ExecutionException, TimeoutException {
         return checkGet(future, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed {@link Future#get(long, TimeUnit)} operation. */
+    /**
+     * Waits up to the given timeout for the future result.
+     *
+     * @param <V>     the future result type
+     * @param future  the future to await
+     * @param timeout the maximum time to wait
+     * @param unit    the unit of {@code timeout}
+     * @return the completed future value
+     * @throws ExecutionException if the future completed exceptionally
+     * @throws TimeoutException if the wait timed out
+     */
     public static <V> V checkGet(Future<V> future, long timeout, TimeUnit unit)
             throws ExecutionException, TimeoutException {
         try {
@@ -177,7 +231,13 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible {@link BlockingQueue#take()} operation. */
+    /**
+     * Takes the head of the queue, waiting if necessary.
+     *
+     * @param <E>   the queue element type
+     * @param queue the queue from which to take an element
+     * @return the head of the queue
+     */
     public static <E> E checkTake(BlockingQueue<E> queue) {
         try {
             return queue.take();
@@ -186,7 +246,13 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible {@link BlockingQueue#put(Object)} operation. */
+    /**
+     * Adds an element to the queue, waiting for capacity if necessary.
+     *
+     * @param <E>     the queue element type
+     * @param queue   the queue to receive the element
+     * @param element the element to enqueue
+     */
     public static <E> void checkPut(BlockingQueue<E> queue, E element) {
         try {
             queue.put(element);
@@ -195,12 +261,21 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible sleep operation. */
+    /**
+     * Sleeps for the given duration.
+     *
+     * @param duration the duration to sleep
+     */
     public static void checkSleep(Duration duration) {
         checkSleep(duration.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible sleep operation. */
+    /**
+     * Sleeps for the given duration and unit.
+     *
+     * @param duration the duration to sleep
+     * @param unit     the unit of {@code duration}
+     */
     public static void checkSleep(long duration, TimeUnit unit) {
         try {
             unit.sleep(duration);
@@ -209,22 +284,50 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible semaphore acquisition for one permit. */
+    /**
+     * Attempts to acquire one permit within the given duration.
+     *
+     * @param semaphore the semaphore from which to acquire
+     * @param timeout   the maximum time to wait
+     * @return {@code true} if a permit was acquired, or {@code false} on timeout
+     */
     public static boolean checkTryAcquire(Semaphore semaphore, Duration timeout) {
         return checkTryAcquire(semaphore, 1, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible semaphore acquisition for one permit. */
+    /**
+     * Attempts to acquire one permit within the given timeout.
+     *
+     * @param semaphore the semaphore from which to acquire
+     * @param timeout   the maximum time to wait
+     * @param unit      the unit of {@code timeout}
+     * @return {@code true} if a permit was acquired, or {@code false} on timeout
+     */
     public static boolean checkTryAcquire(Semaphore semaphore, long timeout, TimeUnit unit) {
         return checkTryAcquire(semaphore, 1, timeout, unit);
     }
 
-    /** Checks an interruptible semaphore acquisition. */
+    /**
+     * Attempts to acquire the permits within the given duration.
+     *
+     * @param semaphore the semaphore from which to acquire
+     * @param permits   the number of permits to acquire
+     * @param timeout   the maximum time to wait
+     * @return {@code true} if the permits were acquired, or {@code false} on timeout
+     */
     public static boolean checkTryAcquire(Semaphore semaphore, int permits, Duration timeout) {
         return checkTryAcquire(semaphore, permits, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible semaphore acquisition. */
+    /**
+     * Attempts to acquire the permits within the given timeout.
+     *
+     * @param semaphore the semaphore from which to acquire
+     * @param permits   the number of permits to acquire
+     * @param timeout   the maximum time to wait
+     * @param unit      the unit of {@code timeout}
+     * @return {@code true} if the permits were acquired, or {@code false} on timeout
+     */
     public static boolean checkTryAcquire(
             Semaphore semaphore, int permits, long timeout, TimeUnit unit) {
         try {
@@ -234,12 +337,25 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible timed lock acquisition. */
+    /**
+     * Attempts to acquire the lock within the given duration.
+     *
+     * @param lock    the lock to acquire
+     * @param timeout the maximum time to wait
+     * @return {@code true} if the lock was acquired, or {@code false} on timeout
+     */
     public static boolean checkTryLock(Lock lock, Duration timeout) {
         return checkTryLock(lock, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed lock acquisition. */
+    /**
+     * Attempts to acquire the lock within the given timeout.
+     *
+     * @param lock    the lock to acquire
+     * @param timeout the maximum time to wait
+     * @param unit    the unit of {@code timeout}
+     * @return {@code true} if the lock was acquired, or {@code false} on timeout
+     */
     public static boolean checkTryLock(Lock lock, long timeout, TimeUnit unit) {
         try {
             return lock.tryLock(timeout, unit);
@@ -248,17 +364,34 @@ public final class Checkpoints {
         }
     }
 
-    /** Checks an interruptible executor termination wait without a practical timeout. */
+    /**
+     * Waits for the executor to terminate.
+     *
+     * @param executor the executor whose termination to await
+     */
     public static void checkAwaitTermination(ExecutorService executor) {
         checkAwaitTermination(executor, Long.MAX_VALUE, TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed executor termination wait. */
+    /**
+     * Waits up to the given duration for the executor to terminate.
+     *
+     * @param executor the executor whose termination to await
+     * @param timeout  the maximum time to wait
+     * @return {@code true} if the executor terminated, or {@code false} on timeout
+     */
     public static boolean checkAwaitTermination(ExecutorService executor, Duration timeout) {
         return checkAwaitTermination(executor, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    /** Checks an interruptible timed executor termination wait. */
+    /**
+     * Waits up to the given timeout for the executor to terminate.
+     *
+     * @param executor the executor whose termination to await
+     * @param timeout  the maximum time to wait
+     * @param unit     the unit of {@code timeout}
+     * @return {@code true} if the executor terminated, or {@code false} on timeout
+     */
     public static boolean checkAwaitTermination(
             ExecutorService executor, long timeout, TimeUnit unit) {
         try {
@@ -269,9 +402,12 @@ public final class Checkpoints {
     }
 
     /**
-     * Runs a no-argument action and converts an exception of the declared type
-     * into fat cancellation. Other unchecked throwables are propagated unchanged;
-     * an unexpected checked throwable becomes an {@link AssertionError}.
+     * Runs an action, translating a matching failure into fat cancellation.
+     * Other unchecked failures are propagated unchanged.
+     *
+     * @param <X>          the exception type that triggers cancellation
+     * @param action       the action to execute
+     * @param declaredType the exception class that triggers cancellation
      */
     public static <X extends Throwable> void checkRunnable(
             Runnable action, Class<X> declaredType) {
@@ -286,9 +422,14 @@ public final class Checkpoints {
     }
 
     /**
-     * Gets a value and converts an exception of the declared type into fat
-     * cancellation. Other unchecked throwables are propagated unchanged;
-     * an unexpected checked throwable becomes an {@link AssertionError}.
+     * Gets a value, translating a matching failure into fat cancellation.
+     * Other unchecked failures are propagated unchanged.
+     *
+     * @param <T>          the supplied value type
+     * @param <X>          the exception type that triggers cancellation
+     * @param supplier     the value supplier to execute
+     * @param declaredType the exception class that triggers cancellation
+     * @return the value produced by {@code supplier}
      */
     public static <T, X extends Throwable> T checkSupplier(
             Supplier<? extends T> supplier, Class<X> declaredType) {
@@ -303,7 +444,7 @@ public final class Checkpoints {
     }
 
     /**
-     * Re-throws if the throwable is a cancellation exception.
+     * Propagates cancellation exceptions produced by this package.
      *
      * @param ex the exception to check
      */
