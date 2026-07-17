@@ -98,7 +98,7 @@ mvn exec:java -Dexec.mainClass=demo.advanced.DeadlockDetectionDemo
 mvn exec:java -Dexec.mainClass=demo.integration.BatchProcessingDemo
 
 # 运行所有示例（使用 profile）
-mvn exec:java -Prun-all-demos
+mvn verify -Prun-all-demos
 ```
 
 ## 运行示例
