@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -38,10 +39,12 @@ class C2_CachedVsFixedPoolTest {
     void testFixedThreadPoolNestedParallelismDeadlocks() throws Exception {
         // 2 线程的固定池——嵌套调用时确定性死锁
         ExecutorService pool = Executors.newFixedThreadPool(2);
+        CyclicBarrier outerTasksStarted = new CyclicBarrier(2);
 
         try {
             // 外层：提交 2 个任务，正好占满 2 个线程
             Future<String> outer1 = pool.submit(() -> {
+                outerTasksStarted.await(2, TimeUnit.SECONDS);
                 // 内层：向同一个池提交子任务并等待
                 Future<String> inner = pool.submit(() -> "inner-result");
                 // 阻塞等待内层结果——但 2 个线程已被外层占满，内层永远无法执行
@@ -49,6 +52,7 @@ class C2_CachedVsFixedPoolTest {
             });
 
             Future<String> outer2 = pool.submit(() -> {
+                outerTasksStarted.await(2, TimeUnit.SECONDS);
                 Future<String> inner = pool.submit(() -> "inner-result");
                 return inner.get(2, TimeUnit.SECONDS);
             });

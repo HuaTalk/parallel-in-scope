@@ -15,8 +15,11 @@
 
 // === FixedThreadPool：死锁 ===
 ExecutorService fixedPool = Executors.newFixedThreadPool(2);
+CyclicBarrier outerTasksStarted = new CyclicBarrier(2);
 for (int i = 0; i < 2; i++) {
     fixedPool.submit(() -> {
+        // 确保两个外层任务都已占住工作线程，避免测试依赖调度时序
+        outerTasksStarted.await(2, TimeUnit.SECONDS);
         Future<String> inner = fixedPool.submit(() -> "done");
         inner.get(3, TimeUnit.SECONDS);  // 超时！2 个线程全被占满
     });
