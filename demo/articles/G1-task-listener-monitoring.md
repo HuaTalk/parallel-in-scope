@@ -33,12 +33,12 @@ Future<String> future = pool.submit(() -> {
 
 `TaskEvent` 包含完整的任务生命周期信息：
 - `getTaskName()` — 任务名称（来自 `ParOptions.of("taskName")`）
-- `executionTimeNanos()` — 实际执行耗时（纳秒级精度）
-- `waitTimeNanos()` — 等待耗时（从提交到开始执行的间隔）
-- `totalTimeNanos()` — 总耗时（等待 + 执行）
+- `executionTime()` — 实际执行耗时，返回 `Duration`
+- `waitTime()` — 等待耗时（从提交到开始执行的间隔），返回 `Duration`
+- `totalTime()` — 总耗时（等待 + 执行），返回 `Duration`
 - `getException()` — 任务异常（成功时为 null）
 
-这些数据足以对接任何监控系统：用 `executionTimeMillis()` 计算延迟直方图，用 `getException() != null` 统计失败率，用 `waitTimeMillis()` 监控线程池水位。
+这些数据足以对接任何监控系统：用 `executionTime().toMillis()` 计算延迟直方图，用 `getException() != null` 统计失败率，用 `waitTime().toMillis()` 监控线程池水位。
 
 ## 代码
 
@@ -55,7 +55,7 @@ ParConfig config = ParConfig.builder()
         .executor("my-pool", pool)
         .taskListener(event -> {
             // 每个任务完成时自动回调，零侵入
-            taskTimings.put(event.getTaskName(), event.executionTimeMillis());
+            taskTimings.put(event.getTaskName(), event.executionTime().toMillis());
             if (event.getException() != null) {
                 log.error("Task {} failed: {}", event.getTaskName(),
                         event.getException().getMessage());
@@ -64,7 +64,7 @@ ParConfig config = ParConfig.builder()
             Timer.builder("task.duration")
                 .tag("name", event.getTaskName())
                 .register(meterRegistry)
-                .record(event.executionTimeNanos(), TimeUnit.NANOSECONDS);
+                .record(event.executionTime().toNanos(), TimeUnit.NANOSECONDS);
         })
         .build();
 Par par = new Par(config);

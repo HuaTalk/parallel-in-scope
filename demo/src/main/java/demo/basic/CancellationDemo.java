@@ -1,5 +1,6 @@
 package demo.basic;
 
+import com.google.common.util.concurrent.Futures;
 import io.github.huatalk.parallelinscope.cancel.Checkpoints;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 import io.github.huatalk.parallelinscope.scope.Par;
@@ -18,7 +19,7 @@ import java.util.concurrent.Executors;
  * <ul>
  *   <li>使用 {@link Checkpoints#sleep(long)} 替代 Thread.sleep — 可被取消中断</li>
  *   <li>配置 {@link ParOptions} 超时时间触发取消</li>
- *   <li>被取消的任务抛出 {@code FatCancellationException}</li>
+ *   <li>被取消的任务抛出 {@code LeanCancellationException}</li>
  *   <li>通过 {@code reportString()} 查看最终状态</li>
  * </ul>
  *
@@ -27,7 +28,7 @@ import java.util.concurrent.Executors;
  */
 public class CancellationDemo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         System.out.println("=== CancellationDemo ===");
         System.out.println("演示任务超时取消机制\n");
 
@@ -56,18 +57,21 @@ public class CancellationDemo {
 
                 System.out.println("  [" + threadName + "] 处理: " + n);
 
-                // 使用 Checkpoints.sleep() — 当超时触发取消时，这里会抛出 FatCancellationException
-                Checkpoints.sleep(500);
+                // 使用 Checkpoints.sleep() — 当超时触发取消时，这里会抛出 LeanCancellationException
+                Checkpoints.sleep(1500);
                 return n * n;
             }, options);
 
+            // Wait until every task has succeeded, failed, or been cancelled. Unlike allAsList,
+            // successfulAsList itself completes normally when individual tasks are cancelled.
+            Futures.successfulAsList(result.getResults()).get();
             long endTime = System.currentTimeMillis();
 
             // 3. 查看结果
             System.out.println("\n处理完成!");
             System.out.println("耗时: " + (endTime - startTime) + " 毫秒");
             System.out.println("执行报告: " + result.reportString());
-            System.out.println("（超时触发后，Checkpoints.sleep() 抛出 FatCancellationException 实现协作式取消）");
+            System.out.println("（超时触发后，Checkpoints.sleep() 抛出 LeanCancellationException 实现协作式取消）");
 
         } finally {
             pool.shutdownNow();
