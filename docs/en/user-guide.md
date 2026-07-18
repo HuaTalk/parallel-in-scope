@@ -4,9 +4,9 @@
 
 > **Document role: User guide.** This is the primary guide to configuration, public APIs, runtime behavior, and advanced features.
 
-> **⚠️ Status: In Development (Pre-release)**
+> **Current version: `v0.1.0` (initial public release)**
 >
-> This project is under active development. APIs may change. Feedback and suggestions are welcome via Issues.
+> The project remains under active development. APIs may change in future `0.x` releases. Feedback and suggestions are welcome via Issues.
 
 🪿 **parallel-in-scope** is a structured concurrency toolkit for Java 8+, built around cooperative cancellation, fail-fast behavior, context propagation, deadlock detection, and sliding-window scheduling.
 It targets practical Java 8 pain points: lost cancellation signals, missing `ThreadLocal` context across thread pools, and hard-to-debug deadlocks in nested parallel calls.
@@ -267,7 +267,7 @@ sequenceDiagram
 
 | Item | Notes |
 |---|---|
-| JDK | Java 8+ (`maven.compiler.source/target = 1.8`) |
+| JDK | Java 8+ (production code uses `maven.compiler.release = 8`) |
 | Build Tool | Maven 3.x (recommended) |
 | Published Artifact | `parallel-in-scope` (library) |
 | Sample Project | `demo/` (not published) |

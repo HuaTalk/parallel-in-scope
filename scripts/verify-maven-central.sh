@@ -11,6 +11,7 @@ for attempt in $(seq 1 12); do
   if mvn -B -ntp -U \
       -f verification/maven-central-consumer/pom.xml \
       -Dparallel-in-scope.version="$version" \
+      -Dtest=MavenCentralConsumerTest#publishedArtifactCanBeResolvedAndUsed \
       clean verify; then
     exit 0
   fi
