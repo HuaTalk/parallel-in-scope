@@ -21,6 +21,9 @@ jobs:
       - name: Check English documentation language
         run: python3 scripts/check-english-docs.py
 
+      - name: Check local documentation links
+        run: python3 scripts/check-local-links.py
+
   build:
     runs-on: ubuntu-latest
     permissions:

@@ -2,7 +2,7 @@
 
 # parallel-in-scope
 
-> Status: in development (pre-release). APIs may still change.
+> Current version: `v0.1.0` (initial public release). APIs may still change in future `0.x` releases.
 
 A structured-concurrency toolkit for Java 8+ with cooperative cancellation, fail-fast execution, context propagation, sliding-window scheduling, and thread-pool deadlock diagnostics.
 
