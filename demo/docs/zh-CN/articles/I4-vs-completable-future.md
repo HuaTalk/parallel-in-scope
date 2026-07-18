@@ -1,6 +1,5 @@
 # I4. parallel-in-scope vs CompletableFuture.allOf
 
-> **文档定位：设计决策。** 本文帮助判断适用场景，不定义 API 契约；实际配置和用法以[主用户指南](../../../../docs/zh-CN/user-guide.md)为准，批量场景参见[批量调用最佳实践](BATCH-best-practices.md)。
 
 ## CompletableFuture.allOf 能做什么
 

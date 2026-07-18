@@ -21,6 +21,10 @@ import java.util.function.Supplier;
 /**
  * Cooperative cancellation checkpoints and interruption-aware blocking operations.
  * <p>
+ * Every public method checks the current scope's {@link CancellationToken} before starting
+ * its operation. A canceled token produces a {@link LeanCancellationException}, except that
+ * {@link #checkpoint(String, boolean)} produces the lean or fat form selected by its argument.
+ * <p>
  * Blocking-operation adapters restore the interrupt flag and translate
  * {@link InterruptedException} into {@link LeanCancellationException}.
  * <p>
@@ -40,6 +44,8 @@ public final class Checkpoints {
      *
      * @param taskName the task expected in the current scope
      * @param lean     whether to omit the cancellation stack trace
+     * @throws LeanCancellationException if the matching task is canceled and {@code lean} is true
+     * @throws FatCancellationException if the matching task is canceled and {@code lean} is false
      */
     public static void checkpoint(String taskName, boolean lean) {
         ParOptions options = TaskScopeTl.getParallelOptions();
@@ -51,7 +57,10 @@ public final class Checkpoints {
     }
 
     /**
-     * Checks the current thread's interrupt status without requiring a token.
+     * Checks the current cancellation token and the current thread's interrupt status.
+     * A token is not required when this method is used as a raw interrupt checkpoint.
+     *
+     * @throws LeanCancellationException if the current scope is canceled or the thread is interrupted
      */
     public static void rawCheckpoint() {
         checkCancellationToken(true);
@@ -427,6 +436,12 @@ public final class Checkpoints {
      * @param <X>          the exception type that triggers cancellation
      * @param action       the action to execute
      * @param declaredType the exception class that triggers cancellation
+     * @throws LeanCancellationException if the current scope is canceled before the action runs
+     * @throws FatCancellationException if the action throws an instance of {@code declaredType}
+     * @throws RuntimeException if the action throws a non-matching runtime exception
+     * @throws Error if the action throws a non-matching error
+     * @throws AssertionError if the action unexpectedly throws a checked throwable
+     * @throws NullPointerException if {@code action} or {@code declaredType} is null
      */
     public static <X extends Throwable> void checkRunnable(
             Runnable action, Class<X> declaredType) {
@@ -450,6 +465,12 @@ public final class Checkpoints {
      * @param supplier     the value supplier to execute
      * @param declaredType the exception class that triggers cancellation
      * @return the value produced by {@code supplier}
+     * @throws LeanCancellationException if the current scope is canceled before the supplier runs
+     * @throws FatCancellationException if the supplier throws an instance of {@code declaredType}
+     * @throws RuntimeException if the supplier throws a non-matching runtime exception
+     * @throws Error if the supplier throws a non-matching error
+     * @throws AssertionError if the supplier unexpectedly throws a checked throwable
+     * @throws NullPointerException if {@code supplier} or {@code declaredType} is null
      */
     public static <T, X extends Throwable> T checkSupplier(
             Supplier<? extends T> supplier, Class<X> declaredType) {
@@ -465,9 +486,13 @@ public final class Checkpoints {
     }
 
     /**
-     * Propagates cancellation exceptions produced by this package.
+     * Propagates cancellation exceptions produced by this package. A cancellation exception
+     * supplied as {@code ex} takes precedence over the current token's state.
      *
      * @param ex the exception to check
+     * @throws FatCancellationException if {@code ex} is a fat cancellation exception
+     * @throws LeanCancellationException if {@code ex} is a lean cancellation exception or the
+     *         current scope is canceled
      */
     public static void propagateCancellation(Throwable ex) {
         Throwables.throwIfInstanceOf(ex, FatCancellationException.class);

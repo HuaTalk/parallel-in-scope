@@ -54,15 +54,7 @@ for (int i = 0; i < 2; i++) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 // CachedThreadPool：嵌套并行不会死锁
 ExecutorService cachedPool = Executors.newCachedThreadPool();

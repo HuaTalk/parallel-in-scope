@@ -1,18 +1,31 @@
 package io.github.huatalk.parallelinscope;
 
-import io.github.huatalk.parallelinscope.cancel.*;
-import io.github.huatalk.parallelinscope.context.*;
-import io.github.huatalk.parallelinscope.context.graph.*;
-import io.github.huatalk.parallelinscope.internal.*;
-import io.github.huatalk.parallelinscope.queue.*;
-import io.github.huatalk.parallelinscope.scope.*;
-import io.github.huatalk.parallelinscope.spi.*;
+import io.github.huatalk.parallelinscope.cancel.CancellationToken;
+import io.github.huatalk.parallelinscope.cancel.Checkpoints;
+import io.github.huatalk.parallelinscope.cancel.FatCancellationException;
+import io.github.huatalk.parallelinscope.cancel.LeanCancellationException;
+import io.github.huatalk.parallelinscope.context.TaskScopeTl;
+import io.github.huatalk.parallelinscope.scope.ParOptions;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
-import static org.assertj.core.api.Assertions.*;
+import java.time.Duration;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 /**
@@ -77,19 +90,16 @@ public class CheckpointsTest {
         token.cancel(false);
         TaskScopeTl.init(token, ParOptions.of("myTask").build());
 
-        java.time.Duration zero = java.time.Duration.ZERO;
-        java.util.concurrent.TimeUnit nanos = java.util.concurrent.TimeUnit.NANOSECONDS;
-        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(0);
-        java.util.concurrent.locks.ReentrantLock lock = new java.util.concurrent.locks.ReentrantLock();
-        java.util.concurrent.locks.Condition condition = lock.newCondition();
+        Duration zero = Duration.ZERO;
+        TimeUnit nanos = TimeUnit.NANOSECONDS;
+        CountDownLatch latch = new CountDownLatch(0);
+        ReentrantLock lock = new ReentrantLock();
+        Condition condition = lock.newCondition();
         Thread completed = new Thread(() -> { });
-        java.util.concurrent.CompletableFuture<String> future =
-                java.util.concurrent.CompletableFuture.completedFuture("done");
-        java.util.concurrent.BlockingQueue<String> queue =
-                new java.util.concurrent.ArrayBlockingQueue<>(1);
-        java.util.concurrent.Semaphore semaphore = new java.util.concurrent.Semaphore(4);
-        java.util.concurrent.ExecutorService executor =
-                java.util.concurrent.Executors.newSingleThreadExecutor();
+        CompletableFuture<String> future = CompletableFuture.completedFuture("done");
+        BlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
+        Semaphore semaphore = new Semaphore(4);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.shutdown();
 
         assertAll("all public checkpoint operations observe the current cancellation token",
@@ -150,8 +160,8 @@ public class CheckpointsTest {
 
     @Test
     public void testSleep_interrupted_throwsLeanCancellationException() throws Exception {
-        java.util.concurrent.CountDownLatch started = new java.util.concurrent.CountDownLatch(1);
-        java.util.concurrent.atomic.AtomicReference<Throwable> caught = new java.util.concurrent.atomic.AtomicReference<>();
+        CountDownLatch started = new CountDownLatch(1);
+        AtomicReference<Throwable> caught = new AtomicReference<>();
 
         Thread t = new Thread(() -> {
             try {
@@ -162,7 +172,7 @@ public class CheckpointsTest {
             }
         });
         t.start();
-        started.await(1, java.util.concurrent.TimeUnit.SECONDS);
+        started.await(1, TimeUnit.SECONDS);
         Thread.sleep(50); // small delay to ensure sleep is entered
         t.interrupt();
         t.join(2000);
@@ -245,7 +255,7 @@ public class CheckpointsTest {
 
     @Test
     public void testCheckGet_interruptedTriggersLeanCancellationAndRestoresFlag() {
-        java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
+        CompletableFuture<String> future = new CompletableFuture<>();
         Thread.currentThread().interrupt();
 
         assertThatThrownBy(() -> Checkpoints.checkGet(future))
@@ -255,18 +265,18 @@ public class CheckpointsTest {
 
     @Test
     public void testCheckMethods_coverUninterruptiblesObjectTypes() throws Exception {
-        java.time.Duration zero = java.time.Duration.ZERO;
-        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(0);
+        Duration zero = Duration.ZERO;
+        CountDownLatch latch = new CountDownLatch(0);
         Checkpoints.checkAwait(latch);
         assertThat(Checkpoints.checkAwait(latch, zero)).isTrue();
-        assertThat(Checkpoints.checkAwait(latch, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+        assertThat(Checkpoints.checkAwait(latch, 0, TimeUnit.NANOSECONDS)).isTrue();
 
-        java.util.concurrent.locks.ReentrantLock lock = new java.util.concurrent.locks.ReentrantLock();
+        ReentrantLock lock = new ReentrantLock();
         lock.lock();
         try {
             assertThat(Checkpoints.checkAwait(lock.newCondition(), zero)).isFalse();
             assertThat(Checkpoints.checkAwait(
-                    lock.newCondition(), 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isFalse();
+                    lock.newCondition(), 0, TimeUnit.NANOSECONDS)).isFalse();
         } finally {
             lock.unlock();
         }
@@ -276,43 +286,40 @@ public class CheckpointsTest {
         completed.join();
         Checkpoints.checkJoin(completed);
         Checkpoints.checkJoin(completed, zero);
-        Checkpoints.checkJoin(completed, 0, java.util.concurrent.TimeUnit.NANOSECONDS);
+        Checkpoints.checkJoin(completed, 0, TimeUnit.NANOSECONDS);
 
-        java.util.concurrent.CompletableFuture<String> future =
-                java.util.concurrent.CompletableFuture.completedFuture("done");
+        CompletableFuture<String> future = CompletableFuture.completedFuture("done");
         assertThat(Checkpoints.checkGet(future)).isEqualTo("done");
         assertThat(Checkpoints.checkGet(future, zero)).isEqualTo("done");
-        assertThat(Checkpoints.checkGet(future, 0, java.util.concurrent.TimeUnit.NANOSECONDS))
+        assertThat(Checkpoints.checkGet(future, 0, TimeUnit.NANOSECONDS))
                 .isEqualTo("done");
 
-        java.util.concurrent.BlockingQueue<String> queue =
-                new java.util.concurrent.ArrayBlockingQueue<>(1);
+        BlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
         Checkpoints.checkPut(queue, "item");
         assertThat(Checkpoints.checkTake(queue)).isEqualTo("item");
         Checkpoints.checkSleep(zero);
-        Checkpoints.checkSleep(0, java.util.concurrent.TimeUnit.NANOSECONDS);
+        Checkpoints.checkSleep(0, TimeUnit.NANOSECONDS);
 
-        java.util.concurrent.Semaphore semaphore = new java.util.concurrent.Semaphore(4);
+        Semaphore semaphore = new Semaphore(4);
         assertThat(Checkpoints.checkTryAcquire(semaphore, zero)).isTrue();
         assertThat(Checkpoints.checkTryAcquire(
-                semaphore, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+                semaphore, 0, TimeUnit.NANOSECONDS)).isTrue();
         assertThat(Checkpoints.checkTryAcquire(semaphore, 1, zero)).isTrue();
         assertThat(Checkpoints.checkTryAcquire(
-                semaphore, 1, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+                semaphore, 1, 0, TimeUnit.NANOSECONDS)).isTrue();
 
         assertThat(Checkpoints.checkTryLock(lock, zero)).isTrue();
         lock.unlock();
         assertThat(Checkpoints.checkTryLock(
-                lock, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+                lock, 0, TimeUnit.NANOSECONDS)).isTrue();
         lock.unlock();
 
-        java.util.concurrent.ExecutorService executor =
-                java.util.concurrent.Executors.newSingleThreadExecutor();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.shutdown();
         Checkpoints.checkAwaitTermination(executor);
         assertThat(Checkpoints.checkAwaitTermination(executor, zero)).isTrue();
         assertThat(Checkpoints.checkAwaitTermination(
-                executor, 0, java.util.concurrent.TimeUnit.NANOSECONDS)).isTrue();
+                executor, 0, TimeUnit.NANOSECONDS)).isTrue();
     }
 
     @Test

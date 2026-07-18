@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * D2. 先提交后绑定的竞态 — 问题复现与解决方案
+ * D2. 为什么使用统一的超时时间 — 问题复现与解决方案
  *
  * <p>场景：滑动窗口调度下，如果每个 Future 在提交时就绑定超时（per-task timeout），
  * 先提交的任务超时计时器先启动，后提交的任务超时计时器后启动。
@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 它的超时计时器可能已经过期了——任务还没开始就被取消。
  *
  * <p>Test 1: 用 Guava FluentFuture.withTimeout 模拟 per-task timeout，展示后提交任务的不公平超时
- * <p>Test 2: 用 Par.map() 的 lateBind 机制，展示所有任务获得公平的超时窗口
+ * <p>Test 2: 用 Par.map() 的 lateBind 机制，展示整个批次共享一个超时截止时间
  */
 class D2_LateBindRaceConditionTest {
 
@@ -129,9 +129,8 @@ class D2_LateBindRaceConditionTest {
     /**
      * Test 2 — 解决方案：Par.map() 的 lateBind 机制确保全批次统一超时
      *
-     * <p>Par.map() 先通过滑动窗口提交所有任务，然后通过 CancellationToken.lateBind()
-     * 统一绑定超时。超时计时器的起算点是"所有任务提交完毕"的时刻，
-     * 而非第一个任务提交的时刻。
+     * <p>Par.map() 先提交初始窗口并为剩余逻辑任务创建 Future 槽位，然后通过
+     * CancellationToken.lateBind() 将这些 Future 和异步提交循环绑定到统一超时。
      *
      * <p>关键特性：
      * <ul>
@@ -167,9 +166,9 @@ class D2_LateBindRaceConditionTest {
             long startTime = System.currentTimeMillis();
 
             // Par.map() internally:
-            // 1. Submits all tasks via sliding window (ConcurrentLimitExecutor.submitAll)
-            // 2. Calls CancellationToken.lateBind() AFTER all futures are submitted
-            // 3. The batch timeout starts from lateBind time — all tasks share one deadline
+            // 1. Submits the initial window and creates Future slots for remaining tasks
+            // 2. Calls CancellationToken.lateBind() on the complete logical batch
+            // 3. The aggregate timeout gives the batch one shared deadline
             AsyncBatchResult<String> result = par.map("test-pool", items, taskId -> {
                 try {
                     Thread.sleep(TASK_SLEEP_MS);

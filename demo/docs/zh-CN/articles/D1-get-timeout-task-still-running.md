@@ -45,11 +45,6 @@ pool.submit(() -> "new task"); // 这个任务必须等待前面的任务完成
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.TaskType;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(2);

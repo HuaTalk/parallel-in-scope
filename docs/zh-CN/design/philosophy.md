@@ -10,7 +10,6 @@ source: "原创"
 
 # 并发库的减法哲学：parallel-in-scope 设计复盘
 
-> **文档定位：设计决策。** 本文解释核心设计取舍；支持的公共行为以用户指南和 API/契约参考为准。
 
 > 本文随仓库按 [Apache License 2.0](https://github.com/HuaTalk/parallel-in-scope/blob/main/LICENSE) 许可使用和转载；请保留许可证要求的版权与许可声明。
 

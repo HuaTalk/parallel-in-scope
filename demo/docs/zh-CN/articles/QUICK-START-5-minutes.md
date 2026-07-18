@@ -1,6 +1,5 @@
 # 5 分钟快速上手 parallel-in-scope
 
-> **文档定位：用户指南。** 本文用于快速入门；取消契约见 [协作式取消](../../../../docs/zh-CN/reference/cooperative-cancellation.md)，上下文传播实现见 [ThreadRelay 内部机制](../../../../docs/zh-CN/internals/thread-relay.md)。
 
 `parallel-in-scope` 是一个面向 Java 8+ 的结构化并发工具库，基于 Guava `ListenableFuture` 构建。它提供滑动窗口并发控制、协作式取消、跨线程上下文传播等能力，让你用最少的代码完成批量并行任务。
 

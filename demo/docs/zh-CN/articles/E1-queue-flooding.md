@@ -51,10 +51,6 @@ for (int i = 0; i < taskCount; i++) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
 
 // 餐厅只有 4 张桌（4 线程）
 ExecutorService pool = Executors.newFixedThreadPool(4);

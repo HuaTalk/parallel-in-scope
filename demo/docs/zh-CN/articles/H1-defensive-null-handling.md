@@ -51,10 +51,6 @@ for (String item : emptyList) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
 // 配置 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);

@@ -1,6 +1,5 @@
 # G3. 任务取消后还在算——显式检查点
 
-> **文档定位：示例。** 本文聚焦 CPU 任务取消；完整 API 契约和使用边界以 [协作式取消](../../../../docs/zh-CN/reference/cooperative-cancellation.md) 为准。
 
 ## 问题
 
@@ -49,11 +48,6 @@ for (int i = 0; i < 1_000_000; i++) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.TaskType;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);

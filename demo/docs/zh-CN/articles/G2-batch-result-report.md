@@ -1,6 +1,5 @@
 # G2. 批量结果统计——一行代码拿到全貌
 
-> **文档定位：示例。** 本文演示批量结果报告；综合场景方案参见[批量调用最佳实践](BATCH-best-practices.md)，完整 API 契约以[主用户指南](../../../../docs/zh-CN/user-guide.md)为准。
 
 ## 问题
 
@@ -61,10 +60,6 @@ SUCCESS:6
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
 ExecutorService pool = Executors.newFixedThreadPool(4);
 ParConfig config = ParConfig.builder()

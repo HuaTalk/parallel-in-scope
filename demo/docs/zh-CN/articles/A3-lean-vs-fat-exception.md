@@ -1,6 +1,5 @@
 # A3. 取消异常太重
 
-> **文档定位：示例。** 本文聚焦取消异常性能；取消语义和 API 契约以 [协作式取消](../../../../docs/zh-CN/reference/cooperative-cancellation.md) 为准。
 
 ## 问题
 
@@ -36,10 +35,6 @@ System.out.println("10000 exceptions: " + elapsed / 1_000_000 + " ms");
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);

@@ -1,4 +1,4 @@
-[**中文**](README.md) | **English**
+[**Chinese**](README.md) | **English**
 
 # parallel-in-scope
 
@@ -55,12 +55,6 @@ AsyncBatchResult<User> result = new Par(config)
 - Build tool: Maven 3.x
 - Published artifact: root `parallel-in-scope` project
 - Examples: independent `demo/` project, not published
-
-```bash
-mvn clean verify
-mvn install -DskipTests -Dmaven.javadoc.skip=true
-mvn -f demo/pom.xml test
-```
 
 ## License
 

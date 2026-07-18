@@ -1,6 +1,5 @@
 # B2. 函数签名膨胀
 
-> **文档定位：示例。** 本文聚焦上下文参数传递；隐式传播的实现细节见 [ThreadRelay 内部机制](../../../../docs/zh-CN/internals/thread-relay.md)。
 
 ## 问题
 
@@ -43,10 +42,6 @@ List<String> results = urls.parallelStream()
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);

@@ -1,6 +1,5 @@
 # Nullability Annotations
 
-> **文档定位：API/契约参考。** 本文定义公共 API 与内部实现采用的空值注解规则。
 
 parallel-in-scope 使用混合空指针注解策略，在编译期和 IDE 中为开发者提供空值安全提示。
 

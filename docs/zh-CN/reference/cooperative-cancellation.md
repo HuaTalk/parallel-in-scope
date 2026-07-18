@@ -1,6 +1,5 @@
 # 协作式取消（Cooperative Cancellation）
 
-> **文档定位：API/契约参考。** 本文定义协作式取消的公共契约。问题导向示例见 [A1](https://github.com/HuaTalk/parallel-in-scope/blob/main/demo/docs/zh-CN/articles/A1-cancel-true-ignored.md)、[A2](https://github.com/HuaTalk/parallel-in-scope/blob/main/demo/docs/zh-CN/articles/A2-nested-cancel-propagation.md)、[A3](https://github.com/HuaTalk/parallel-in-scope/blob/main/demo/docs/zh-CN/articles/A3-lean-vs-fat-exception.md) 和 [G3](https://github.com/HuaTalk/parallel-in-scope/blob/main/demo/docs/zh-CN/articles/G3-checkpoints-cooperative-cancel.md)；上下文传播实现见 [ThreadRelay 内部机制](../internals/thread-relay.md)。
 
 ## 为什么需要"协作式"取消？
 

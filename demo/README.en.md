@@ -1,4 +1,4 @@
-[**中文**](README.md) | **English**
+[**Chinese**](README.md) | **English**
 
 # parallel-in-scope-demo
 

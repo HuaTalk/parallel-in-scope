@@ -1,6 +1,5 @@
 # I1. 设计墓地——那些我们拒绝做的功能
 
-> **文档定位：设计决策。** 本文选取代表性决策帮助理解设计取舍；完整决策清单以 [Idea Graveyard](../../../../docs/zh-CN/design/idea-graveyard.md) 为准。
 
 每个开源项目都有一个公开的路线图，告诉用户"我们要做什么"。但很少有项目告诉你"我们决定不做什么"。我们反其道而行之——parallel-in-scope 维护了一份 [IdeaGraveyard](../../../../docs/zh-CN/design/idea-graveyard.md)，记录每一个被认真考虑过、最终被拒绝的特性。
 

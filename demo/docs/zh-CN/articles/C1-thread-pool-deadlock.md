@@ -35,11 +35,6 @@ for (int i = 0; i < 2; i++) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.TaskType;
 
 // 方案：内层使用独立的 CachedThreadPool，避免嵌套死锁
 ExecutorService outerPool = Executors.newFixedThreadPool(2);

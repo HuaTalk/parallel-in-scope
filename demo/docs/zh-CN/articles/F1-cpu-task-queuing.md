@@ -1,4 +1,4 @@
-# F1. CPU 密集任务排队白等
+# F1. CPU 密集任务兜底成功执行
 
 ## 问题
 
@@ -43,10 +43,6 @@ for (int i = 0; i < 20; i++) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
 
 ExecutorService pool = Executors.newFixedThreadPool(4);
 ParConfig config = ParConfig.builder()

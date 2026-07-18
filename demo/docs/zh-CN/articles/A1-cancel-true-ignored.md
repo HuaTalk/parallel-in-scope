@@ -1,6 +1,5 @@
 # A1. cancel(true) 被忽略了
 
-> **文档定位：示例。** 本文从 `cancel(true)` 的常见误解切入；协作式取消的公共契约以 [协作式取消](../../../../docs/zh-CN/reference/cooperative-cancellation.md) 为准。
 
 ## 问题
 
@@ -37,12 +36,6 @@ futures.forEach(f -> f.cancel(true));
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.cancel.Checkpoints;
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.TaskType;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);

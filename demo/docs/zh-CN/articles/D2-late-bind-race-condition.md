@@ -1,92 +1,73 @@
-# D2. 先提交后绑定的竞态
+# D2. 为什么使用统一的超时时间
 
 ## 问题
 
-（接上篇餐厅比喻：大堂经理安排了 100 桌客人，4 桌一轮。问题来了——限时什么时候宣布？）
+批量任务采用滑动窗口调度时，任务不会同时提交：初始窗口先进入执行器，后续任务要等已有任务完成后才补入。如果每个任务在实际提交时各自启动超时计时器，那么它们会拥有不同的截止时间。
 
-在并行处理大批量任务时，超时控制是防止任务无限挂起的关键手段。一个直觉上的做法是：每个任务提交时就绑定超时——比如用 Guava 的 `FluentFuture.withTimeout()` 在 `submit()` 的那一刻启动计时器。这在任务数量少、执行时间均匀的场景下没有问题，但一旦引入**滑动窗口调度**，这个做法就会产生严重的不公平问题。
+这会带来两个问题：
 
-考虑一个具体场景：100 个任务，并行度 10，每个任务的超时设为 5 秒。由于滑动窗口的特性，第 1 个任务在 T=0 时刻提交，超时计时器立即开始倒计时；但第 100 个任务要等到前 90 个任务依次完成后才能被提交，假设每个任务耗时约 300ms，那么第 100 个任务大约在 T=27s 才被提交。此时它的 5 秒超时还没问题，但它的"可用执行时间"和第 1 个任务完全相同——都是 5 秒。真正的问题在于：如果任务执行时间波动较大，前面的任务卡住了，后面的大量任务可能在还没开始执行时就已经超时了。更极端的情况是，当所有任务的超时总和小于任务排队等待的总时间时，后面的批量任务会**全部超时**，即使它们本身只需要很短的执行时间。
+- 批次没有明确的完成期限。后提交任务的截止时间不断后移，整个调用可能远超调用方配置的超时。
+- 取消语义被拆散。某个任务超时只影响自身，提交循环和其他未完成任务仍可能继续运行。
 
-本质原因在于：**超时的起算点是任务提交时刻，而非任务批量的统一时刻**。先提交的任务"偷跑"了计时器，后提交的任务被迫承受不公平的超时压力。
+调用方配置的 `timeout` 表达的是“这个批次最多执行多久”，而不是“每个任务从提交后还能运行多久”。因此，超时必须绑定到整个批次，并共享一个截止时间。
 
 ## 问题复现
 
 ```java
-// 模拟：10 个任务，并行度 2，每个任务超时 2 秒
-// 但每个任务实际需要 3 秒才能完成
-ExecutorService pool = Executors.newFixedThreadPool(4);
-ListeningExecutorService listening = MoreExecutors.listeningDecorator(pool);
-
-int taskCount = 10;
-long perTaskTimeoutMs = 2000;
 List<ListenableFuture<String>> futures = new ArrayList<>();
 
 for (int i = 0; i < taskCount; i++) {
-    final int taskId = i;
-    // 逐个提交，每个 Future 独立设置超时
-    ListenableFuture<String> future = listening.submit(() -> {
-        Thread.sleep(3000); // 模拟耗时操作
-        return "task-" + taskId;
-    });
-    // 超时从提交瞬间开始计时
-    futures.add(FluentFuture.from(future)
-            .withTimeout(perTaskTimeoutMs, TimeUnit.MILLISECONDS, timer));
-}
+    ListenableFuture<String> submitted = submitWhenWindowAvailable(i);
 
-// 结果：第 1~2 个任务可能超时，第 3~10 个任务在提交时
-// 前面的任务还没完成，它们的超时被前面的排队时间"消耗"掉了
-// 后续任务还没开始就已经超时
+    // 每个任务在实际提交时才开始计时，越晚提交，截止时间越晚。
+    futures.add(FluentFuture.from(submitted)
+            .withTimeout(timeout, TimeUnit.MILLISECONDS, timer));
+}
 ```
+
+假设并行度为 2，每轮任务执行 1 秒。第 1 批任务的截止时间从 T=0 起算，第 2 批从约 T=1s 起算，第 3 批从约 T=2s 起算。即使每个任务都设置 3 秒超时，整个批次仍可能持续远超 3 秒。
 
 ## 解决方法
 
-就像餐厅的做法：100 桌客人全部到齐登记后，经理才统一宣布"就餐限时 1 小时"。而不是第 1 桌坐下就开始计时——否则第 1 桌都吃完了，第 100 桌还没坐下，限时形同虚设。
+`parallel-in-scope` 为批次建立一个统一超时：
 
-`parallel-in-scope` 采用**先提交后绑定**（Late Binding）策略，核心思路是将"提交任务"和"绑定超时"拆分为两个独立的阶段：
+1. `ConcurrentLimitExecutor.submitAll()` 提交初始窗口，并为其余逻辑任务创建 Future 槽位；异步提交循环随后按完成事件补充任务。
+2. `CancellationToken.lateBind()` 将全部逻辑 Future 和提交循环绑定到同一个聚合 Future。
+3. `FluentFuture.withTimeout()` 只为这个聚合 Future 设置一次超时，形成整个批次共享的截止时间。
+4. 截止时间到达或任一任务失败时，提交循环和所有未完成任务一起取消。
 
-1. **提交阶段**：`ConcurrentLimitExecutor.submitAll()` 通过滑动窗口逐个提交任务，返回 `AsyncBatchResult`（包含所有 `ListenableFuture`）
-2. **绑定阶段**：所有任务提交完成后，`CancellationToken.lateBind()` 统一为整个任务批量设置超时
-
-这样，超时计时器的起算点是**所有任务提交完毕的时刻**，而非第一个任务提交的时刻。无论任务数量多少、滑动窗口如何调度，每个任务都能获得公平的超时窗口。
-
-`lateBind()` 内部使用 Guava 的 `Futures.allAsList()` 实现 fail-fast（任一失败则全部取消），再用 `FluentFuture.withTimeout()` 设置统一超时。超时触发后，所有未完成的任务会被中断并转入 `TIMEOUT_CANCELED` 状态。
+这种设计让 `ParOptions.timeout()` 成为清晰的批次级契约：计时从批次调度建立完成后开始，后续任务不会因为提交较晚而延长整个批次的期限。
 
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.TaskType;
-
-// 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);
 ParConfig config = ParConfig.builder()
         .executor("my-pool", pool)
         .build();
-Par par = new Par(config);
 
-// 100 个任务，并行度 10，统一超时 5 秒
 ParOptions options = ParOptions.of("data-task")
         .parallelism(10)
         .timeout(5000)
         .taskType(TaskType.IO_BOUND)
         .build();
 
-List<Data> items = loadLargeDataset(); // 100+ items
-
-// Par.map() 内部先通过滑动窗口提交所有任务，
-// 然后调用 lateBind() 统一绑定超时
-AsyncBatchResult<Result> result = par.map("my-pool", items, item -> {
-    return process(item); // 每个任务公平享有 5 秒超时
-}, options);
-
-// 所有任务的超时起算点相同——全部提交完毕的时刻
-// 不会出现"先提交的多跑、后提交的少跑"的不公平现象
+AsyncBatchResult<Result> result = new Par(config).map(
+        "my-pool",
+        loadLargeDataset(),
+        this::process,
+        options);
 ```
+
+上例中的 5 秒是整个 `map()` 批次的统一超时。任务失败或超时后，批次不会继续补充新任务，尚未完成的任务会收到取消信号。
+
+| 维度 | 每个任务独立计时 | 批次统一计时 |
+|---|---|---|
+| 截止时间 | 随提交时刻漂移 | 全批次共享 |
+| 批次总时长 | 可能持续后移 | 受配置超时约束 |
+| 失败处理 | 通常只影响单个任务 | fail-fast 取消其余任务 |
+| 提交循环 | 可能继续提交 | 随批次一起取消 |
 
 ---
 
-> 📁 完整测试代码：[D2_LateBindRaceConditionTest.java](https://github.com/huatalk/parallel-in-scope/blob/main/demo/src/test/java/demo/article/D2_LateBindRaceConditionTest.java)
+> 完整测试代码：[D2_LateBindRaceConditionTest.java](https://github.com/huatalk/parallel-in-scope/blob/main/demo/src/test/java/demo/article/D2_LateBindRaceConditionTest.java)

@@ -1,6 +1,5 @@
 # AsyncBatchResult 报告能力测试设计
 
-> **文档定位：测试策略。** 本文只定义 `AsyncBatchResult` 报告能力的验证范围和稳定断言，不作为使用指南或 API 契约；使用方式以[用户指南](../user-guide.md)为准，场景示例参见 [G2 批量结果统计](https://github.com/HuaTalk/parallel-in-scope/blob/main/demo/docs/zh-CN/articles/G2-batch-result-report.md)。
 
 ## 1. 目标
 

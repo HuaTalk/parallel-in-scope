@@ -10,11 +10,11 @@
 
 ## 付出了什么代价
 
-### 没有 CompletableFuture.allOf 的取消能力
+### CompletableFuture 的取消能力约等于没有
 
-Java 8 引入了 `CompletableFuture`，但 `CompletableFuture.allOf()` 的取消语义令人失望——取消一个任务不会影响其他任务，也没有内置的超时机制。Java 9 加强了 `CompletableFuture`，Java 19 引入了结构化并发（`StructuredTaskScope`），原生支持任务组的取消传播和超时控制。
+Java 8 虽然引入了 `CompletableFuture`，但它的取消能力约等于没有：取消 `CompletableFuture.allOf()` 不会自动取消组成它的任务，取消其中一个任务也不会传播到其他任务，而且 Java 8 没有为任务组提供内置超时。Java 9 才补充单个 `CompletableFuture` 的超时 API，Java 19 又通过结构化并发预览能力引入任务组级取消和超时控制。
 
-但在 Java 8 中，这些都不存在。我们必须从零构建取消子系统：`CancellationToken`、`Checkpoints`、延迟绑定的超时和失败快速取消机制。
+因此，仅依靠 Java 8 的 `CompletableFuture` 无法获得批次级 fail-fast、超时和级联取消。项目需要自行构建 `CancellationToken`、`Checkpoints`、统一超时和失败快速取消机制。
 
 ### 没有 var 和 Records
 

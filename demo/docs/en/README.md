@@ -1,4 +1,4 @@
-[**中文**](../zh-CN/README.md) | **English**
+[**Chinese**](../zh-CN/README.md) | **English**
 
 # Demo Documentation
 

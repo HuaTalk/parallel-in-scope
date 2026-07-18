@@ -1,4 +1,4 @@
-[**中文指南**](../zh-CN/user-guide.md) | [Project home](https://github.com/HuaTalk/parallel-in-scope/blob/main/README.en.md)
+[**Chinese guide**](../zh-CN/user-guide.md) | [Project home](https://github.com/HuaTalk/parallel-in-scope/blob/main/README.en.md)
 
 # 🪿 parallel-in-scope
 

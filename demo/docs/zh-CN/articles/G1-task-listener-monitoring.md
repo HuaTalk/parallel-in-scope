@@ -43,11 +43,6 @@ Future<String> future = pool.submit(() -> {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.spi.TaskListener;
 
 // 注册监控监听器
 ConcurrentHashMap<String, Long> taskTimings = new ConcurrentHashMap<>();

@@ -1,6 +1,5 @@
 # 批量调用最佳实践：HTTP/DB/RPC 完整方案
 
-> **文档定位：用户指南。** 本文汇总批量调用的场景实践；完整 API 契约和基础用法以[主用户指南](../../../../docs/zh-CN/user-guide.md)为准。需要可运行的单点示例时，参见 [G2 批量结果统计](G2-batch-result-report.md)、[G5 批量 HTTP 调用](G5-batch-http-calls.md)和 [G6 数据库批量查询](G6-batch-db-query.md)。
 
 批量调用是后端开发中最常见的并发场景。本文通过三个真实场景，展示如何用 `parallel-in-scope` 一行代码解决并发控制、超时、fail-fast 问题。
 

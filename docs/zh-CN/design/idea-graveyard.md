@@ -1,6 +1,5 @@
 # Idea Graveyard
 
-> **文档定位：设计决策。** 本文是项目明确不提供的能力及替代方案的完整清单。
 
 > 参考 [Guava IdeaGraveyard](https://github.com/google/guava/wiki/IdeaGraveyard)，本页记录了我们**认真考虑过但最终决定不实现**的特性，以及拒绝的理由。
 >

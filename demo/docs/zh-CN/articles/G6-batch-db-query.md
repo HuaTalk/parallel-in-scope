@@ -1,6 +1,5 @@
 # G6. 数据库批量查询——分片并行
 
-> **文档定位：示例。** 本文聚焦数据库分片查询；综合方案参见[批量调用最佳实践](BATCH-best-practices.md)，完整 API 契约以[主用户指南](../../../../docs/zh-CN/user-guide.md)为准。
 
 ## 问题
 
@@ -45,10 +44,6 @@ for (Future<List<User>> f : futures) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
 
 // 1. 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(8);

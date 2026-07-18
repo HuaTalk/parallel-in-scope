@@ -1,6 +1,5 @@
 # A2. 嵌套任务取消不到
 
-> **文档定位：示例。** 本文聚焦嵌套取消；公共契约见 [协作式取消](../../../../docs/zh-CN/reference/cooperative-cancellation.md)，传播实现见 [ThreadRelay 内部机制](../../../../docs/zh-CN/internals/thread-relay.md)。
 
 ## 问题
 

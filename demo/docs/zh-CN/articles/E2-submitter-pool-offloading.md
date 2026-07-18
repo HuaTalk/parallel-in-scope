@@ -45,10 +45,6 @@ pool.submit(() -> {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
 // 仅 1 个线程的业务线程池
 ExecutorService pool = Executors.newFixedThreadPool(1);

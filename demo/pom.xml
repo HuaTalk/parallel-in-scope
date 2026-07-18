@@ -53,6 +53,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <!-- Keep the standalone demo on its conservative Java 8 build baseline. -->
                 <version>3.12.1</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>

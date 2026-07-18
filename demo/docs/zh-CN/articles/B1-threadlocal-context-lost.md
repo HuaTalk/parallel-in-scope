@@ -1,6 +1,5 @@
 # B1. ThreadLocal 提交到线程池后消失
 
-> **文档定位：示例。** 本文聚焦上下文丢失；两层 Map 与 TTL 的实现细节见 [ThreadRelay 内部机制](../../../../docs/zh-CN/internals/thread-relay.md)。
 
 ## 问题
 
@@ -43,10 +42,6 @@ for (int i = 0; i < 3; i++) {
 ## 代码
 
 ```java
-import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);
