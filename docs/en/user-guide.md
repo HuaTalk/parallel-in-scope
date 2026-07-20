@@ -1,4 +1,4 @@
-[**Chinese guide**](../zh-CN/user-guide.md) | [Project home](https://github.com/HuaTalk/parallel-in-scope/blob/main/README.en.md)
+[Project home](https://github.com/HuaTalk/parallel-in-scope/blob/main/README.en.md)
 
 # 🪿 parallel-in-scope
 
@@ -114,7 +114,7 @@ That's it. `Par.map` internally handles sliding-window scheduling, timeout contr
 
 **Not ideal for:** workflows that require reactive chain orchestration, built-in retry/fault-tolerance policies, or a Spring Boot Starter (intentionally out of scope for now).
 
-To keep the API minimal and semantics consistent, the project maintains an [Idea Graveyard](../zh-CN/design/idea-graveyard.md) (currently in Chinese and inspired by Guava's same practice): a place to document features we seriously evaluated but intentionally decided not to implement (for example configurable failure policies, built-in retry, chained orchestration, and a Spring Boot Starter), together with clear rationale and alternatives. If you plan to submit a feature request, we recommend reading it first to align expectations with the project's design direction.
+To keep the API minimal and semantics consistent, the project maintains an [Idea Graveyard](design/idea-graveyard.md): a place to document features we seriously evaluated but intentionally decided not to implement (for example configurable failure policies, built-in retry, chained orchestration, and a Spring Boot Starter), together with clear rationale and alternatives. If you plan to submit a feature request, we recommend reading it first to align expectations with the project's design direction.
 
 ---
 

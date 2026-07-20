@@ -44,10 +44,10 @@ AsyncBatchResult<User> result = new Par(config)
 
 | Entry | Contents |
 |---|---|
-| [English documentation](docs/en/README.md) | User guides and the bilingual documentation map |
+| [English documentation](docs/en/index.md) | User guides and the bilingual documentation map |
 | [Full user guide](docs/en/user-guide.md) | Configuration, API usage, execution flow, and advanced features |
 | [Demo project](demo/README.en.md) | Runnable examples and the article catalog |
-| [Chinese documentation](docs/zh-CN/README.md) | Complete set of current deep-dive documents |
+| [Chinese documentation](docs/zh/index.md) | Complete set of current deep-dive documents |
 
 ## Compatibility and Build
 

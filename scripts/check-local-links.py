@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import re
+import posixpath
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,25 @@ def markdown_files(path: Path):
         yield path
     elif path.is_dir():
         yield from path.rglob("*.md")
+
+
+def target_exists(source: Path, path: Path, raw_path: str) -> bool:
+    if path.exists():
+        return True
+
+    # English pages may link to a Chinese-only page by its generated site route.
+    try:
+        source_path = source.relative_to(ROOT / "docs" / "en").with_suffix("")
+    except ValueError:
+        return False
+
+    # English is the default locale, so its generated pages live at the site root.
+    page_route = source_path.parent if source.stem == "index" else source_path
+    site_path = PurePosixPath(posixpath.normpath(str(page_route / raw_path)))
+    if site_path.parts[:1] == ("zh",):
+        site_path = PurePosixPath(*site_path.parts[1:])
+    localized_path = ROOT / "docs" / "zh" / Path(*site_path.parts)
+    return localized_path.with_suffix(".md").exists() or (localized_path / "index.md").exists()
 
 
 def main() -> int:
@@ -35,7 +55,7 @@ def main() -> int:
                 except ValueError:
                     errors.append(f"{source.relative_to(ROOT)}: link escapes repository: {raw_target}")
                     continue
-                if not path.exists():
+                if not target_exists(source, path, parsed.path):
                     errors.append(f"{source.relative_to(ROOT)}: missing target: {raw_target}")
 
     if errors:
