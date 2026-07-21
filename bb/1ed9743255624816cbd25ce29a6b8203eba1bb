@@ -1,0 +1,26 @@
+README.zh-CN.md
+  s_d928e920910e59::t_7327b6405e002d 5-9
+  s_d928e920910e59::t_7058f012db7938 1-4,10-74
+README.en.md
+  s_d928e920910e59::t_852797194720ef 1
+  s_d928e920910e59::t_7327b6405e002d 5-9
+README.md
+  s_d928e920910e59::t_7058f012db7938 1,10,12,14,16,40,42-48,50,52,54-57,59,61-64
+  s_d928e920910e59::t_7327b6405e002d 5-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.35-trip",
+  "base_commit_sha": "bb1ed9743255624816cbd25ce29a6b8203eba1bb",
+  "prompts": {},
+  "sessions": {
+    "s_d928e920910e59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f827f-4201-7292-8e86-667d81d6c8f4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
