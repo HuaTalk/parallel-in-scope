@@ -9,7 +9,7 @@
 
 > 在线文档：[huatalk.github.io/parallel-in-scope](https://huatalk.github.io/parallel-in-scope/)
 >
-> 当前版本：`v0.1.0`。`0.x` API 仍可能在后续版本中调整。
+> 当前版本：`v0.2.0`。`0.x` API 仍可能在后续版本中调整。
 
 面向 Java 8+ 的结构化并发工具包，为批量任务提供协作式取消、快速失败、上下文传播、滑动窗口调度和线程池死锁诊断。
 
@@ -19,7 +19,7 @@
 <dependency>
     <groupId>io.github.huatalk</groupId>
     <artifactId>parallel-in-scope</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -36,6 +36,8 @@ ParOptions options = ParOptions.ioTask("fetch-user")
 AsyncBatchResult<User> result = new Par(config)
         .map("io-pool", userIds, userService::findById, options);
 ```
+
+需要隔离 timeout 调度时，可使用 `.timer(yourScheduledExecutor)` 指定 scheduler。它只等待 deadline，实际 timeout/cancel action 由框架的 cached timer-task pool 执行；自定义 scheduler 由调用方负责关闭。
 
 ## 核心能力
 

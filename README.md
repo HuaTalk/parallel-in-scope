@@ -9,7 +9,7 @@
 
 > Online documentation: [huatalk.github.io/parallel-in-scope](https://huatalk.github.io/parallel-in-scope/)
 >
-> Current version: `v0.1.0` (initial public release). APIs may still change in future `0.x` releases.
+> Current version: `v0.2.0`. APIs may still change in future `0.x` releases.
 
 A structured-concurrency toolkit for Java 8+ with cooperative cancellation, fail-fast execution, context propagation, sliding-window scheduling, and thread-pool deadlock diagnostics.
 
@@ -19,7 +19,7 @@ A structured-concurrency toolkit for Java 8+ with cooperative cancellation, fail
 <dependency>
     <groupId>io.github.huatalk</groupId>
     <artifactId>parallel-in-scope</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -36,6 +36,8 @@ ParOptions options = ParOptions.ioTask("fetch-user")
 AsyncBatchResult<User> result = new Par(config)
         .map("io-pool", userIds, userService::findById, options);
 ```
+
+For timeout isolation, configure a dedicated scheduler with `.timer(yourScheduledExecutor)`. It only tracks deadlines; timeout/cancel actions run on the framework's cached timer-task pool. The caller owns and shuts down the supplied scheduler.
 
 ## Core Capabilities
 
