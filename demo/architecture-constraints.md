@@ -30,6 +30,7 @@ demo (消费者) → parallel-in-scope (发布版本)
 | 类名 | 说明 |
 |------|------|
 | `io.github.huatalk.parallelinscope.cancel.Checkpoints` | 协作式取消的用户 API — `Checkpoints.sleep()` 是取消检查点 |
+| `io.github.huatalk.parallelinscope.cancel.CancellationChecker` | 按次数或时间限制取消检查频率的用户 API |
 
 #### 禁止访问的包（内部实现）
 
