@@ -39,7 +39,8 @@ class ArchitectureConstraintsTest {
      * 允许的例外类（来自禁止包的白名单）
      */
     private static final List<String> ALLOWED_EXCEPTIONS = Arrays.asList(
-            "io.github.huatalk.parallelinscope.cancel.Checkpoints"
+            "io.github.huatalk.parallelinscope.cancel.Checkpoints",
+            "io.github.huatalk.parallelinscope.cancel.CancellationChecker"
     );
 
     @Test

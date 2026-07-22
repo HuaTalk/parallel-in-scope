@@ -20,10 +20,11 @@ mvn clean compile
 mvn exec:java
 
 # 运行特定示例
-mvn exec:java -Dexec.mainClass=demo.basic.BasicParDemo
-mvn exec:java -Dexec.mainClass=demo.basic.CancellationDemo
-mvn exec:java -Dexec.mainClass=demo.advanced.DeadlockDetectionDemo
-mvn exec:java -Dexec.mainClass=demo.integration.BatchProcessingDemo
+mvn -Dexec.mainClass=demo.basic.BasicParDemo exec:java
+mvn -Dexec.mainClass=demo.basic.CancellationDemo exec:java
+mvn -Dexec.mainClass=demo.basic.InterruptibleTaskDemo exec:java
+mvn -Dexec.mainClass=demo.advanced.DeadlockDetectionDemo exec:java
+mvn -Dexec.mainClass=demo.integration.BatchProcessingDemo exec:java
 ```
 
 ### 3. 运行测试
@@ -47,6 +48,7 @@ chmod +x scripts/run-demos.sh
 |------|-----|------|
 | BasicParDemo | basic | Par.map() 基本用法 |
 | CancellationDemo | basic | 任务超时取消机制 |
+| InterruptibleTaskDemo | basic | 原生中断与循环检查点 |
 | DeadlockDetectionDemo | advanced | 死锁检测功能 |
 | BatchProcessingDemo | integration | 批量数据处理 |
 
@@ -68,7 +70,7 @@ demo (消费者) → parallel-in-scope (发布版本)
 
 **禁止访问**：
 - `io.github.huatalk.parallelinscope.internal`
-- `io.github.huatalk.parallelinscope.cancel`
+- `io.github.huatalk.parallelinscope.cancel`（`Checkpoints` 和 `CancellationChecker` 除外）
 - `io.github.huatalk.parallelinscope.context`
 - `io.github.huatalk.parallelinscope.context.graph`
 - `io.github.huatalk.parallelinscope.queue`

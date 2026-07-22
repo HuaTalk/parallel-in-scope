@@ -6,7 +6,7 @@
 
     <groupId>io.github.huatalk</groupId>
     <artifactId>parallel-in-scope-demo</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
 
     <name>parallel-in-scope-demo</name>
@@ -18,7 +18,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>8</maven.compiler.release>
-        <parallel-in-scope.version>0.1.0</parallel-in-scope.version>
+        <parallel-in-scope.version>0.2.0</parallel-in-scope.version>
+        <exec.mainClass>demo.basic.BasicParDemo</exec.mainClass>
         <junit-jupiter.version>5.10.2</junit-jupiter.version>
         <assertj.version>3.25.3</assertj.version>
     </properties>
@@ -70,7 +71,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <configuration>
-                    <mainClass>demo.basic.BasicParDemo</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                     <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
@@ -100,6 +101,14 @@
                                 <goals><goal>java</goal></goals>
                                 <configuration>
                                     <mainClass>demo.basic.CancellationDemo</mainClass>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>run-interruptible</id>
+                                <phase>verify</phase>
+                                <goals><goal>java</goal></goals>
+                                <configuration>
+                                    <mainClass>demo.basic.InterruptibleTaskDemo</mainClass>
                                 </configuration>
                             </execution>
                             <execution>

@@ -24,6 +24,7 @@ show_help() {
     echo "选项:"
     echo "  basic        运行基础示例 (BasicParDemo)"
     echo "  cancel       运行取消机制示例 (CancellationDemo)"
+    echo "  interrupt    运行可中断任务示例 (InterruptibleTaskDemo)"
     echo "  deadlock     运行死锁检测示例 (DeadlockDetectionDemo)"
     echo "  batch        运行批量处理示例 (BatchProcessingDemo)"
     echo "  all          运行所有示例"
@@ -41,25 +42,31 @@ show_help() {
 # 运行基础示例
 run_basic() {
     echo -e "${GREEN}运行基础示例...${NC}"
-    mvn -q exec:java -Dexec.mainClass=demo.basic.BasicParDemo
+    mvn -q -Dexec.mainClass=demo.basic.BasicParDemo exec:java
 }
 
 # 运行取消机制示例
 run_cancel() {
     echo -e "${GREEN}运行取消机制示例...${NC}"
-    mvn -q exec:java -Dexec.mainClass=demo.basic.CancellationDemo
+    mvn -q -Dexec.mainClass=demo.basic.CancellationDemo exec:java
+}
+
+# 运行可中断任务示例
+run_interrupt() {
+    echo -e "${GREEN}运行可中断任务示例...${NC}"
+    mvn -q -Dexec.mainClass=demo.basic.InterruptibleTaskDemo exec:java
 }
 
 # 运行死锁检测示例
 run_deadlock() {
     echo -e "${GREEN}运行死锁检测示例...${NC}"
-    mvn -q exec:java -Dexec.mainClass=demo.advanced.DeadlockDetectionDemo
+    mvn -q -Dexec.mainClass=demo.advanced.DeadlockDetectionDemo exec:java
 }
 
 # 运行批量处理示例
 run_batch() {
     echo -e "${GREEN}运行批量处理示例...${NC}"
-    mvn -q exec:java -Dexec.mainClass=demo.integration.BatchProcessingDemo
+    mvn -q -Dexec.mainClass=demo.integration.BatchProcessingDemo exec:java
 }
 
 # 运行所有示例
@@ -71,6 +78,10 @@ run_all() {
     echo "----------------------------------------"
     echo ""
     run_cancel
+    echo ""
+    echo "----------------------------------------"
+    echo ""
+    run_interrupt
     echo ""
     echo "----------------------------------------"
     echo ""
@@ -106,6 +117,9 @@ case "${1:-help}" in
         ;;
     cancel)
         run_cancel
+        ;;
+    interrupt)
+        run_interrupt
         ;;
     deadlock)
         run_deadlock

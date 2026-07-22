@@ -17,6 +17,7 @@
 - [D1. get(timeout) 后任务仍运行](articles/D1-get-timeout-task-still-running.md)
 - [D2. 延迟绑定竞态](articles/D2-late-bind-race-condition.md)
 - [G3. 协作式取消检查点](articles/G3-checkpoints-cooperative-cancel.md)
+- [J1. 如何编写可中断的任务](articles/J1-interruptible-task.md)
 
 ## 上下文与 API
 
