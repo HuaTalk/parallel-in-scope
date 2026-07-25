@@ -15,8 +15,10 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/** Tests the completion, cancellation, and queue-identity contracts of ListenableCompletionService. */
 public class ListenableCompletionServiceTest {
 
+    /** Verifies that cancellation is visible on the exact runnable held by the executor queue. */
     @Test
     public void submittedFutureIsTheQueuedRunnableAndCanBePurged() throws Exception {
         ThreadPoolExecutor pool = new ThreadPoolExecutor(
@@ -48,6 +50,7 @@ public class ListenableCompletionServiceTest {
         }
     }
 
+    /** Verifies both submission forms and all completion-queue retrieval methods. */
     @Test
     public void callableAndRunnableResultsEnterTheSuppliedCompletionQueue() throws Exception {
         LinkedBlockingQueue<ListenableFuture<Integer>> completions = new LinkedBlockingQueue<>();
@@ -68,6 +71,7 @@ public class ListenableCompletionServiceTest {
         assertThat(completions).isEmpty();
     }
 
+    /** Verifies that rejected tasks are not reported as completed. */
     @Test
     public void rejectedSubmissionDoesNotEnterTheCompletionQueue() {
         Executor rejectingExecutor = command -> {

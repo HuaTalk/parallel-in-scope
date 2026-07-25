@@ -88,6 +88,7 @@ public class ConcurrentLimitExecutorTest {
         assertThat(values).containsExactly(0, 10, 20);
     }
 
+    /** Verifies that ConcurrentLimitExecutor exposes the same future queued by its worker executor. */
     @Test
     public void testSubmitAll_returnsTheRunnableQueuedByTheExecutor() throws Exception {
         ThreadPoolExecutor singleWorker = new ThreadPoolExecutor(
