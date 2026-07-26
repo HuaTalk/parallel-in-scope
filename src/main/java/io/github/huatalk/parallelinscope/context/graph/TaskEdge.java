@@ -19,6 +19,7 @@ public final class TaskEdge {
     private final String sourceExecutorName;
     private final int taskCount;
     private final long timeoutMillis;
+    private final boolean executorDeadlockProne;
 
     /**
      * Creates task dependency metadata.
@@ -32,12 +33,31 @@ public final class TaskEdge {
      */
     public TaskEdge(int parallelism, TaskType taskType, String executorName,
              String sourceExecutorName, int taskCount, long timeoutMillis) {
+        this(parallelism, taskType, executorName, sourceExecutorName, taskCount, timeoutMillis,
+                true);
+    }
+
+    /**
+     * Creates task dependency metadata with a submission-time executor capability snapshot.
+     *
+     * @param parallelism        the configured parallelism
+     * @param taskType           the workload classification
+     * @param executorName       the child executor name
+     * @param sourceExecutorName the parent executor name
+     * @param taskCount          the number of child tasks
+     * @param timeoutMillis      the child timeout in milliseconds
+     * @param executorDeadlockProne whether the child executor can conservatively deadlock
+     */
+    public TaskEdge(int parallelism, TaskType taskType, String executorName,
+             String sourceExecutorName, int taskCount, long timeoutMillis,
+             boolean executorDeadlockProne) {
         this.parallelism = parallelism;
         this.taskType = taskType;
         this.executorName = executorName;
         this.sourceExecutorName = sourceExecutorName;
         this.taskCount = taskCount;
         this.timeoutMillis = timeoutMillis;
+        this.executorDeadlockProne = executorDeadlockProne;
     }
 
     /**
@@ -70,6 +90,12 @@ public final class TaskEdge {
      * @return the timeout in milliseconds
      */
     public long getTimeoutMillis() { return timeoutMillis; }
+    /**
+     * Returns the child executor deadlock-risk snapshot captured at submission.
+     *
+     * @return {@code true} when nested blocking work can conservatively deadlock
+     */
+    public boolean isExecutorDeadlockProne() { return executorDeadlockProne; }
 
     @Override
     public String toString() {

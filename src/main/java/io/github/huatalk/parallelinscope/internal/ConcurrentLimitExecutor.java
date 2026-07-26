@@ -8,12 +8,15 @@ import com.google.common.util.concurrent.SettableFuture;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 import io.github.huatalk.parallelinscope.scope.ParOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
+import io.github.huatalk.parallelinscope.spi.ExecutionPhase;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -34,6 +37,8 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
  */
 public class ConcurrentLimitExecutor<V> {
 
+    private static final Consumer<ExecutionPhase> NOOP = phase -> { };
+
     private final ListenableCompletionService<V> cs;
     private final BlockingQueue<ListenableFuture<V>> blockingQueue = new LinkedBlockingQueue<>();
     private final ParOptions options;
@@ -47,9 +52,41 @@ public class ConcurrentLimitExecutor<V> {
      * @param submitterPool the executor that runs the submission loop
      */
     public ConcurrentLimitExecutor(ListeningExecutorService pool, ParOptions options, ListeningExecutorService submitterPool) {
+        this(pool, options, submitterPool, NOOP);
+    }
+
+    /**
+     * Creates a sliding-window task submitter with execution-phase observation.
+     *
+     * @param pool                       the executor that runs task bodies
+     * @param options                    the execution options
+     * @param submitterPool              the executor that runs the submission loop
+     * @param phaseObserver              callback for execution-phase hints
+     */
+    public ConcurrentLimitExecutor(
+            ListeningExecutorService pool,
+            ParOptions options,
+            ListeningExecutorService submitterPool,
+            Consumer<? super ExecutionPhase> phaseObserver) {
         this.options = options;
         this.submitterPool = submitterPool;
-        this.cs = new ListenableCompletionService<>(pool, blockingQueue);
+        this.cs = new ListenableCompletionService<>(pool, blockingQueue, phaseObserver);
+    }
+
+    /**
+     * Creates a submitter with the legacy queued-cancellation callback.
+     *
+     * @param pool                       executor that runs task bodies
+     * @param options                    execution options
+     * @param submitterPool              executor that runs the submission loop
+     * @param queuedCancellationObserver callback for cancellations before {@code run()}
+     */
+    public ConcurrentLimitExecutor(
+            ListeningExecutorService pool,
+            ParOptions options,
+            ListeningExecutorService submitterPool,
+            Runnable queuedCancellationObserver) {
+        this(pool, options, submitterPool, phaseObserverFor(queuedCancellationObserver));
     }
 
     /**
@@ -63,6 +100,53 @@ public class ConcurrentLimitExecutor<V> {
      */
     public static <V> ConcurrentLimitExecutor<V> create(ListeningExecutorService pool, ParOptions options, ListeningExecutorService submitterPool) {
         return new ConcurrentLimitExecutor<>(pool, options, submitterPool);
+    }
+
+    /**
+     * Creates a new executor that reports execution-phase hints.
+     *
+     * @param <V>                        the task result type
+     * @param pool                       the executor that runs task bodies
+     * @param options                    the execution options
+     * @param submitterPool              the executor that runs the submission loop
+     * @param phaseObserver              callback for execution-phase hints
+     * @return a new concurrency-limited executor
+     */
+    public static <V> ConcurrentLimitExecutor<V> create(
+            ListeningExecutorService pool,
+            ParOptions options,
+            ListeningExecutorService submitterPool,
+            Consumer<? super ExecutionPhase> phaseObserver) {
+        return new ConcurrentLimitExecutor<>(
+                pool, options, submitterPool, phaseObserver);
+    }
+
+    /**
+     * Creates an executor with the legacy queued-cancellation callback.
+     *
+     * @param <V>                        the task result type
+     * @param pool                       the executor that runs task bodies
+     * @param options                    the execution options
+     * @param submitterPool              the executor that runs the submission loop
+     * @param queuedCancellationObserver callback for cancellations before {@code run()}
+     * @return a new concurrency-limited executor
+     */
+    public static <V> ConcurrentLimitExecutor<V> create(
+            ListeningExecutorService pool,
+            ParOptions options,
+            ListeningExecutorService submitterPool,
+            Runnable queuedCancellationObserver) {
+        return new ConcurrentLimitExecutor<>(
+                pool, options, submitterPool, queuedCancellationObserver);
+    }
+
+    private static Consumer<ExecutionPhase> phaseObserverFor(Runnable observer) {
+        Objects.requireNonNull(observer);
+        return phase -> {
+            if (phase == ExecutionPhase.CANCELLED_BEFORE_RUN) {
+                observer.run();
+            }
+        };
     }
 
     /**

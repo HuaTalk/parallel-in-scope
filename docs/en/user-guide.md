@@ -118,10 +118,12 @@ their lifecycle explicit.
 
 **Problem:** Hard-coded monitoring and extension points are difficult to adapt to different technology stacks, coupling the framework to business monitoring systems.
 
-**Solution:** Three SPI extension points registered on `ParConfig` with zero hard-coded dependencies:
+**Solution:** Two SPI extension points registered on `ParConfig` with zero hard-coded dependencies:
 - **TaskListener** — Task lifecycle callbacks (execution time, queue wait time, exceptions) for integration with any monitoring system
-- **ExecutorResolver** — Thread pool name resolution, supporting purge cleanup and deadlock detection
 - **LivelockListener** — Deadlock detection event callbacks
+
+Executor registration itself creates a stable internal binding. Submission, purge cleanup, and
+deadlock capability snapshots therefore refer to the same executor object without a resolver SPI.
 
 ### 🔍 Deadlock Detection
 
@@ -168,6 +170,39 @@ Par par = new Par(config);
 
 The supplied `timer` should only schedule deadlines, not run long-lived business work. Actual cancellation actions run on the cached `Par-Timer-Task-*` pool. The caller owns the custom scheduler and must call `shutdown()`; the framework does not close it. This keeps a slow cancellation callback away from the scheduler worker, but it does not provide unlimited task-pool capacity or force-stop code that ignores cooperative cancellation.
 
+### Purging cancelled queued tasks
+
+Automatic purge is disabled by default and currently supports only a directly registered
+`ThreadPoolExecutor` backed by `SmartBlockingQueue`. Enable it when cancelled, not-yet-started
+tasks can remain in a pressured queue:
+
+```java
+ThreadPoolExecutor ioPool = new ThreadPoolExecutor(
+    8, 8, 0L, TimeUnit.MILLISECONDS,
+    new SmartBlockingQueue<Runnable>(1000));
+ParConfig config = ParConfig.builder()
+    .executor("io-pool", ioPool)
+    .purgeEnabled(true)
+    .purgeQueuePressureThreshold(0.80)
+    .purgeCancelledTaskRatioThreshold(0.05)
+    .build();
+```
+
+The queue pressure (`Q / K`) and estimated cancelled-task ratio (`min(G, Q) / K`) must both
+reach their configured thresholds before `ThreadPoolExecutor.purge()` runs. The values can be changed at runtime with
+`setPurgeQueuePressureThreshold` and `setPurgeCancelledTaskRatioThreshold`; lower values are more
+aggressive. `setPurgeEnabled(false)` stops collecting new cancellation estimates and clears
+pending estimates. Decisions and purge duration are logged through JUL at `Level.FINEST`.
+
+Cancellation signals are coalesced per executor. Once a purge task is submitted,
+callbacks only advance an internal sequence until that task finishes; they do not
+read the queue or submit duplicate purge work. The maintenance task uses a fixed
+50 ms coalescing delay, preserves cancellations that arrive during its scan for a
+follow-up round, and retries one failed purge after a delay.
+
+Purge only removes cancelled tasks still retained by the work queue. It cannot stop a running
+task that ignores interruption or blocks in an uninterruptible operation.
+
 ### Cooperative Cancellation
 
 ```java
@@ -212,17 +247,6 @@ ParConfig config = ParConfig.builder()
         if (event.hasExecutorSelfLoop()) {
             log.warn("Potential deadlock: executor self-loop detected! {}",
                 event.getExecutorEdges());
-        }
-    })
-    .executorResolver(new ExecutorResolver() {
-        @Override
-        public ThreadPoolExecutor resolveThreadPool(String name) {
-            return executorMap.get(name);
-        }
-
-        @Override
-        public Map<String, String> getTaskToExecutorMapping() {
-            return taskToPoolMapping;  // e.g., {"fetchPrice": "io-pool", "calculate": "cpu-pool"}
         }
     })
     .build();

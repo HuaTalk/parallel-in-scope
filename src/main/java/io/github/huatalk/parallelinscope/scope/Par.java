@@ -1,14 +1,10 @@
 package io.github.huatalk.parallelinscope.scope;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.JdkFutureAdapters;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
-import io.github.huatalk.parallelinscope.cancel.HeuristicPurger;
 import io.github.huatalk.parallelinscope.context.TaskScopeTl;
 import io.github.huatalk.parallelinscope.context.ThreadRelay;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
@@ -22,7 +18,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -43,7 +38,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
  *   <li>Concurrency-limited submission via {@link ConcurrentLimitExecutor}</li>
  *   <li>Parent-child {@link CancellationToken} chaining</li>
  *   <li>Late binding for timeout and fail-fast cancellation</li>
- *   <li>Asynchronous purge on timeout</li>
+ *   <li>Heuristic cleanup of cancelled queued tasks</li>
  * </ul>
  *
  * @author Eric Lin (linqinghua4 at gmail dot com)
@@ -105,8 +100,8 @@ public final class Par {
             Function<? super T, ? extends R> function,
             ParOptions options) {
 
-        ListeningExecutorService executor = resolveExecutor(executorName);
-        return executeParallel(list, item -> () -> function.apply(item), options, executor, executorName);
+        ExecutorBinding binding = resolveExecutor(executorName);
+        return executeParallel(list, item -> () -> function.apply(item), options, binding);
     }
 
     /**
@@ -165,20 +160,19 @@ public final class Par {
         return JdkFutureAdapters.listenInPoolThread((Future<T>) future);
     }
 
-    private ListeningExecutorService resolveExecutor(String executorName) {
-        ListeningExecutorService executor = config.getExecutor(executorName);
-        if (executor == null) {
+    private ExecutorBinding resolveExecutor(String executorName) {
+        ExecutorBinding binding = config.getExecutorBinding(executorName);
+        if (binding == null) {
             throw new IllegalArgumentException("No executor registered with name '" + executorName + "'");
         }
-        return executor;
+        return binding;
     }
 
     private <T, R> AsyncBatchResult<R> executeParallel(
             List<T> list,
             Function<T, Callable<R>> callableMapper,
             ParOptions options,
-            ListeningExecutorService executor,
-            String executorName) {
+            ExecutorBinding binding) {
 
         if (list == null || list.isEmpty()) {
             return emptyBatchResult();
@@ -192,10 +186,11 @@ public final class Par {
         TaskEdge edge = new TaskEdge(
                 normalizedOptions.getParallelism(),
                 normalizedOptions.getTaskType(),
-                executorName != null ? executorName : "NA",
+                binding.getName(),
                 sourceExecutorName,
                 list.size(),
-                normalizedOptions.timeoutMillis());
+                normalizedOptions.timeoutMillis(),
+                binding.isDeadlockProne());
         logForking(taskName, edge);
 
         // Build parent-child CancellationToken chain
@@ -209,23 +204,22 @@ public final class Par {
         List<Callable<R>> tasks = list.stream()
                 .map(item -> {
                     ScopedCallable<R> scopedCallable = new ScopedCallable<>(taskName, callableMapper.apply(item), config,
-                            normalizedOptions, cancellationToken, executorName != null ? executorName : "NA");
+                            normalizedOptions, cancellationToken, binding.getName());
                     return (Callable<R>) scopedCallable;
                 })
                 .collect(toImmutableList());
 
-        AsyncBatchResult<R> result = ConcurrentLimitExecutor.<R>create(executor, normalizedOptions, ParConfig.getSubmitterPool())
+        AsyncBatchResult<R> result = ConcurrentLimitExecutor.<R>create(
+                        binding.getExecutor(),
+                        normalizedOptions,
+                        ParConfig.getSubmitterPool(),
+                        binding.getPhaseObserver())
                 .submitAll(tasks);
 
         // Late bind: wire up cancellation, timeout, fail-fast
         cancellationToken.lateBind(
                 result.getResults(), normalizedOptions.forTimeout(), result.getSubmitCanceller(),
                 config.getTimerService());
-
-        // Try purge on timeout
-        if (executorName != null) {
-            tryPurgeOnTimeout(executorName, result);
-        }
 
         return result;
     }
@@ -241,11 +235,4 @@ public final class Par {
         return AsyncBatchResult.of(ImmutableList.<ListenableFuture<T>>of());
     }
 
-    private <T> void tryPurgeOnTimeout(String executorName, AsyncBatchResult<T> result) {
-        FluentFuture.from(result.getSubmitCanceller())
-                .catching(TimeoutException.class, ex -> {
-                    HeuristicPurger.tryPurge(executorName, result.report(), config);
-                    return null;
-                }, MoreExecutors.directExecutor());
-    }
 }
