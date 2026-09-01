@@ -160,6 +160,12 @@ public final class GlobalPar implements AutoCloseable {
         return pars;
     }
 
+    /** Creates a configuration-only builder for one fixed heterogeneous task group. */
+    public ParallelTaskGroup.Builder taskGroupBuilder(TaskGroupOptions options) {
+        Objects.requireNonNull(options, "options cannot be null");
+        return whileOpen(() -> new ParallelTaskGroup.Builder(this, options));
+    }
+
     /** Package-private diagnostic topology for scope tests and internal maintenance. */
     Map<String, ExecutorRuntime> runtimes() {
         return runtimes;
@@ -255,7 +261,7 @@ public final class GlobalPar implements AutoCloseable {
         }
     }
 
-    <T> void retainUntilComplete(List<com.google.common.util.concurrent.ListenableFuture<T>> results) {
+    void retainUntilComplete(List<? extends com.google.common.util.concurrent.ListenableFuture<?>> results) {
         if (results.isEmpty()) return;
         activeBatches.incrementAndGet();
         Futures.successfulAsList(results)

@@ -16,6 +16,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,6 +44,16 @@ public class CancellationToken {
      */
     public CancellationToken(@Nullable CancellationToken parent) {
         this.parent = parent;
+        if (parent != null) {
+            parent.futureToken.addListener(
+                    () -> {
+                        if (parent.getState().shouldInterruptCurrentThread()) {
+                            state.compareAndSet(RUNNING, PROPAGATING_CANCELED);
+                            futureToken.cancel(true);
+                        }
+                    },
+                    directExecutor());
+        }
     }
 
     /** Creates an unlinked root token. */
@@ -148,6 +159,13 @@ public class CancellationToken {
      */
     public State getState() {
         return state.get();
+    }
+
+    /** Registers a callback that runs when this token is canceled or otherwise completes. */
+    public void addCompletionListener(Runnable listener, Executor executor) {
+        futureToken.addListener(
+                Objects.requireNonNull(listener, "listener cannot be null"),
+                Objects.requireNonNull(executor, "executor cannot be null"));
     }
 
     /** Lifecycle state of a {@link CancellationToken}. */
