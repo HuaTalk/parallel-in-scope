@@ -35,9 +35,9 @@ List<String> results = urls.parallelStream()
 
 ## 解决方法
 
-`parallel-in-scope` 通过 `TransmittableThreadLocal`（TTL）在框架内部自动传播上下文。`CancellationToken`、`ParOptions`（含超时配置）、任务名称等信息由 `ThreadRelay` 机制隐式传递，开发者在任务 lambda 中无需手动接收这些参数。
+`parallel-in-scope` 为 `Par.map()` 任务显式管理取消、deadline、并发限制和 SPI 回调，因此业务 lambda 不需要接收这些框架状态。应用自己的 trace、用户和租户信息可以显式传参；若它们存放在 `TransmittableThreadLocal` 中，也会在 `Par.map()` 边界被捕获并传播。
 
-使用 `Par.map()` 时，你只需要关心业务逻辑。框架在 `ScopedCallable` 内部完成上下文注入、取消检查、超时管理和 SPI 回调，函数签名只保留业务参数。新增上下文字段时，只需扩展框架内部的 `ThreadRelay` 传播逻辑，业务代码零修改。
+使用 `Par.map()` 时，函数签名只保留业务参数。需要在任务中响应取消时调用 `Checkpoints`，框架会从当前任务上下文读取对应的取消令牌。
 
 ## 代码
 
@@ -45,20 +45,20 @@ List<String> results = urls.parallelStream()
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);
-ParConfig config = ParConfig.builder()
-        .executor("http-pool", pool)
+GlobalPar config = GlobalPar.builder()
+        .register("http-pool", pool)
         .build();
-Par par = new Par(config);
+Par par = config.defaultPar();
 
-// 并行选项：框架自动管理超时、取消、上下文传播
-ParOptions opts = ParOptions.of("fetch-data")
+// 并行选项：框架自动管理超时和取消
+BatchExecutionOptions opts = BatchExecutionOptions.of("fetch-data")
         .parallelism(5)
-        .timeout(3000)
+        .timeout(java.time.Duration.ofMillis(3000))
         .build();
 
 // 函数签名只保留业务参数，零基础设施噪音
 List<String> urls = Arrays.asList("url1", "url2", "url3", "url4", "url5");
-AsyncBatchResult<String> result = par.map("http-pool", urls, url -> {
+AsyncBatchResult<String> result = par.map( urls, url -> {
     // 框架已自动处理：
     //   - CancellationToken 取消检查（ScopedCallable 内部）
     //   - 超时控制（CancellationToken.lateBind）

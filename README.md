@@ -9,7 +9,7 @@
 
 > Online documentation: [huatalk.github.io/parallel-in-scope](https://huatalk.github.io/parallel-in-scope/)
 >
-> Current version: `v0.1.0` (initial public release). APIs may still change in future `0.x` releases.
+> Current version: `v0.2.0`. APIs may still change in future `0.x` releases.
 
 A structured-concurrency toolkit for Java 8+ with cooperative cancellation, fail-fast execution, context propagation, sliding-window scheduling, and thread-pool deadlock diagnostics.
 
@@ -19,22 +19,22 @@ A structured-concurrency toolkit for Java 8+ with cooperative cancellation, fail
 <dependency>
     <groupId>io.github.huatalk</groupId>
     <artifactId>parallel-in-scope</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
 ```java
-ParConfig config = ParConfig.builder()
-        .executor("io-pool", Executors.newFixedThreadPool(8))
+GlobalPar execution = GlobalPar.builder()
+        .register("io", Executors.newFixedThreadPool(8))
         .build();
 
-ParOptions options = ParOptions.ioTask("fetch-user")
+BatchExecutionOptions options = BatchExecutionOptions.of("fetch-user")
         .parallelism(4)
-        .timeout(3_000)
+        .timeout(Duration.ofSeconds(3))
         .build();
 
-AsyncBatchResult<User> result = new Par(config)
-        .map("io-pool", userIds, userService::findById, options);
+AsyncBatchResult<User> result = execution.par("io")
+        .map(userIds, userService::findById, options);
 ```
 
 ## Core Capabilities
@@ -52,6 +52,7 @@ AsyncBatchResult<User> result = new Par(config)
 | Entry | Contents |
 |---|---|
 | [English documentation](docs/en/index.md) | User guides, API references, design notes, and case studies |
+| [v0.2 migration guide](docs/en/migration-v0.2.md) | Breaking changes from the `0.1.x` API |
 | [Full user guide](docs/en/user-guide.md) | Configuration, API usage, execution flow, and advanced features |
 | [Demo project](demo/README.en.md) | Runnable examples and the article catalog |
 | [Chinese documentation](docs/zh/index.md) | Complete Chinese documentation set |

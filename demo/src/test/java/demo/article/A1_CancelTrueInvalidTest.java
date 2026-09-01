@@ -1,16 +1,13 @@
 package demo.article;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.huatalk.parallelinscope.cancel.Checkpoints;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,14 +17,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * A1: cancel(true) 无效 — 协作式取消
  *
- * <p>演示标准 Future.cancel(true) 对非中断代码无效的问题，
- * 以及 parallel-in-scope Par.map() 超时取消的解决方案。
+ * <p>演示标准 Future.cancel(true) 对非中断代码无效的问题， 以及 parallel-in-scope Par.map() 超时取消的解决方案。
  */
 public class A1_CancelTrueInvalidTest {
 
@@ -37,10 +34,11 @@ public class A1_CancelTrueInvalidTest {
     @BeforeEach
     void setUp() {
         pool = Executors.newFixedThreadPool(4);
-        ParConfig config = ParConfig.builder()
-                .executor("test-pool", pool)
+        GlobalPar config = GlobalPar.builder()
+                .register("test-pool", pool)
+                .defaultPar("test-pool")
                 .build();
-        par = new Par(config);
+        par = config.defaultPar();
     }
 
     @AfterEach
@@ -85,19 +83,22 @@ public class A1_CancelTrueInvalidTest {
     @Test
     void parMap_withTimeout_cancelsTasks() throws Exception {
         // 解决方案：Par.map() 配合超时自动取消
-        ParOptions opts = ParOptions.of("cancel-demo")
+        BatchExecutionOptions opts = BatchExecutionOptions.of("cancel-demo")
                 .parallelism(3)
-                .timeout(500)
+                .timeout(java.time.Duration.ofMillis(500))
                 .taskType(TaskType.IO_BOUND)
                 .build();
 
         List<Integer> input = Arrays.asList(1, 2, 3);
         long start = System.currentTimeMillis();
-        AsyncBatchResult<Integer> result = par.map("test-pool", input, x -> {
-            // 使用 Checkpoints.sleep() 响应取消信号
-            Checkpoints.sleep(5000);
-            return x;
-        }, opts);
+        AsyncBatchResult<Integer> result = par.map(
+                input,
+                x -> {
+                    // 使用 Checkpoints.sleep() 响应取消信号
+                    Checkpoints.sleep(5000);
+                    return x;
+                },
+                opts);
 
         // 等待超时取消生效
         Thread.sleep(2000);

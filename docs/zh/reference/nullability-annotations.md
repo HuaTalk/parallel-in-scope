@@ -44,15 +44,15 @@ import javax.annotation.ParametersAreNonnullByDefault;
 | SPI 接口 | JSR-305 | `import javax.annotation.Nullable;` |
 | Internal 类 | Checker Framework | `import org.checkerframework.checker.nullness.qual.Nullable;` |
 
-**Public API 类**：`Par`, `ParOptions`, `AsyncBatchResult`, `ParConfig`, `Checkpoints`, `TaskType`, `CancellationToken`, `CancellationTokenState`
+**Public API 类**：`GlobalPar`, `Par`, `BatchExecutionOptions`, `AsyncBatchResult`, `Checkpoints`, `TaskType`, `CancellationToken`, `CancellationToken.State`
 
-**SPI 接口**：`TaskListener`, `ExecutorResolver`, `LivelockListener`
+**SPI 接口**：`TaskListener`, `DeadlockDetectionListener`
 
 **Internal 类**：其余所有类
 
 ### 3. 什么时候需要标注 `@Nullable`
 
-- **返回值可能为 null**：如 `ParConfig.getExecutor(name)` 找不到时返回 null
+- **返回值可能为 null**：仅在 API 明确允许缺省值时标注
 - **参数显式接受 null**：如 `CancellationToken` 的 parent 构造参数可传 `null`
 - **构造器参数可选**：如 `AsyncBatchResult` 构造器的 `submitCanceller` 可以传 null
 
@@ -77,7 +77,7 @@ public static @Nullable Data data() { ... }
 ```java
 // JSR-305 风格（Public API / SPI）
 @Nullable
-public ExecutorResolver getExecutorResolver() { ... }
+public ListeningExecutorService getExecutor(String name) { ... }
 ```
 
 ## 依赖配置

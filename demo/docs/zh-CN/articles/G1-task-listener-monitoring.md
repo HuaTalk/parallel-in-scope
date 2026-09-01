@@ -29,16 +29,18 @@ Future<String> future = pool.submit(() -> {
 
 ## 解决方法
 
-`parallel-in-scope` 提供了 `TaskListener` SPI 扩展点。通过 `ParConfig.builder().taskListener(listener)` 注册监听器，框架会在每个任务完成时自动回调 `onTaskComplete(TaskEvent)`，无需侵入业务代码。
+`parallel-in-scope` 提供了 `TaskListener` SPI 扩展点。通过 `GlobalPar.builder().executionPolicy(GlobalExecutionPolicy.builder().taskListener(listener).build())` 注册监听器，框架会在每个任务完成时自动回调 `onTaskComplete(TaskEvent)`，无需侵入业务代码。
 
 `TaskEvent` 包含完整的任务生命周期信息：
-- `getTaskName()` — 任务名称（来自 `ParOptions.of("taskName")`）
+- `getTaskContext()` — 当前 task 的只读上下文，包含 batch、taskIndex 和计时
+- `getTaskName()` — 任务名称（来自 `BatchExecutionOptions.of("taskName")`）
+- `isSuccessful()` / `getResult()` — 成功状态和任务返回值
 - `executionTime()` — 实际执行耗时，返回 `Duration`
 - `waitTime()` — 等待耗时（从提交到开始执行的间隔），返回 `Duration`
 - `totalTime()` — 总耗时（等待 + 执行），返回 `Duration`
 - `getException()` — 任务异常（成功时为 null）
 
-这些数据足以对接任何监控系统：用 `executionTime().toMillis()` 计算延迟直方图，用 `getException() != null` 统计失败率，用 `waitTime().toMillis()` 监控线程池水位。
+这些数据足以对接任何监控系统：用 `executionTime().toMillis()` 计算延迟直方图，用 `isSuccessful()` 统计成功率，用 `waitTime().toMillis()` 监控线程池水位，并可通过 `getTaskContext().taskIndex()` 定位批次中的具体输入位置。
 
 ## 代码
 
@@ -46,8 +48,8 @@ Future<String> future = pool.submit(() -> {
 
 // 注册监控监听器
 ConcurrentHashMap<String, Long> taskTimings = new ConcurrentHashMap<>();
-ParConfig config = ParConfig.builder()
-        .executor("my-pool", pool)
+GlobalPar config = GlobalPar.builder()
+        .register("my-pool", pool)
         .taskListener(event -> {
             // 每个任务完成时自动回调，零侵入
             taskTimings.put(event.getTaskName(), event.executionTime().toMillis());
@@ -62,11 +64,11 @@ ParConfig config = ParConfig.builder()
                 .record(event.executionTime().toNanos(), TimeUnit.NANOSECONDS);
         })
         .build();
-Par par = new Par(config);
+Par par = config.defaultPar();
 
 // 业务代码无需任何监控逻辑
-ParOptions opts = ParOptions.of("order-query").parallelism(5).timeout(3000).build();
-AsyncBatchResult<Order> result = par.map("my-pool", orderIds, id -> {
+BatchExecutionOptions opts = BatchExecutionOptions.of("order-query").parallelism(5).timeout(java.time.Duration.ofMillis(3000)).build();
+AsyncBatchResult<Order> result = par.map( orderIds, id -> {
     return orderService.query(id);  // 纯业务逻辑，不碰监控
 }, opts);
 ```

@@ -5,15 +5,12 @@ import java.util.concurrent.Future;
 
 /**
  * Java 8-compatible utility for inspecting {@link Future} state.
- * <p>
- * Replaces the dependency on cffu2 {@code CompletableFutureUtils} which requires Java 19+.
  *
  * @author Eric Lin (linqinghua4 at gmail dot com)
  */
 public final class FutureInspector {
 
-    private FutureInspector() {
-    }
+    private FutureInspector() {}
 
     /**
      * Returns the current state of the given future.
@@ -51,7 +48,7 @@ public final class FutureInspector {
             throw new IllegalStateException("Task has not completed");
         }
         if (future.isCancelled()) {
-            throw new IllegalStateException("Task was cancelled");
+            throw new IllegalStateException("Task was canceled");
         }
         try {
             future.get();

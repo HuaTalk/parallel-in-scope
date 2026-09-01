@@ -1,24 +1,21 @@
 package demo.article;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.ParConfig;
-import io.github.huatalk.parallelinscope.scope.ParOptions;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
-
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  * 5 分钟快速上手——配套测试代码。
@@ -34,10 +31,11 @@ class QuickStartTest {
     void setUp() {
         // 步骤 1 的准备工作：创建线程池和 Par 实例
         pool = Executors.newFixedThreadPool(4);
-        ParConfig config = ParConfig.builder()
-                .executor("my-pool", pool)
+        GlobalPar config = GlobalPar.builder()
+                .register("my-pool", pool)
+                .defaultPar("my-pool")
                 .build();
-        par = new Par(config);
+        par = config.defaultPar();
     }
 
     @AfterEach
@@ -51,8 +49,8 @@ class QuickStartTest {
         List<Integer> numbers = Arrays.asList(1, 2, 3);
 
         // ---- 步骤 2：最小示例 ----
-        ParOptions minimalOpts = ParOptions.of("square").build();
-        AsyncBatchResult<Integer> result1 = par.map("my-pool", numbers, n -> n * n, minimalOpts);
+        BatchExecutionOptions minimalOpts = BatchExecutionOptions.of("square").build();
+        AsyncBatchResult<Integer> result1 = par.map(numbers, n -> n * n, minimalOpts);
 
         // 验证：逐个获取结果
         assertThat(result1.getResults()).hasSize(3);
@@ -61,10 +59,10 @@ class QuickStartTest {
         assertThat(result1.getResults().get(2).get()).isEqualTo(9);
 
         // ---- 步骤 3：设置超时 ----
-        ParOptions timeoutOpts = ParOptions.of("square")
-                .timeout(500)
+        BatchExecutionOptions timeoutOpts = BatchExecutionOptions.of("square")
+                .timeout(java.time.Duration.ofMillis(500))
                 .build();
-        AsyncBatchResult<Integer> result2 = par.map("my-pool", numbers, n -> n * n, timeoutOpts);
+        AsyncBatchResult<Integer> result2 = par.map(numbers, n -> n * n, timeoutOpts);
 
         // 验证：超时设置下仍然能正常完成
         for (Future<Integer> future : result2.getResults()) {
@@ -73,12 +71,12 @@ class QuickStartTest {
         }
 
         // ---- 步骤 4：控制并发度 ----
-        ParOptions limitedOpts = ParOptions.of("process")
+        BatchExecutionOptions limitedOpts = BatchExecutionOptions.of("process")
                 .parallelism(2)
-                .timeout(5000)
+                .timeout(java.time.Duration.ofMillis(5000))
                 .build();
         List<Integer> bigList = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8);
-        AsyncBatchResult<Integer> result3 = par.map("my-pool", bigList, n -> n * 2, limitedOpts);
+        AsyncBatchResult<Integer> result3 = par.map(bigList, n -> n * 2, limitedOpts);
 
         // 验证：并发限制下所有结果正确
         assertThat(result3.getResults()).hasSize(8);
@@ -93,8 +91,8 @@ class QuickStartTest {
 
         // report() 结构化报告
         AsyncBatchResult.BatchReport batchReport = result3.report();
-        assertThat(batchReport.getStateCounts()).containsEntry(
-                io.github.huatalk.parallelinscope.internal.FutureState.SUCCESS, 8);
+        assertThat(batchReport.getStateCounts())
+                .containsEntry(io.github.huatalk.parallelinscope.internal.FutureState.SUCCESS, 8);
         assertThat(batchReport.getFirstException()).isNull();
     }
 }
