@@ -67,4 +67,9 @@ public final class TaskGroupResult {
     public Map<String, TaskGroupMemberResult> members() {
         return members;
     }
+
+    /** Returns the number of members admitted into this group. */
+    public int memberCount() {
+        return members.size();
+    }
 }

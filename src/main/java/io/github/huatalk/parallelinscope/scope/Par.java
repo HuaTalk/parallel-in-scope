@@ -63,7 +63,7 @@ public final class Par {
         return displayName;
     }
 
-    ExecutorRuntime getRuntimeForTest() {
+    ExecutorRuntime runtime() {
         return runtime;
     }
 

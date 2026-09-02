@@ -117,11 +117,13 @@ public final class ParallelTaskGroup implements AutoCloseable {
                         delay,
                         TimeUnit.NANOSECONDS);
         for (MemberState member : memberStates.values()) {
-            member.future.addListener(() -> memberCompleted(member), directExecutor());
             long memberDelay = Math.max(0L, member.context.batchContext().deadlineNanos() - System.nanoTime());
             member.deadlineTimer =
                     global.timeoutScheduler().schedule(() -> timeoutMember(member), memberDelay, TimeUnit.NANOSECONDS);
+            member.future.addListener(() -> memberCompleted(member), directExecutor());
         }
+        // Handle "already expired before submission" — the zero-delay timer above may not have run
+        // yet, so fire the same path synchronously before the caller proceeds to submitPrepared().
         if (delay == 0L) cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskGroupMemberReason.TIMEOUT);
     }
 
@@ -363,9 +365,9 @@ public final class ParallelTaskGroup implements AutoCloseable {
                     bindUnknown(definition.handle, state.future);
                     logForking(
                             state.context.batchContext(),
-                            definition.par.getRuntimeForTest().blockingRisk());
+                            definition.par.runtime().blockingRisk());
                 }
-            } catch (RuntimeException failure) {
+            } catch (Throwable failure) {
                 for (MemberState state : states.values()) state.future.cancel(true);
                 throw failure;
             } finally {
@@ -442,9 +444,9 @@ public final class ParallelTaskGroup implements AutoCloseable {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> void bind(TaskHandle<T> handle, ListenableFuture<Object> future) {
+    private static <T> void bind(TaskHandle<T> handle, ListenableFuture<?> future) {
         synchronized (handle) {
-            handle.future = (ListenableFuture<T>) (ListenableFuture<?>) future;
+            handle.future = (ListenableFuture<T>) future;
         }
     }
 

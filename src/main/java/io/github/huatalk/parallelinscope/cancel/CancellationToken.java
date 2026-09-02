@@ -35,10 +35,15 @@ public class CancellationToken {
 
     private final SettableFuture<Object> futureToken = SettableFuture.create();
     private final AtomicReference<State> state = new AtomicReference<>(RUNNING);
-    private final CancellationToken parent;
+    private final @Nullable CancellationToken parent;
 
     /**
      * Creates a token linked to a parent, or a root token if {@code parent} is {@code null}.
+     *
+     * <p>This constructor is the single parent-propagation mechanism: when the parent's work is
+     * canceled, timed out, or fail-fast-canceled (any parent state for which interruption is
+     * required), this token transitions to {@code PROPAGATING_CANCELED} and cancels its linked
+     * future. No additional wiring in {@link #lateBind} or the caller is needed.
      *
      * @param parent the parent token, or {@code null} for a root token
      */
@@ -86,22 +91,6 @@ public class CancellationToken {
             ListenableFuture<?> submitCanceller,
             ScheduledExecutorService timer) {
         Objects.requireNonNull(timer);
-        if (parent != null) {
-            if (parent.getState().shouldInterruptCurrentThread()) {
-                state.compareAndSet(RUNNING, PROPAGATING_CANCELED);
-                futureToken.cancel(true);
-            } else {
-                Futures.catching(
-                        parent.futureToken,
-                        Throwable.class,
-                        ex -> {
-                            state.compareAndSet(RUNNING, PROPAGATING_CANCELED);
-                            futureToken.cancel(true);
-                            return null;
-                        },
-                        directExecutor());
-            }
-        }
 
         FluentFuture<?> failFastFuture = FluentFuture.from(Futures.allAsList(futures))
                 .catchingAsync(Throwable.class, ex -> Futures.immediateCancelledFuture(), directExecutor())
@@ -161,7 +150,15 @@ public class CancellationToken {
         return state.get();
     }
 
-    /** Registers a callback that runs when this token is canceled or otherwise completes. */
+    /**
+     * Registers a callback that runs when this token is canceled or otherwise completes.
+     *
+     * <p>Intended for {@code io.github.huatalk.parallelinscope.scope.ParallelTaskGroup}: a group
+     * linked to an outer batch's token listens so a parent cancellation fixes the group's first
+     * completion reason without polling. It is public only because the {@code scope} and {@code
+     * cancel} packages cannot share package-private access; it is not a general-purpose hook and
+     * external callers should not rely on it.
+     */
     public void addCompletionListener(Runnable listener, Executor executor) {
         futureToken.addListener(
                 Objects.requireNonNull(listener, "listener cannot be null"),
