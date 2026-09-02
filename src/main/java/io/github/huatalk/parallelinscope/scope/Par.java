@@ -8,7 +8,7 @@ import io.github.huatalk.parallelinscope.cancel.CancellationToken;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
 import io.github.huatalk.parallelinscope.internal.ConcurrentLimitExecutor;
-import io.github.huatalk.parallelinscope.internal.PreparedScopedTask;
+import io.github.huatalk.parallelinscope.internal.ExecutionPhaseHintFuture;
 import io.github.huatalk.parallelinscope.internal.ScopedCallable;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
 import java.util.List;
@@ -67,7 +67,7 @@ public final class Par {
         return runtime;
     }
 
-    PreparedScopedTask<Object> prepareGroupTask(
+    ExecutionPhaseHintFuture<Object> prepareGroupTask(
             Callable<Object> callable, BatchExecutionContext batchContext, TaskExecutionContext taskContext) {
         Callable<Object> scoped = TtlCallable.get(
                 new ScopedCallable<>(
@@ -76,12 +76,15 @@ public final class Par {
                         globalPar.executionPolicyFor(displayName).taskListeners()),
                 true,
                 true);
-        return new PreparedScopedTask<>(
-                runtime.submissionExecutor(), batchContext, batchContext.taskType(), scoped, runtime.phaseObserver());
+        return ExecutionPhaseHintFuture.createDeferred(scoped, runtime.phaseObserver());
     }
 
     ExecutorIdentity executorIdentity() {
         return runtime.identity();
+    }
+
+    java.util.concurrent.Executor submissionExecutor() {
+        return runtime.submissionExecutor();
     }
 
     /**

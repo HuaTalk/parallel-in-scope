@@ -5,10 +5,11 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
+import io.github.huatalk.parallelinscope.context.SubmissionScope;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
-import io.github.huatalk.parallelinscope.internal.PreparedScopedTask;
-import io.github.huatalk.parallelinscope.internal.PreparedScopedTask.SubmissionException;
+import io.github.huatalk.parallelinscope.internal.ExecutionPhaseHintFuture;
+import io.github.huatalk.parallelinscope.internal.SubmissionException;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
 import io.github.huatalk.parallelinscope.spi.TaskGroupListener;
 import io.github.huatalk.parallelinscope.spi.TaskGroupListener.TaskGroupEvent;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -129,7 +131,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
 
     private void submitPrepared() {
         for (MemberState member : memberStates.values()) {
-            if (!member.future.isDone()) member.prepared.submit();
+            if (!member.future.isDone()) member.submit();
         }
     }
 
@@ -355,9 +357,14 @@ public final class ParallelTaskGroup implements AutoCloseable {
                             definition.par.executorIdentity(),
                             definition.par.displayName());
                     TaskExecutionContext taskContext = new TaskExecutionContext(batch, 0, start);
-                    PreparedScopedTask<Object> prepared =
+                    ExecutionPhaseHintFuture<Object> future =
                             definition.par.prepareGroupTask(castCallable(definition.callable), batch, taskContext);
-                    MemberState state = new MemberState(definition.name, taskContext, prepared);
+                    MemberState state = new MemberState(
+                            definition.name,
+                            taskContext,
+                            future,
+                            definition.par.submissionExecutor(),
+                            batch.taskType() == TaskType.CPU_BOUND);
                     states.put(definition.name, state);
                 }
                 for (Definition<?> definition : definitions.values()) {
@@ -423,18 +430,35 @@ public final class ParallelTaskGroup implements AutoCloseable {
     private static final class MemberState {
         private final String name;
         private final TaskExecutionContext context;
-        private final PreparedScopedTask<Object> prepared;
-        private final ListenableFuture<Object> future;
+        private final ExecutionPhaseHintFuture<Object> future;
+        private final Executor executor;
+        private final boolean cpuBound;
         private @Nullable TaskGroupMemberReason reason;
         private @Nullable Throwable failure;
         private @Nullable ScheduledFuture<?> deadlineTimer;
         private boolean counted;
 
-        private MemberState(String name, TaskExecutionContext context, PreparedScopedTask<Object> prepared) {
+        private MemberState(
+                String name,
+                TaskExecutionContext context,
+                ExecutionPhaseHintFuture<Object> future,
+                Executor executor,
+                boolean cpuBound) {
             this.name = name;
             this.context = context;
-            this.prepared = prepared;
-            this.future = prepared.future();
+            this.future = future;
+            this.executor = executor;
+            this.cpuBound = cpuBound;
+        }
+
+        /** Submits once with the member's batch scope installed; CPU-bound work runs inline on rejection. */
+        private void submit() {
+            BatchExecutionContext previous = SubmissionScope.install(context.batchContext());
+            try {
+                future.submitPrepared(executor, cpuBound);
+            } finally {
+                SubmissionScope.restore(previous);
+            }
         }
     }
 

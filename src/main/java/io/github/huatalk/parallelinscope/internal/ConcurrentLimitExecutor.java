@@ -9,7 +9,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.SettableFuture;
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
-import io.github.huatalk.parallelinscope.queue.DrainingBlockingQueue;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
 import io.github.huatalk.parallelinscope.scope.TaskType;
