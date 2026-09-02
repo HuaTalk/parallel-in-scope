@@ -44,7 +44,7 @@ public class ConcurrentLimitExecutor<V> {
     private static final Consumer<ExecutionPhase> NOOP = phase -> {};
 
     private final ListenableCompletionService<V> cs;
-    private final BlockingQueue<ListenableFuture<V>> blockingQueue = new DrainingBlockingQueue<>();
+    private final BlockingQueue<ListenableFuture<V>> blockingQueue = new LinkedBlockingQueue<>();
     private final BatchExecutionContext batchContext;
     private final ListeningExecutorService submitterPool;
 
