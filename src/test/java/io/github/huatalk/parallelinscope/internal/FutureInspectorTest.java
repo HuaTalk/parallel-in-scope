@@ -47,6 +47,35 @@ public class FutureInspectorTest {
     }
 
     @Test
+    public void hintFutureReportsSubmissionFailureInsteadOfUserFailure() {
+        ExecutionPhaseHintFuture<String> rejected =
+                ExecutionPhaseHintFuture.createDeferred(() -> "never", phase -> {});
+        rejected.submitPrepared(command -> {
+            throw new java.util.concurrent.RejectedExecutionException("full");
+        }, false);
+        assertThat(FutureInspector.state(rejected)).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
+    }
+
+    @Test
+    public void hintFutureReportsUserFailureForCallableThrow() {
+        ExecutionPhaseHintFuture<String> failed = ExecutionPhaseHintFuture.create(
+                () -> {
+                    throw new IllegalStateException("boom");
+                },
+                phase -> {});
+        failed.run();
+        assertThat(FutureInspector.state(failed)).isEqualTo(TaskOutcome.USER_FAILURE);
+    }
+
+    @Test
+    public void hintFutureReportsMemberCanceledOnCancel() {
+        ExecutionPhaseHintFuture<String> canceled =
+                ExecutionPhaseHintFuture.createDeferred(() -> "never", phase -> {});
+        canceled.cancel(true);
+        assertThat(FutureInspector.state(canceled)).isEqualTo(TaskOutcome.MEMBER_CANCELED);
+    }
+
+    @Test
     public void testExceptionNow_failed() {
         RuntimeException expected = new RuntimeException("fail");
         ListenableFuture<String> future = Futures.immediateFailedFuture(expected);
