@@ -1,0 +1,24 @@
+src/main/java/io/github/huatalk/parallelinscope/cancel/CancellationToken.java
+  s_ab9e11d36b6a85::t_56d8744320a7e1 153-161
+  s_ab9e11d36b6a85::t_74333bd48821ab 43-47
+src/main/java/io/github/huatalk/parallelinscope/scope/TaskGroupResult.java
+  s_ab9e11d36b6a85::t_f233605c4de3ef 70-74
+.gitignore
+  s_ab9e11d36b6a85::t_8df3b1690721a4 17-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "76ade1d9cf594059cb835b9f06747c11185441b3",
+  "prompts": {},
+  "sessions": {
+    "s_ab9e11d36b6a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "697b596f-b59b-4af9-893e-d604809d45cf",
+        "model": "kimi-k3"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
