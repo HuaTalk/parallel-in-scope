@@ -1,0 +1,25 @@
+src/main/java/io/github/huatalk/parallelinscope/internal/FutureInspector.java
+  s_ab9e11d36b6a85::t_edae9a7d90030e 19-23,29-31
+src/test/java/io/github/huatalk/parallelinscope/internal/FutureInspectorTest.java
+  s_ab9e11d36b6a85::t_1ad1f4771e496e 50-77
+src/main/java/io/github/huatalk/parallelinscope/internal/ExecutionPhaseHintFuture.java
+  s_ab9e11d36b6a85::t_59f89339619421 201-204,211
+  s_ab9e11d36b6a85::t_5864a3bd9a3db5 198-200,205-210,212-224
+  s_ab9e11d36b6a85::t_9400def7eb46e3 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "a24e4d85759de33291ff080485a026ad11e03b9e",
+  "prompts": {},
+  "sessions": {
+    "s_ab9e11d36b6a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "697b596f-b59b-4af9-893e-d604809d45cf",
+        "model": "ep-hcn0oy2s"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
