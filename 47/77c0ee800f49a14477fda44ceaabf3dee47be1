@@ -1,0 +1,27 @@
+src/main/java/io/github/huatalk/parallelinscope/scope/Par.java
+  s_ab9e11d36b6a85::t_321436d7fa6b89 11
+  s_ab9e11d36b6a85::t_5565b2d2042c71 70,79
+  s_ab9e11d36b6a85::t_8d4248d1f1f5c4 86-89
+src/main/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroup.java
+  s_ab9e11d36b6a85::t_6fc50ccfe205c4 8,11-12,28
+  s_ab9e11d36b6a85::t_125fc098275709 134
+  s_ab9e11d36b6a85::t_d2bf9e7a856008 360,362-367
+  s_ab9e11d36b6a85::t_2077ff45879149 434,445,456,460
+  s_ab9e11d36b6a85::t_517481637b71b2 433,435,441-444,446,449-455,457-459,461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "4777c0ee800f49a14477fda44ceaabf3dee47be1",
+  "prompts": {},
+  "sessions": {
+    "s_ab9e11d36b6a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "697b596f-b59b-4af9-893e-d604809d45cf",
+        "model": "ep-hcn0oy2s"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
