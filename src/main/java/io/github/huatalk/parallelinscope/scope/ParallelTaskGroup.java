@@ -92,7 +92,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
 
     /** Cancels every unfinished member without blocking for user code to stop. */
     public void cancel() {
-        cancelGroup(TaskGroupCompletionReason.CANCELED, TaskGroupMemberReason.GROUP_CANCELED);
+        cancelGroup(TaskGroupCompletionReason.CANCELED, TaskOutcome.GROUP_CANCELED);
     }
 
     @Override
@@ -108,14 +108,14 @@ public final class ParallelTaskGroup implements AutoCloseable {
         groupToken.addCompletionListener(
                 () -> {
                     if (groupToken.state() == CancellationToken.State.PROPAGATING_CANCELED) {
-                        cancelGroup(TaskGroupCompletionReason.CANCELED, TaskGroupMemberReason.GROUP_CANCELED);
+                        cancelGroup(TaskGroupCompletionReason.CANCELED, TaskOutcome.GROUP_CANCELED);
                     }
                 },
                 directExecutor());
         long delay = Math.max(0L, deadlineNanos - System.nanoTime());
         deadlineTimer = global.timeoutScheduler()
                 .schedule(
-                        () -> cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskGroupMemberReason.TIMEOUT),
+                        () -> cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskOutcome.TIMEOUT),
                         delay,
                         TimeUnit.NANOSECONDS);
         for (MemberState member : memberStates.values()) {
@@ -126,7 +126,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         }
         // Handle "already expired before submission" — the zero-delay timer above may not have run
         // yet, so fire the same path synchronously before the caller proceeds to submitPrepared().
-        if (delay == 0L) cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskGroupMemberReason.TIMEOUT);
+        if (delay == 0L) cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskOutcome.TIMEOUT);
     }
 
     private void submitPrepared() {
@@ -138,13 +138,13 @@ public final class ParallelTaskGroup implements AutoCloseable {
     private void timeoutMember(MemberState member) {
         synchronized (this) {
             if (member.future.isDone() || member.reason != null) return;
-            member.reason = TaskGroupMemberReason.TIMEOUT;
+            member.reason = TaskOutcome.TIMEOUT;
         }
-        cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskGroupMemberReason.TIMEOUT);
+        cancelGroup(TaskGroupCompletionReason.TIMEOUT, TaskOutcome.TIMEOUT);
     }
 
     private void memberCompleted(MemberState member) {
-        TaskGroupMemberReason observedReason;
+        TaskOutcome observedReason;
         Throwable observedFailure = null;
         List<MemberState> toCancel = Collections.emptyList();
         synchronized (this) {
@@ -153,44 +153,44 @@ public final class ParallelTaskGroup implements AutoCloseable {
             if (member.deadlineTimer != null) member.deadlineTimer.cancel(false);
             if (member.reason == null) {
                 if (member.future.isCancelled()) {
-                    member.reason = TaskGroupMemberReason.MEMBER_CANCELED;
+                    member.reason = TaskOutcome.MEMBER_CANCELED;
                 } else {
                     try {
                         member.future.get();
-                        member.reason = TaskGroupMemberReason.SUCCESS;
+                        member.reason = TaskOutcome.SUCCESS;
                     } catch (ExecutionException failure) {
                         observedFailure = failure.getCause();
                         member.failure = observedFailure;
                         member.reason = observedFailure instanceof SubmissionException
-                                ? TaskGroupMemberReason.SUBMISSION_FAILURE
-                                : TaskGroupMemberReason.USER_FAILURE;
+                                ? TaskOutcome.SUBMISSION_FAILURE
+                                : TaskOutcome.USER_FAILURE;
                     } catch (CancellationException impossible) {
-                        member.reason = TaskGroupMemberReason.MEMBER_CANCELED;
+                        member.reason = TaskOutcome.MEMBER_CANCELED;
                     } catch (InterruptedException interrupted) {
                         Thread.currentThread().interrupt();
                         member.failure = interrupted;
-                        member.reason = TaskGroupMemberReason.USER_FAILURE;
+                        member.reason = TaskOutcome.USER_FAILURE;
                     }
                 }
             }
             observedReason = member.reason;
             terminalCount++;
-            if ((observedReason == TaskGroupMemberReason.USER_FAILURE
-                            || observedReason == TaskGroupMemberReason.SUBMISSION_FAILURE)
+            if ((observedReason == TaskOutcome.USER_FAILURE
+                            || observedReason == TaskOutcome.SUBMISSION_FAILURE)
                     && completionReason == null) {
                 completionReason = TaskGroupCompletionReason.FAILED;
                 failedMemberName = member.name;
-                toCancel = markUnfinished(TaskGroupMemberReason.FAIL_FAST);
-            } else if (observedReason == TaskGroupMemberReason.TIMEOUT && completionReason == null) {
+                toCancel = markUnfinished(TaskOutcome.FAIL_FAST);
+            } else if (observedReason == TaskOutcome.TIMEOUT && completionReason == null) {
                 completionReason = TaskGroupCompletionReason.TIMEOUT;
-                toCancel = markUnfinished(TaskGroupMemberReason.TIMEOUT);
+                toCancel = markUnfinished(TaskOutcome.TIMEOUT);
             }
         }
         cancelMembers(toCancel);
         convergeIfTerminal();
     }
 
-    private void cancelGroup(TaskGroupCompletionReason reason, TaskGroupMemberReason memberReason) {
+    private void cancelGroup(TaskGroupCompletionReason reason, TaskOutcome memberReason) {
         List<MemberState> toCancel;
         synchronized (this) {
             if (completionReason != null) return;
@@ -202,7 +202,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         convergeIfTerminal();
     }
 
-    private List<MemberState> markUnfinished(TaskGroupMemberReason reason) {
+    private List<MemberState> markUnfinished(TaskOutcome reason) {
         List<MemberState> result = new ArrayList<>();
         for (MemberState member : memberStates.values()) {
             if (!member.future.isDone()) {
@@ -226,7 +226,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
             if (closed || terminalCount != memberStates.size()) return;
             if (completionReason == null) {
                 completionReason = memberStates.values().stream()
-                                .allMatch(member -> member.reason == TaskGroupMemberReason.SUCCESS)
+                                .allMatch(member -> member.reason == TaskOutcome.SUCCESS)
                         ? TaskGroupCompletionReason.SUCCESS
                         : TaskGroupCompletionReason.CANCELED;
             }
@@ -433,7 +433,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         private final ExecutionPhaseHintFuture<Object> future;
         private final Executor executor;
         private final boolean cpuBound;
-        private @Nullable TaskGroupMemberReason reason;
+        private @Nullable TaskOutcome reason;
         private @Nullable Throwable failure;
         private @Nullable ScheduledFuture<?> deadlineTimer;
         private boolean counted;

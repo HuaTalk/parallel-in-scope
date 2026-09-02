@@ -25,25 +25,25 @@ public class FutureInspectorTest {
     @Test
     public void testState_success() {
         ListenableFuture<String> future = Futures.immediateFuture("ok");
-        assertThat(FutureInspector.state(future)).isEqualTo(FutureState.SUCCESS);
+        assertThat(FutureInspector.state(future)).isEqualTo(TaskOutcome.SUCCESS);
     }
 
     @Test
     public void testState_canceled() {
         ListenableFuture<String> future = Futures.immediateCancelledFuture();
-        assertThat(FutureInspector.state(future)).isEqualTo(FutureState.CANCELLED);
+        assertThat(FutureInspector.state(future)).isEqualTo(TaskOutcome.MEMBER_CANCELED);
     }
 
     @Test
     public void testState_failed() {
         ListenableFuture<String> future = Futures.immediateFailedFuture(new RuntimeException("fail"));
-        assertThat(FutureInspector.state(future)).isEqualTo(FutureState.FAILED);
+        assertThat(FutureInspector.state(future)).isEqualTo(TaskOutcome.USER_FAILURE);
     }
 
     @Test
     public void testState_running() {
         SettableFuture<String> future = SettableFuture.create();
-        assertThat(FutureInspector.state(future)).isEqualTo(FutureState.RUNNING);
+        assertThat(FutureInspector.state(future)).isEqualTo(TaskOutcome.RUNNING);
     }
 
     @Test
@@ -103,7 +103,7 @@ public class FutureInspectorTest {
         };
         try {
             Thread.currentThread().interrupt();
-            assertThat(FutureInspector.state(interrupted)).isEqualTo(FutureState.FAILED);
+            assertThat(FutureInspector.state(interrupted)).isEqualTo(TaskOutcome.USER_FAILURE);
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
             Thread.interrupted();
 

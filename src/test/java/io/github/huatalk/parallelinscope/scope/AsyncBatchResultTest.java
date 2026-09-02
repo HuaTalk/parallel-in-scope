@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import io.github.huatalk.parallelinscope.internal.FutureState;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -28,12 +27,13 @@ public class AsyncBatchResultTest {
         AsyncBatchResult.BatchReport report = batch.report();
 
         assertThat(report.stateCounts())
-                .containsEntry(FutureState.SUCCESS, 1)
-                .containsEntry(FutureState.FAILED, 2)
-                .containsEntry(FutureState.CANCELLED, 1)
+                .containsEntry(TaskOutcome.SUCCESS, 1)
+                .containsEntry(TaskOutcome.USER_FAILURE, 2)
+                .containsEntry(TaskOutcome.MEMBER_CANCELED, 1)
                 .hasSize(3);
         assertThat(report.firstException()).isSameAs(firstFailure);
-        assertThat(batch.reportString()).isEqualTo("SUCCESS:1,FAILED:2,CANCELLED:1 | firstException=first failure");
+        assertThat(batch.reportString())
+                .isEqualTo("SUCCESS:1,USER_FAILURE:2,MEMBER_CANCELED:1 | firstException=first failure");
     }
 
     @Test
@@ -47,11 +47,11 @@ public class AsyncBatchResultTest {
         AsyncBatchResult.BatchReport afterCompletion = batch.report();
 
         assertThat(beforeCompletion.stateCounts())
-                .containsEntry(FutureState.RUNNING, 1)
-                .containsEntry(FutureState.SUCCESS, 1);
+                .containsEntry(TaskOutcome.RUNNING, 1)
+                .containsEntry(TaskOutcome.SUCCESS, 1);
         assertThat(afterCompletion.stateCounts())
-                .containsOnlyKeys(FutureState.SUCCESS)
-                .containsEntry(FutureState.SUCCESS, 2);
+                .containsOnlyKeys(TaskOutcome.SUCCESS)
+                .containsEntry(TaskOutcome.SUCCESS, 2);
     }
 
     @Test
@@ -65,14 +65,14 @@ public class AsyncBatchResultTest {
 
     @Test
     public void batchReport_defensivelyCopiesAndExposesUnmodifiableStateCounts() {
-        Map<FutureState, Integer> source = new java.util.EnumMap<>(FutureState.class);
-        source.put(FutureState.SUCCESS, 1);
+        Map<TaskOutcome, Integer> source = new java.util.EnumMap<>(TaskOutcome.class);
+        source.put(TaskOutcome.SUCCESS, 1);
         AsyncBatchResult.BatchReport report = new AsyncBatchResult.BatchReport(source, null);
 
-        source.put(FutureState.FAILED, 1);
+        source.put(TaskOutcome.USER_FAILURE, 1);
 
-        assertThat(report.stateCounts()).containsOnlyKeys(FutureState.SUCCESS).containsEntry(FutureState.SUCCESS, 1);
-        assertThatThrownBy(() -> report.stateCounts().put(FutureState.CANCELLED, 1))
+        assertThat(report.stateCounts()).containsOnlyKeys(TaskOutcome.SUCCESS).containsEntry(TaskOutcome.SUCCESS, 1);
+        assertThatThrownBy(() -> report.stateCounts().put(TaskOutcome.MEMBER_CANCELED, 1))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
