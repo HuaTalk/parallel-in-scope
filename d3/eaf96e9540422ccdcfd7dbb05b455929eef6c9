@@ -1,0 +1,33 @@
+src/main/java/io/github/huatalk/parallelinscope/internal/ConcurrentLimitExecutor.java
+  h_a991f50801869b 47
+src/main/java/io/github/huatalk/parallelinscope/internal/ExecutionPhaseHintFuture.java
+  s_ab9e11d36b6a85::t_983966aa9bb157 67,73
+  s_ab9e11d36b6a85::t_6ebb91eb6e44bd 3,25,33,59,64,69,75-81,96-97,129,141,144-148,150,159-162,164-169,177,182,185
+  s_ab9e11d36b6a85::t_de2f0041ffda78 7-8
+  s_ab9e11d36b6a85::t_e42fba74d09c59 82-92,101-128,130-132
+  s_ab9e11d36b6a85::t_5544c94c06949f 18-22
+  s_ab9e11d36b6a85::t_b7c67f0590c4c4 133-134,163
+src/main/java/io/github/huatalk/parallelinscope/internal/SubmissionException.java
+  s_ab9e11d36b6a85::t_fb101c9bf2a0de 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "d3eaf96e9540422ccdcfd7dbb05b455929eef6c9",
+  "prompts": {},
+  "humans": {
+    "h_a991f50801869b": {
+      "author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_ab9e11d36b6a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "697b596f-b59b-4af9-893e-d604809d45cf",
+        "model": "ep-hcn0oy2s"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
