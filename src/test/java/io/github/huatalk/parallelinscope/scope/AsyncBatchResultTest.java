@@ -27,12 +27,12 @@ public class AsyncBatchResultTest {
 
         AsyncBatchResult.BatchReport report = batch.report();
 
-        assertThat(report.getStateCounts())
+        assertThat(report.stateCounts())
                 .containsEntry(FutureState.SUCCESS, 1)
                 .containsEntry(FutureState.FAILED, 2)
                 .containsEntry(FutureState.CANCELLED, 1)
                 .hasSize(3);
-        assertThat(report.getFirstException()).isSameAs(firstFailure);
+        assertThat(report.firstException()).isSameAs(firstFailure);
         assertThat(batch.reportString()).isEqualTo("SUCCESS:1,FAILED:2,CANCELLED:1 | firstException=first failure");
     }
 
@@ -46,10 +46,10 @@ public class AsyncBatchResultTest {
         pending.set("now done");
         AsyncBatchResult.BatchReport afterCompletion = batch.report();
 
-        assertThat(beforeCompletion.getStateCounts())
+        assertThat(beforeCompletion.stateCounts())
                 .containsEntry(FutureState.RUNNING, 1)
                 .containsEntry(FutureState.SUCCESS, 1);
-        assertThat(afterCompletion.getStateCounts())
+        assertThat(afterCompletion.stateCounts())
                 .containsOnlyKeys(FutureState.SUCCESS)
                 .containsEntry(FutureState.SUCCESS, 2);
     }
@@ -58,8 +58,8 @@ public class AsyncBatchResultTest {
     public void report_emptyBatchHasNoStatesOrException() {
         AsyncBatchResult<String> batch = AsyncBatchResult.of(Collections.<ListenableFuture<String>>emptyList());
 
-        assertThat(batch.report().getStateCounts()).isEmpty();
-        assertThat(batch.report().getFirstException()).isNull();
+        assertThat(batch.report().stateCounts()).isEmpty();
+        assertThat(batch.report().firstException()).isNull();
         assertThat(batch.reportString()).isEmpty();
     }
 
@@ -71,10 +71,8 @@ public class AsyncBatchResultTest {
 
         source.put(FutureState.FAILED, 1);
 
-        assertThat(report.getStateCounts())
-                .containsOnlyKeys(FutureState.SUCCESS)
-                .containsEntry(FutureState.SUCCESS, 1);
-        assertThatThrownBy(() -> report.getStateCounts().put(FutureState.CANCELLED, 1))
+        assertThat(report.stateCounts()).containsOnlyKeys(FutureState.SUCCESS).containsEntry(FutureState.SUCCESS, 1);
+        assertThatThrownBy(() -> report.stateCounts().put(FutureState.CANCELLED, 1))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -83,8 +81,8 @@ public class AsyncBatchResultTest {
         RuntimeException failure = new RuntimeException("failure");
         AsyncBatchResult.BatchReport report = new AsyncBatchResult.BatchReport(null, failure);
 
-        assertThat(report.getStateCounts()).isNull();
-        assertThat(report.getFirstException()).isSameAs(failure);
+        assertThat(report.stateCounts()).isNull();
+        assertThat(report.firstException()).isSameAs(failure);
         assertThat(report.toString()).contains("stateCounts=null", "firstException=");
     }
 }

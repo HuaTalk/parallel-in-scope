@@ -105,7 +105,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         }
         groupToken.addCompletionListener(
                 () -> {
-                    if (groupToken.getState() == CancellationToken.State.PROPAGATING_CANCELED) {
+                    if (groupToken.state() == CancellationToken.State.PROPAGATING_CANCELED) {
                         cancelGroup(TaskGroupCompletionReason.CANCELED, TaskGroupMemberReason.GROUP_CANCELED);
                     }
                 },
@@ -307,7 +307,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
             Objects.requireNonNull(par, "par cannot be null");
             Objects.requireNonNull(callable, "callable cannot be null");
             Objects.requireNonNull(taskOptions, "options cannot be null");
-            if (par.getGlobalPar() != global) throw new IllegalArgumentException("Par belongs to another GlobalPar");
+            if (par.globalPar() != global) throw new IllegalArgumentException("Par belongs to another GlobalPar");
             if (definitions.containsKey(memberName)) {
                 throw new IllegalArgumentException("Duplicate memberName '" + memberName + "'");
             }
@@ -337,14 +337,14 @@ public final class ParallelTaskGroup implements AutoCloseable {
             Map<String, MemberState> states = new LinkedHashMap<>();
             TaskGraphObservationContext previousObservation = TaskGraphObservationContext.current();
             try {
-                if (observation != null && !observation.isClosed()) {
+                if (observation != null && !observation.closed()) {
                     TaskGraphObservationContext.install(observation);
                 } else {
                     TaskGraphObservationContext.restore(null);
                 }
                 for (Definition<?> definition : definitions.values()) {
                     BatchExecutionContext batch = BatchExecutionContext.resolve(
-                            global.executionPolicyFor(definition.par.getDisplayName()),
+                            global.executionPolicyFor(definition.par.displayName()),
                             definition.options,
                             1,
                             structuralParent,
@@ -353,7 +353,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
                             start,
                             observation,
                             definition.par.executorIdentity(),
-                            definition.par.getDisplayName());
+                            definition.par.displayName());
                     TaskExecutionContext taskContext = new TaskExecutionContext(batch, 0, start);
                     PreparedScopedTask<Object> prepared =
                             definition.par.prepareGroupTask(castCallable(definition.callable), batch, taskContext);

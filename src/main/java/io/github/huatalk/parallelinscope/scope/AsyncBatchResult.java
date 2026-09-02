@@ -37,7 +37,7 @@ public final class AsyncBatchResult<T> {
      *
      * @return the submission-loop future
      */
-    public ListenableFuture<?> getSubmitCanceller() {
+    public ListenableFuture<?> submitCanceller() {
         return submitCanceller;
     }
 
@@ -46,7 +46,7 @@ public final class AsyncBatchResult<T> {
      *
      * @return the individual result futures
      */
-    public List<ListenableFuture<T>> getResults() {
+    public List<ListenableFuture<T>> results() {
         return results;
     }
 
@@ -102,7 +102,7 @@ public final class AsyncBatchResult<T> {
      */
     public String reportString() {
         BatchReport r = report();
-        Map<FutureState, Integer> stateCounts = r.getStateCounts();
+        Map<FutureState, Integer> stateCounts = r.stateCounts();
         if (stateCounts == null) {
             return "";
         }
@@ -113,8 +113,8 @@ public final class AsyncBatchResult<T> {
             sb.append(e.getKey()).append(':').append(e.getValue());
             first = false;
         }
-        if (r.getFirstException() != null) {
-            sb.append(" | firstException=").append(r.getFirstException().getMessage());
+        if (r.firstException() != null) {
+            sb.append(" | firstException=").append(r.firstException().getMessage());
         }
         return sb.toString();
     }
@@ -141,7 +141,7 @@ public final class AsyncBatchResult<T> {
          * @return the immutable state count map, or {@code null} when unavailable
          */
         @Nullable
-        public Map<FutureState, Integer> getStateCounts() {
+        public Map<FutureState, Integer> stateCounts() {
             return stateCounts;
         }
 
@@ -151,7 +151,7 @@ public final class AsyncBatchResult<T> {
          * @return the first failure, or {@code null} if no task failed
          */
         @Nullable
-        public Throwable getFirstException() {
+        public Throwable firstException() {
             return firstException;
         }
 

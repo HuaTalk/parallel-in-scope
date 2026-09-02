@@ -54,12 +54,12 @@ public final class Par {
     }
 
     /** Returns the owning immutable GlobalPar. */
-    public GlobalPar getGlobalPar() {
+    public GlobalPar globalPar() {
         return globalPar;
     }
 
     /** Returns this Par's diagnostic label. */
-    public String getDisplayName() {
+    public String displayName() {
         return displayName;
     }
 
@@ -159,11 +159,11 @@ public final class Par {
         batchContext
                 .cancellationToken()
                 .lateBind(
-                        result.getResults(),
+                        result.results(),
                         batchContext.remaining(),
-                        result.getSubmitCanceller(),
+                        result.submitCanceller(),
                         globalPar.timeoutScheduler());
-        globalPar.retainUntilComplete(result.getResults());
+        globalPar.retainUntilComplete(result.results());
         return result;
     }
 

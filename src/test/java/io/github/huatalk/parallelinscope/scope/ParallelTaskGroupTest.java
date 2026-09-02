@@ -442,7 +442,7 @@ class ParallelTaskGroupTest {
                                 }
                             },
                             BatchExecutionOptions.of("outer").build());
-            assertThat(result.getResults().get(0).get(2, TimeUnit.SECONDS)).isNotNull();
+            assertThat(result.results().get(0).get(2, TimeUnit.SECONDS)).isNotNull();
         } finally {
             global.close();
             outer.shutdownNow();
