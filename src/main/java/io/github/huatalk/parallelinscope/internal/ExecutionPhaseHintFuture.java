@@ -141,17 +141,35 @@ public final class ExecutionPhaseHintFuture<V> extends AbstractFuture<V> impleme
         }
         runner = Thread.currentThread();
         notifyPhase(ExecutionPhase.RUNNING);
+        boolean canceled = isCancelled();
         try {
-            if (!isCancelled()) {
+            if (!canceled) {
                 set(callable.call());
             }
         } catch (Throwable failure) {
             setException(failure);
         } finally {
             runner = null;
-            phase.set(ExecutionPhase.TERMINAL);
-            notifyPhase(ExecutionPhase.TERMINAL);
-            phaseObserver = NOOP;
+            // A cancel won mid-run if the runner saw it up front (skipped the call) or the
+            // set()/setException() above lost the race (isCancelled() now true). Phase reads, CAS,
+            // notification, and observer release are serialized with afterDone() under this monitor
+            // so a cancel-phase emission can never be swallowed by an observer release racing it.
+            synchronized (this) {
+                boolean canceledNow = canceled || isCancelled();
+                if (canceledNow && phase.compareAndSet(ExecutionPhase.RUNNING, ExecutionPhase.CANCEL_REQUESTED_RUNNING)) {
+                    notifyPhase(ExecutionPhase.CANCEL_REQUESTED_RUNNING);
+                }
+                // Advance to TERMINAL only if still in a running-phase state; never overwrite the
+                // cancel phase just recorded above or by afterDone(). TERMINAL is always emitted
+                // last, and the observer is released only here (or by afterDone() for
+                // cancel-before-run).
+                ExecutionPhase now = phase.get();
+                if (now == ExecutionPhase.RUNNING || now == ExecutionPhase.CANCEL_REQUESTED_RUNNING) {
+                    phase.set(ExecutionPhase.TERMINAL);
+                }
+                notifyPhase(ExecutionPhase.TERMINAL);
+                phaseObserver = NOOP;
+            }
         }
     }
 
@@ -169,22 +187,28 @@ public final class ExecutionPhaseHintFuture<V> extends AbstractFuture<V> impleme
         if (!isCancelled()) {
             return;
         }
-        while (true) {
+        // Serialized with run()'s finally: the cancel-phase CAS and its notification are atomic with
+        // respect to the runner's phase advance and observer release, so the cancel signal is either
+        // emitted here (if this wins the phase CAS) or already emitted by the runner — never lost to
+        // a racing observer release.
+        synchronized (this) {
             ExecutionPhase current = phase.get();
             if (current == ExecutionPhase.SUBMITTED) {
+                // Cancel won before run(): no worker will emit phases, so report it here and release.
                 if (phase.compareAndSet(ExecutionPhase.SUBMITTED, ExecutionPhase.CANCELLED_BEFORE_RUN)) {
                     notifyPhase(ExecutionPhase.CANCELLED_BEFORE_RUN);
                     phaseObserver = NOOP;
-                    return;
                 }
             } else if (current == ExecutionPhase.RUNNING) {
+                // Cancel won while running: report it synchronously so the signal is visible as soon
+                // as cancel() returns. The observer is NOT released here — run()'s finally emits
+                // TERMINAL after this and performs the release.
                 if (phase.compareAndSet(ExecutionPhase.RUNNING, ExecutionPhase.CANCEL_REQUESTED_RUNNING)) {
                     notifyPhase(ExecutionPhase.CANCEL_REQUESTED_RUNNING);
-                    return;
                 }
-            } else {
-                return;
             }
+            // TERMINAL or CANCEL_REQUESTED_RUNNING: the runner already emitted (or is about to emit,
+            // holding this same monitor) the cancel and terminal phases. Nothing further to do.
         }
     }
 
