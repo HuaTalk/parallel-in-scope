@@ -1,0 +1,71 @@
+styles.css
+  ai_agent 1-108
+src/main/java/io/github/huatalk/parallelinscope/scope/GlobalPar.java
+  s_ab9e11d36b6a85::t_adcdab4aaa1127 271
+  s_ab9e11d36b6a85::t_5f4994d353a9bb 5
+  s_ab9e11d36b6a85::t_85d12cb1ffd054 270
+  s_ab9e11d36b6a85::t_eb92e3c565f0a2 164-169
+tmp/closable-blocking-queue-iterator-concurrency.html
+  ai_agent 1-76
+graph-viz/index.html
+  ai_agent 1-407
+tmp/tmp/子表_syncready.json
+  ai_agent 1-813
+src/main/java/io/github/huatalk/parallelinscope/spi/TaskGroupListener.java
+  s_ab9e11d36b6a85::t_31b57f6fc817ef 4,16
+todo/abrupt-close-queue-cleanup.md
+  ai_agent 1-70
+.gitignore
+  s_ab9e11d36b6a85::t_d036be63e28077 8-13
+tmp/frontend-config/cur1.json
+  ai_agent 1-2326
+tmp/tmp/子表生产环境配置.json
+  ai_agent 1-720
+src/main/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroup.java
+  s_ab9e11d36b6a85::t_78142cba54abce 447,449
+  s_ab9e11d36b6a85::t_ea1b430fb9a9f4 370
+  s_ab9e11d36b6a85::t_486f718aeff9b3 123,125-126
+  s_ab9e11d36b6a85::t_ed851889517eab 368
+tmp/closable-blocking-queue-blog.md
+  ai_agent 1-297
+src/test/java/io/github/huatalk/parallelinscope/scope/GlobalParTest.java
+  s_ab9e11d36b6a85::t_daa18f33f3e9fd 68
+index.html
+  ai_agent 1-3006
+tmp/closable-blocking-queue-shutdown-contract.md
+  ai_agent 1-128
+src/main/java/io/github/huatalk/parallelinscope/cancel/CancellationToken.java
+  s_ab9e11d36b6a85::t_bd2654d659293b 38
+script.js
+  ai_agent 1-23
+src/test/java/io/github/huatalk/parallelinscope/scope/ScopePrimitivesTest.java
+  s_ab9e11d36b6a85::t_ea4549535b8fc6 214-215
+tmp/frontend-config/cur1_new.json
+  ai_agent 1-2330
+src/main/java/io/github/huatalk/parallelinscope/scope/Par.java
+  s_ab9e11d36b6a85::t_432df1ddb14c6c 66
+tmp/graphviz-logic-check.js
+  ai_agent 1-48
+tmp/frontend-config/参考.json
+  ai_agent 1-1442
+tmp/graphviz-screenshot.js
+  ai_agent 1-53
+tmp/tmp/子表测试环境配置.json
+  ai_agent 1-813
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "5113809ddbd8a469bb8c9997ed132c1038f5b302",
+  "prompts": {},
+  "sessions": {
+    "s_ab9e11d36b6a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "697b596f-b59b-4af9-893e-d604809d45cf",
+        "model": "kimi-k3"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
