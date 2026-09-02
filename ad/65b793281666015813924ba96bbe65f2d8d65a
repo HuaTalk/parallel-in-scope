@@ -1,0 +1,25 @@
+src/main/java/io/github/huatalk/parallelinscope/internal/ExecutionPhaseHintFuture.java
+  s_ab9e11d36b6a85::t_dc8c6b8b6bf55d 144,146,153,172,197,203-204
+  s_ab9e11d36b6a85::t_de671f878cf226 154-171
+  s_ab9e11d36b6a85::t_0f86644d0cee8c 190-194,205,210-211
+src/test/java/io/github/huatalk/parallelinscope/internal/ListenableCompletionServiceTest.java
+  s_ab9e11d36b6a85::t_2e0e2e5e6cbfe8 167,174,180,231
+  s_ab9e11d36b6a85::t_86b6be6abe29a9 222-230,232-250,253-257
+  s_ab9e11d36b6a85::t_c742c8984239e5 251-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "ad65b793281666015813924ba96bbe65f2d8d65a",
+  "prompts": {},
+  "sessions": {
+    "s_ab9e11d36b6a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "697b596f-b59b-4af9-893e-d604809d45cf",
+        "model": "ep-hcn0oy2s"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
