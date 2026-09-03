@@ -40,6 +40,52 @@ cp ../llm_arena/cancellation-deadline-bind/handoff.md .
 
 要求 agent：提交自己的工作（commit 留在 `<workdir>`），便于事后 diff 对比。
 
+## 跑其他 coding agent（codex / Claude / 任意 CLI）
+
+推荐用 `run-agent.sh`（自动 clone bundle + 建分支 + 放入 handoff，隔离参考答案）：
+
+```bash
+./run-agent.sh <attempt名> <agent命令...>
+```
+
+实际例子：
+
+```bash
+# codex（openai codex CLI）
+./run-agent.sh codex-gpt56-sol codex exec \
+    "pick up handoff.md and implement it per the handoff; run the tests; commit your work"
+
+# Claude Code
+./run-agent.sh claude-baseline claude --permission-mode default \
+    "pick up handoff.md and implement it per the handoff; run the tests; commit your work"
+
+# 不带 agent 命令：只准备 work 目录 + 打印 pickup 提示，自己开终端/IDE 进去跑
+./run-agent.sh my-manual-run
+```
+
+产物在 `work/<attempt名>/`：agent 的全部 commit 留在里面，评测时：
+
+- 看它自己的 `git log` / `git diff 30359e5..attempt`
+- 对照参考答案 `git diff 30359e5..fbfe4f5`（在主仓库跑）
+- 跑 `mvn test` 验证行为，`mvn spotless:apply` 后复跑确认没靠格式绕过
+
+> 隔离纪律：agent 的工作目录永远是 bundle clone（`run-agent.sh` 保证）。不要直接在
+> 主仓库 clone 里跑 agent——主分支历史含参考答案（`6dd474a..fbfe4f5`），对 agent 是泄题。
+
+## 其他人复现
+
+仓库已公开（`https://github.com/HuaTalk/parallel-in-scope`），其他人只要：
+
+```bash
+git clone -b feat/parallel-task-group-builder https://github.com/HuaTalk/parallel-in-scope.git
+cd parallel-in-scope/llm_arena/cancellation-deadline-bind
+./run-agent.sh my-agent codex exec "pick up handoff.md and implement it; commit your work"
+```
+
+需要：git、JDK 11+、Maven（跑测试）、目标 agent 的 CLI。整个 case 自包含在
+`llm_arena/cancellation-deadline-bind/` 一个目录里（bundle 内无参考答案，主历史里的
+参考答案对评测人可见，对 agent 不可见）。做完把 `work/` 的结果或 README 记录表贴回来即可。
+
 ## 评价视角
 
 - **根因发现**：是否识别出「catchingAsync fallback 在取消时不执行」/「allAsList
