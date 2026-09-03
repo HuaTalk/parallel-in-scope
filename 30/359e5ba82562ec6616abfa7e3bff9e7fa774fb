@@ -1,0 +1,48 @@
+src/test/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroupTest.java
+  s_5160c259ddca85::t_afc4702f4736ed 129,211,321
+src/main/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroup.java
+  s_5160c259ddca85::t_afc4702f4736ed 178,227-230
+src/test/java/io/github/huatalk/parallelinscope/internal/FutureInspectorTest.java
+  s_5160c259ddca85::t_afc4702f4736ed 51-56,73
+src/main/java/io/github/huatalk/parallelinscope/scope/TaskGroupMemberResult.java
+  s_5160c259ddca85::t_afc4702f4736ed 14
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTriggerCartesianTest.java
+  h_a991f50801869b 60,101
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationPropagationCartesianTest.java
+  h_a991f50801869b 60,92
+src/main/java/io/github/huatalk/parallelinscope/cancel/CancellationToken.java
+  s_5160c259ddca85::t_afc4702f4736ed 97-109
+  h_a991f50801869b 28,45,87,93-94,96
+src/main/java/io/github/huatalk/parallelinscope/scope/Par.java
+  h_a991f50801869b 164
+src/main/java/io/github/huatalk/parallelinscope/internal/ExecutionPhaseHintFuture.java
+  s_5160c259ddca85::t_afc4702f4736ed 159-160
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTokenLateBindRaceTest.java
+  s_5160c259ddca85::t_afc4702f4736ed 76,81
+  h_a991f50801869b 20,50,58,70,94,111
+src/test/java/io/github/huatalk/parallelinscope/internal/ListenableCompletionServiceTest.java
+  s_5160c259ddca85::t_afc4702f4736ed 250-251
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTokenTest.java
+  h_a991f50801869b 72,80,92,97,105,114,124,131,143,152,162,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "30359e5ba82562ec6616abfa7e3bff9e7fa774fb",
+  "prompts": {},
+  "humans": {
+    "h_a991f50801869b": {
+      "author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_5160c259ddca85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d53c9fb0-72f4-4386-be62-d3b65525fda7",
+        "model": "kimi-k3"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
