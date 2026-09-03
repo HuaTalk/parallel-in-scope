@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -55,7 +54,7 @@ class CancellationTokenLateBindRaceTest {
         List<ListenableFuture<String>> futures = Collections.singletonList(task);
 
         // Does not throw.
-        token.bind(futures, Duration.ofHours(1), Futures.immediateVoidFuture(), timer);
+        token.bind(futures, Futures.immediateVoidFuture(), timer);
 
         assertThat(task).isCancelled();
         assertThat(token.state()).isEqualTo(CancellationToken.State.MUTUAL_CANCELED);
@@ -73,12 +72,12 @@ class CancellationTokenLateBindRaceTest {
         SettableFuture<String> firstTask = SettableFuture.create();
         SettableFuture<String> secondTask = SettableFuture.create();
 
-        token.bind(Collections.singletonList(firstTask), Duration.ofSeconds(5), Futures.immediateVoidFuture(), timer);
+        token.bind(Collections.singletonList(firstTask), Futures.immediateVoidFuture(), timer);
         firstTask.set("ok");
         Thread.sleep(50);
         assertThat(token.state()).isEqualTo(CancellationToken.State.SUCCESS);
 
-        token.bind(Collections.singletonList(secondTask), Duration.ofSeconds(5), Futures.immediateVoidFuture(), timer);
+        token.bind(Collections.singletonList(secondTask), Futures.immediateVoidFuture(), timer);
 
         // The second futures are not tracked; the token stays SUCCESS and the second task is not
         // cancelled by the framework.
@@ -108,7 +107,7 @@ class CancellationTokenLateBindRaceTest {
             });
             Thread binder = new Thread(() -> {
                 await(start);
-                token.bind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), timer);
+                token.bind(futures, Futures.immediateVoidFuture(), timer);
             });
 
             canceler.start();

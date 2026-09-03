@@ -7,11 +7,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,10 +22,16 @@ import org.junit.jupiter.api.Test;
 public class CancellationTokenTest {
     private static final ScheduledExecutorService TIMER = Executors.newSingleThreadScheduledExecutor();
 
+    private static CancellationToken withDeadlineAfter(long millis) {
+        return new CancellationToken(null, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(millis));
+    }
+
     @Test
     public void testInitialState() {
         CancellationToken token = CancellationToken.create();
         assertThat(token.state()).isEqualTo(CancellationToken.State.RUNNING);
+        assertThat(token.deadlineNanos()).isEqualTo(Long.MAX_VALUE);
+        assertThat(token.remaining().toNanos()).isGreaterThan(TimeUnit.HOURS.toNanos(1));
     }
 
     @Test
@@ -66,7 +72,41 @@ public class CancellationTokenTest {
                 .isTrue();
     }
 
-    // ==================== lateBind state transition tests ====================
+    // ==================== deadline ====================
+
+    @Test
+    public void deadlineIsCappedByParentDeadline() {
+        long later = System.nanoTime() + TimeUnit.HOURS.toNanos(1);
+        long earlier = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(100);
+
+        CancellationToken parent = new CancellationToken(null, earlier);
+        CancellationToken childRequestingLater = new CancellationToken(parent, later);
+        CancellationToken childRequestingEarlier = new CancellationToken(parent, earlier - 1);
+
+        assertThat(childRequestingLater.deadlineNanos()).isEqualTo(parent.deadlineNanos());
+        assertThat(childRequestingEarlier.deadlineNanos()).isEqualTo(earlier - 1);
+    }
+
+    @Test
+    public void expiredDeadlineCancelsBoundWorkSynchronously() throws Exception {
+        CancellationToken token = withDeadlineAfter(-1000);
+
+        SettableFuture<String> pending = SettableFuture.create();
+        SettableFuture<String> alreadySucceeded = SettableFuture.create();
+        alreadySucceeded.set("kept");
+        SettableFuture<Void> submitCanceller = SettableFuture.create();
+
+        token.bind(Arrays.asList(pending, alreadySucceeded), submitCanceller, TIMER);
+
+        assertThat(token.state()).isEqualTo(CancellationToken.State.TIMEOUT_CANCELED);
+        assertThat(pending).isCancelled();
+        assertThat(submitCanceller).isCancelled();
+        assertThat(alreadySucceeded).isNotCancelled();
+        assertThat(alreadySucceeded.isDone()).isTrue();
+        assertThat(alreadySucceeded.get()).isEqualTo("kept");
+    }
+
+    // ==================== bind state transition tests ====================
 
     @Test
     public void testBind_success_allFuturesComplete() throws Exception {
@@ -77,7 +117,7 @@ public class CancellationTokenTest {
         SettableFuture<String> f3 = SettableFuture.create();
         List<ListenableFuture<String>> futures = Arrays.asList(f1, f2, f3);
 
-        token.bind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        token.bind(futures, Futures.immediateVoidFuture(), TIMER);
 
         f1.set("a");
         f2.set("b");
@@ -90,11 +130,11 @@ public class CancellationTokenTest {
 
     @Test
     public void testBind_timeout_stateTransitionsToTimeoutCanceled() throws Exception {
-        CancellationToken token = CancellationToken.create();
+        CancellationToken token = withDeadlineAfter(100);
 
         SettableFuture<String> f1 = SettableFuture.create(); // never completed
 
-        token.bind(ImmutableList.of(f1), Duration.ofMillis(100), Futures.immediateVoidFuture(), TIMER);
+        token.bind(ImmutableList.of(f1), Futures.immediateVoidFuture(), TIMER);
 
         // Wait for timeout to fire
         Thread.sleep(300);
@@ -111,7 +151,7 @@ public class CancellationTokenTest {
 
         // Priority 7: a failed future must transition the shared token into fail-fast cancellation.
         // This is the low-level state change that lets higher-level map calls stop sibling tasks.
-        token.bind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        token.bind(futures, Futures.immediateVoidFuture(), TIMER);
 
         f1.setException(new RuntimeException("boom"));
 
@@ -128,7 +168,7 @@ public class CancellationTokenTest {
         SettableFuture<String> sibling = SettableFuture.create();
         SettableFuture<Void> submitCanceller = SettableFuture.create();
 
-        token.bind(Arrays.asList(failed, sibling), Duration.ofSeconds(5), submitCanceller, TIMER);
+        token.bind(Arrays.asList(failed, sibling), submitCanceller, TIMER);
 
         failed.setException(new RuntimeException("boom"));
 
@@ -137,6 +177,39 @@ public class CancellationTokenTest {
             assertThat(sibling).isCancelled();
             assertThat(submitCanceller).isCancelled();
         });
+    }
+
+    @Test
+    public void testBind_manualCancel_cancelsBoundWorkAndSubmitCanceller() {
+        CancellationToken token = CancellationToken.create();
+
+        SettableFuture<String> task = SettableFuture.create();
+        SettableFuture<Void> submitCanceller = SettableFuture.create();
+
+        token.bind(ImmutableList.of(task), submitCanceller, TIMER);
+
+        token.cancel(true);
+
+        assertThat(token.state()).isEqualTo(CancellationToken.State.MUTUAL_CANCELED);
+        assertThat(task).isCancelled();
+        assertThat(submitCanceller).isCancelled();
+    }
+
+    @Test
+    public void testBind_cancelAfterSuccess_keepsRecordedResult() throws Exception {
+        CancellationToken token = CancellationToken.create();
+
+        SettableFuture<String> task = SettableFuture.create();
+        token.bind(ImmutableList.of(task), Futures.immediateVoidFuture(), TIMER);
+        task.set("done");
+
+        await().until(() -> token.state() == CancellationToken.State.SUCCESS);
+
+        token.cancel(true);
+
+        assertThat(task.isDone()).isTrue();
+        assertThat(task.get()).isEqualTo("done");
+        assertThat(token.state()).isEqualTo(CancellationToken.State.SUCCESS);
     }
 
     @Test
@@ -149,7 +222,7 @@ public class CancellationTokenTest {
         // Priority 9: nested scopes inherit cancellation from their parent.
         // Parent cancellation should mark the child as propagating cancellation even if its own
         // future has not completed yet.
-        child.bind(ImmutableList.of(f1), Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        child.bind(ImmutableList.of(f1), Futures.immediateVoidFuture(), TIMER);
 
         parent.cancel(true);
 
@@ -167,9 +240,30 @@ public class CancellationTokenTest {
         CancellationToken child = new CancellationToken(parent);
 
         SettableFuture<String> f1 = SettableFuture.create();
-        child.bind(ImmutableList.of(f1), Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        child.bind(ImmutableList.of(f1), Futures.immediateVoidFuture(), TIMER);
 
         // The future should be cancelled immediately because parent is already canceled
         assertThat(f1).isCancelled();
+    }
+
+    @Test
+    public void stateListenerRunsAfterTransitionBeforeCancellation() {
+        CancellationToken token = CancellationToken.create();
+        SettableFuture<String> task = SettableFuture.create();
+        token.bind(ImmutableList.of(task), Futures.immediateVoidFuture(), TIMER);
+
+        java.util.concurrent.atomic.AtomicReference<CancellationToken.State> observed =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicBoolean taskStillPending = new java.util.concurrent.atomic.AtomicBoolean();
+        token.addStateListener(state -> {
+            observed.set(state);
+            taskStillPending.set(!task.isDone());
+        });
+
+        token.cancel(true);
+
+        assertThat(observed.get()).isEqualTo(CancellationToken.State.MUTUAL_CANCELED);
+        assertThat(taskStillPending).isTrue();
+        assertThat(task).isCancelled();
     }
 }
