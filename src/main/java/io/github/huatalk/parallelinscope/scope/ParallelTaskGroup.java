@@ -175,8 +175,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
             }
             observedReason = member.reason;
             terminalCount++;
-            if ((observedReason == TaskOutcome.USER_FAILURE
-                            || observedReason == TaskOutcome.SUBMISSION_FAILURE)
+            if ((observedReason == TaskOutcome.USER_FAILURE || observedReason == TaskOutcome.SUBMISSION_FAILURE)
                     && completionReason == null) {
                 completionReason = TaskGroupCompletionReason.FAILED;
                 failedMemberName = member.name;
@@ -225,10 +224,10 @@ public final class ParallelTaskGroup implements AutoCloseable {
         synchronized (this) {
             if (closed || terminalCount != memberStates.size()) return;
             if (completionReason == null) {
-                completionReason = memberStates.values().stream()
-                                .allMatch(member -> member.reason == TaskOutcome.SUCCESS)
-                        ? TaskGroupCompletionReason.SUCCESS
-                        : TaskGroupCompletionReason.CANCELED;
+                completionReason =
+                        memberStates.values().stream().allMatch(member -> member.reason == TaskOutcome.SUCCESS)
+                                ? TaskGroupCompletionReason.SUCCESS
+                                : TaskGroupCompletionReason.CANCELED;
             }
             closed = true;
             if (deadlineTimer != null) deadlineTimer.cancel(false);

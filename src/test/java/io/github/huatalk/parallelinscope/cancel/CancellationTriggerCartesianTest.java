@@ -57,7 +57,7 @@ public class CancellationTriggerCartesianTest {
 
         try {
             fixture.awaitEntry();
-            token.lateBind(
+            token.bind(
                     Collections.singletonList(fixture.future),
                     trigger == Trigger.TIMEOUT ? Duration.ofMillis(75) : Duration.ofSeconds(5),
                     submitter,
@@ -98,7 +98,7 @@ public class CancellationTriggerCartesianTest {
 
         try {
             fixture.awaitEntry();
-            token.lateBind(
+            token.bind(
                     Collections.singletonList(fixture.future),
                     Duration.ofSeconds(5),
                     Futures.immediateVoidFuture(),

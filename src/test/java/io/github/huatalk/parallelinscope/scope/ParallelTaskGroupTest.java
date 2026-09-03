@@ -126,8 +126,7 @@ class ParallelTaskGroupTest {
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.FAILED);
             assertThat(result.failedMemberName()).isEqualTo("failure");
-            assertThat(result.members().get("failure").completionReason())
-                    .isEqualTo(TaskOutcome.USER_FAILURE);
+            assertThat(result.members().get("failure").completionReason()).isEqualTo(TaskOutcome.USER_FAILURE);
             assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.FAIL_FAST);
         } finally {
             global.close();
@@ -209,8 +208,7 @@ class ParallelTaskGroupTest {
             assertThat(sibling.future().get(2, TimeUnit.SECONDS)).isEqualTo(2);
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
-            assertThat(result.members().get("canceled").completionReason())
-                    .isEqualTo(TaskOutcome.MEMBER_CANCELED);
+            assertThat(result.members().get("canceled").completionReason()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
             assertThat(result.members().get("sibling").completionReason()).isEqualTo(TaskOutcome.SUCCESS);
         } finally {
             release.countDown();
@@ -320,8 +318,7 @@ class ParallelTaskGroupTest {
                     builder.buildAndSubmitAll().completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.FAILED);
-            assertThat(result.members().get("rejected").completionReason())
-                    .isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
+            assertThat(result.members().get("rejected").completionReason()).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
             assertThat(result.members().get("later").completionReason()).isEqualTo(TaskOutcome.FAIL_FAST);
             assertThat(calls).hasValue(0);
             assertThat(SubmissionScope.currentBatch()).isNull();

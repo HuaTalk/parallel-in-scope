@@ -161,7 +161,7 @@ public final class Par {
                 .submitAll(tasks);
         batchContext
                 .cancellationToken()
-                .lateBind(
+                .bind(
                         result.results(),
                         batchContext.remaining(),
                         result.submitCanceller(),

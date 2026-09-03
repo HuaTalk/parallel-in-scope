@@ -69,7 +69,7 @@ public class CancellationTokenTest {
     // ==================== lateBind state transition tests ====================
 
     @Test
-    public void testLateBind_success_allFuturesComplete() throws Exception {
+    public void testBind_success_allFuturesComplete() throws Exception {
         CancellationToken token = CancellationToken.create();
 
         SettableFuture<String> f1 = SettableFuture.create();
@@ -77,7 +77,7 @@ public class CancellationTokenTest {
         SettableFuture<String> f3 = SettableFuture.create();
         List<ListenableFuture<String>> futures = Arrays.asList(f1, f2, f3);
 
-        token.lateBind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        token.bind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
 
         f1.set("a");
         f2.set("b");
@@ -89,12 +89,12 @@ public class CancellationTokenTest {
     }
 
     @Test
-    public void testLateBind_timeout_stateTransitionsToTimeoutCanceled() throws Exception {
+    public void testBind_timeout_stateTransitionsToTimeoutCanceled() throws Exception {
         CancellationToken token = CancellationToken.create();
 
         SettableFuture<String> f1 = SettableFuture.create(); // never completed
 
-        token.lateBind(ImmutableList.of(f1), Duration.ofMillis(100), Futures.immediateVoidFuture(), TIMER);
+        token.bind(ImmutableList.of(f1), Duration.ofMillis(100), Futures.immediateVoidFuture(), TIMER);
 
         // Wait for timeout to fire
         Thread.sleep(300);
@@ -102,7 +102,7 @@ public class CancellationTokenTest {
     }
 
     @Test
-    public void testLateBind_failFast_oneFailsOthersCanceled() throws Exception {
+    public void testBind_failFast_oneFailsOthersCanceled() throws Exception {
         CancellationToken token = CancellationToken.create();
 
         SettableFuture<String> f1 = SettableFuture.create();
@@ -111,7 +111,7 @@ public class CancellationTokenTest {
 
         // Priority 7: a failed future must transition the shared token into fail-fast cancellation.
         // This is the low-level state change that lets higher-level map calls stop sibling tasks.
-        token.lateBind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        token.bind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
 
         f1.setException(new RuntimeException("boom"));
 
@@ -121,14 +121,14 @@ public class CancellationTokenTest {
     }
 
     @Test
-    public void testLateBind_failFast_cancelsSiblingAndSubmitCanceller() {
+    public void testBind_failFast_cancelsSiblingAndSubmitCanceller() {
         CancellationToken token = CancellationToken.create();
 
         SettableFuture<String> failed = SettableFuture.create();
         SettableFuture<String> sibling = SettableFuture.create();
         SettableFuture<Void> submitCanceller = SettableFuture.create();
 
-        token.lateBind(Arrays.asList(failed, sibling), Duration.ofSeconds(5), submitCanceller, TIMER);
+        token.bind(Arrays.asList(failed, sibling), Duration.ofSeconds(5), submitCanceller, TIMER);
 
         failed.setException(new RuntimeException("boom"));
 
@@ -140,7 +140,7 @@ public class CancellationTokenTest {
     }
 
     @Test
-    public void testLateBind_parentCanceled_childPropagates() throws Exception {
+    public void testBind_parentCanceled_childPropagates() throws Exception {
         CancellationToken parent = CancellationToken.create();
         CancellationToken child = new CancellationToken(parent);
 
@@ -149,7 +149,7 @@ public class CancellationTokenTest {
         // Priority 9: nested scopes inherit cancellation from their parent.
         // Parent cancellation should mark the child as propagating cancellation even if its own
         // future has not completed yet.
-        child.lateBind(ImmutableList.of(f1), Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        child.bind(ImmutableList.of(f1), Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
 
         parent.cancel(true);
 
@@ -159,7 +159,7 @@ public class CancellationTokenTest {
     }
 
     @Test
-    public void testLateBind_parentAlreadyCanceled_childImmediatelyCanceled() {
+    public void testBind_parentAlreadyCanceled_childImmediatelyCanceled() {
         CancellationToken parent = CancellationToken.create();
         parent.cancel(true);
         assertThat(parent.state().shouldInterruptCurrentThread()).isTrue();
@@ -167,7 +167,7 @@ public class CancellationTokenTest {
         CancellationToken child = new CancellationToken(parent);
 
         SettableFuture<String> f1 = SettableFuture.create();
-        child.lateBind(ImmutableList.of(f1), Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
+        child.bind(ImmutableList.of(f1), Duration.ofSeconds(5), Futures.immediateVoidFuture(), TIMER);
 
         // The future should be cancelled immediately because parent is already canceled
         assertThat(f1).isCancelled();

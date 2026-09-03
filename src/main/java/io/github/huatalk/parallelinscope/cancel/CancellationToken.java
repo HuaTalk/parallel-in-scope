@@ -9,7 +9,6 @@ import static io.github.huatalk.parallelinscope.cancel.CancellationToken.State.S
 import static io.github.huatalk.parallelinscope.cancel.CancellationToken.State.TIMEOUT_CANCELED;
 
 import com.google.common.util.concurrent.FluentFuture;
-import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -26,7 +25,7 @@ import javax.annotation.Nullable;
  * Cooperative cancellation token for parallel task groups.
  *
  * <p>A token may be linked to a parent so that cancellation propagates to child task groups. After
- * task submission, {@link #lateBind(List, Duration, ListenableFuture, ScheduledExecutorService)}
+ * task submission, {@link #bind(List, Duration, ListenableFuture, ScheduledExecutorService)}
  * connects the token to the submitted futures and enables timeout and fail-fast cancellation.
  *
  * @author Eric Lin (linqinghua4 at gmail dot com)
@@ -43,7 +42,7 @@ public class CancellationToken {
      * <p>This constructor is the single parent-propagation mechanism: when the parent's work is
      * canceled, timed out, or fail-fast-canceled (any parent state for which interruption is
      * required), this token transitions to {@code PROPAGATING_CANCELED} and cancels its linked
-     * future. No additional wiring in {@link #lateBind} or the caller is needed.
+     * future. No additional wiring in {@link #bind} or the caller is needed.
      *
      * @param parent the parent token, or {@code null} for a root token
      */
@@ -85,37 +84,29 @@ public class CancellationToken {
      * @param timer scheduler used to detect the timeout
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public <T> void lateBind(
+    public <T> void bind(
             List<ListenableFuture<T>> futures,
             Duration timeout,
             ListenableFuture<?> submitCanceller,
             ScheduledExecutorService timer) {
         Objects.requireNonNull(timer);
-
-        FluentFuture<?> failFastFuture = FluentFuture.from(Futures.allAsList(futures))
-                .catchingAsync(Throwable.class, ex -> Futures.immediateCancelledFuture(), directExecutor())
-                .withTimeout(timeout, timer);
-
-        ListenableFuture<?> allFutures = Futures.successfulAsList(Futures.successfulAsList(futures), submitCanceller);
-
-        failFastFuture.addCallback(
-                new FutureCallback() {
-                    @Override
-                    public void onSuccess(Object result) {
-                        state.compareAndSet(RUNNING, SUCCESS);
-                    }
-
-                    @Override
-                    public void onFailure(Throwable t) {
-                        allFutures.cancel(true);
-                        if (t instanceof TimeoutException) {
-                            state.compareAndSet(RUNNING, TIMEOUT_CANCELED);
-                        } else {
-                            state.compareAndSet(RUNNING, FAIL_FAST_CANCELED);
-                        }
-                    }
-                },
-                directExecutor());
+        ListenableFuture<?> listCanceller = Futures.allAsList(futures);
+        FluentFuture<?> failFastFuture = FluentFuture.from(listCanceller)
+                .withTimeout(timeout, timer)
+                .transform(ignored -> state.compareAndSet(RUNNING, SUCCESS), directExecutor())
+                .catchingAsync(
+                        Throwable.class,
+                        ex -> {
+                            if (ex instanceof TimeoutException) {
+                                state.compareAndSet(RUNNING, TIMEOUT_CANCELED);
+                            } else {
+                                state.compareAndSet(RUNNING, FAIL_FAST_CANCELED);
+                            }
+                            submitCanceller.cancel(true);
+                            listCanceller.cancel(true);
+                            return Futures.immediateCancelledFuture();
+                        },
+                        directExecutor());
 
         futureToken.setFuture(failFastFuture);
     }

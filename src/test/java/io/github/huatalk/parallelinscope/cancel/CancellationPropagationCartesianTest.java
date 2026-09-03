@@ -57,7 +57,7 @@ public class CancellationPropagationCartesianTest {
             if (timing == ParentTiming.BEFORE_CHILD_BIND) {
                 parent.cancel(true);
             }
-            child.lateBind(
+            child.bind(
                     Collections.singletonList(fixture.future),
                     Duration.ofSeconds(5),
                     Futures.immediateVoidFuture(),
@@ -89,7 +89,7 @@ public class CancellationPropagationCartesianTest {
             CancellationToken child = new CancellationToken(parent);
             SettableFuture<Integer> childFuture = SettableFuture.create();
 
-            child.lateBind(
+            child.bind(
                     Collections.singletonList(childFuture),
                     Duration.ofSeconds(5),
                     Futures.immediateVoidFuture(),
