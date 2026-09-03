@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.util.concurrent.SynchronousQueue;
 import org.junit.jupiter.api.AfterEach;
@@ -67,7 +67,7 @@ class SmartBlockingQueueTest {
     private static BatchExecutionContext context(TaskType taskType, boolean rejectEnqueue) {
         return BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("queue")
+                MultiExecutionOptions.of("queue")
                         .taskType(taskType)
                         .rejectEnqueue(rejectEnqueue)
                         .build(),

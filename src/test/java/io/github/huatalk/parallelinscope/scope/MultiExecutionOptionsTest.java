@@ -6,16 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
-class BatchExecutionOptionsTest {
+class MultiExecutionOptionsTest {
     @Test
     void remainsAnImmutablePerCallInput() {
-        BatchExecutionOptions options = BatchExecutionOptions.of("load")
+        MultiExecutionOptions options = MultiExecutionOptions.of("load")
                 .parallelism(3)
                 .timeout(Duration.ofSeconds(2))
                 .taskType(TaskType.IO_BOUND)
                 .build();
 
-        assertThat(options.taskName()).isEqualTo("load");
+        assertThat(options.name()).isEqualTo("load");
         assertThat(options.parallelism()).isEqualTo(3);
         assertThat(options.timeout()).isEqualTo(Duration.ofSeconds(2));
         assertThat(options.taskType()).isEqualTo(TaskType.IO_BOUND);
@@ -23,15 +23,15 @@ class BatchExecutionOptionsTest {
 
     @Test
     void rejectsNonPositiveExplicitTimeouts() {
-        assertThatThrownBy(() -> BatchExecutionOptions.of("load").timeout(Duration.ZERO))
+        assertThatThrownBy(() -> MultiExecutionOptions.of("load").timeout(Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> BatchExecutionOptions.of("load").timeout(Duration.ofMillis(-1)))
+        assertThatThrownBy(() -> MultiExecutionOptions.of("load").timeout(Duration.ofMillis(-1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void retainsAllExecutionHints() {
-        BatchExecutionOptions options = BatchExecutionOptions.of("write")
+        MultiExecutionOptions options = MultiExecutionOptions.of("write")
                 .parallelism(7)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
@@ -46,7 +46,7 @@ class BatchExecutionOptionsTest {
     void resolvesExplicitTimeoutAndParallelismIntoBatchContext() {
         BatchExecutionContext context = BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().defaultTimeoutMillis(1_000).build(),
-                BatchExecutionOptions.of("write")
+                MultiExecutionOptions.of("write")
                         .parallelism(8)
                         .timeout(Duration.ofSeconds(3))
                         .taskType(TaskType.IO_BOUND)
@@ -65,7 +65,7 @@ class BatchExecutionOptionsTest {
     void resolvesAbsentTimeoutUsingGlobalDefault() {
         BatchExecutionContext context = BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().defaultTimeoutMillis(2_500).build(),
-                BatchExecutionOptions.of("read").parallelism(-1).build(),
+                MultiExecutionOptions.of("read").parallelism(-1).build(),
                 4,
                 null);
 

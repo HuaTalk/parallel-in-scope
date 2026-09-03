@@ -304,13 +304,13 @@ public final class ParallelTaskGroup implements AutoCloseable {
     /** One-shot, non-thread-safe task-group builder. */
     public static final class Builder {
         private final GlobalPar global;
-        private final TaskGroupOptions options;
+        private final MultiExecutionOptions options;
         private final @Nullable BatchExecutionContext structuralParent;
         private final @Nullable TaskGraphObservationContext observation;
         private final LinkedHashMap<String, Definition<?>> definitions = new LinkedHashMap<>();
         private boolean consumed;
 
-        Builder(GlobalPar global, TaskGroupOptions options) {
+        Builder(GlobalPar global, MultiExecutionOptions options) {
             this.global = Objects.requireNonNull(global, "global cannot be null");
             this.options = Objects.requireNonNull(options, "options cannot be null");
             TaskExecutionContext currentTask = TaskExecutionContext.current();
@@ -326,7 +326,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         }
 
         public <T> TaskHandle<T> addTask(
-                String memberName, Par par, Callable<T> callable, BatchExecutionOptions taskOptions) {
+                String memberName, Par par, Callable<T> callable, MultiExecutionOptions taskOptions) {
             ensureConfiguring();
             Objects.requireNonNull(memberName, "memberName cannot be null");
             if (memberName.trim().isEmpty()) throw new IllegalArgumentException("memberName cannot be empty");
@@ -405,7 +405,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
                 TaskGraphObservationContext.restore(previousObservation);
             }
             ParallelTaskGroup group = new ParallelTaskGroup(
-                    options.groupName(), start, groupDeadline, options.listeners(), groupToken, states);
+                    options.name(), start, groupDeadline, options.listeners(), groupToken, states);
             global.retainUntilComplete(new ArrayList<>(group.members.values()));
             return group;
         }
@@ -438,11 +438,11 @@ public final class ParallelTaskGroup implements AutoCloseable {
         private final String name;
         private final Par par;
         private final Callable<T> callable;
-        private final BatchExecutionOptions options;
+        private final MultiExecutionOptions options;
         private final TaskHandle<T> handle;
 
         private Definition(
-                String name, Par par, Callable<T> callable, BatchExecutionOptions options, TaskHandle<T> handle) {
+                String name, Par par, Callable<T> callable, MultiExecutionOptions options, TaskHandle<T> handle) {
             this.name = name;
             this.par = par;
             this.callable = callable;

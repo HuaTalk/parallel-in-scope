@@ -62,7 +62,7 @@ public final class BatchExecutionContext {
      */
     public static BatchExecutionContext resolve(
             GlobalExecutionPolicy policy,
-            BatchExecutionOptions options,
+            MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent) {
         return resolve(policy, options, taskCount, parent, null);
@@ -70,7 +70,7 @@ public final class BatchExecutionContext {
 
     public static BatchExecutionContext resolve(
             GlobalExecutionPolicy policy,
-            BatchExecutionOptions options,
+            MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent,
             @Nullable TaskGraphObservationContext taskGraphObservationContext) {
@@ -103,7 +103,7 @@ public final class BatchExecutionContext {
                 ? taskGraphObservationContext
                 : parent == null ? null : parent.taskGraphObservationContext;
         return new BatchExecutionContext(
-                options.taskName(),
+                options.name(),
                 taskCount,
                 effective,
                 deadline,
@@ -123,7 +123,7 @@ public final class BatchExecutionContext {
      */
     public static BatchExecutionContext resolve(
             GlobalExecutionPolicy policy,
-            BatchExecutionOptions options,
+            MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent,
             @Nullable TaskGraphObservationContext taskGraphObservationContext,
@@ -151,7 +151,7 @@ public final class BatchExecutionContext {
      */
     static BatchExecutionContext resolve(
             GlobalExecutionPolicy policy,
-            BatchExecutionOptions options,
+            MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext structuralParent,
             @Nullable CancellationToken cancellationParent,
@@ -186,7 +186,7 @@ public final class BatchExecutionContext {
                 : resolutionTimeNanos + timeoutNanos;
         long deadline = Math.min(requestedDeadline, deadlineCeilingNanos);
         return new BatchExecutionContext(
-                options.taskName(),
+                options.name(),
                 taskCount,
                 effective,
                 deadline,

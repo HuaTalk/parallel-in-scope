@@ -77,7 +77,7 @@ class ScopePrimitivesTest {
 
     private static BatchExecutionContext resolve(
             int parallelism, Duration timeout, int taskCount, BatchExecutionContext parent) {
-        BatchExecutionOptions.Builder options = BatchExecutionOptions.of("batch");
+        MultiExecutionOptions.Builder options = MultiExecutionOptions.of("batch");
         if (parallelism > 0) {
             options.parallelism(parallelism);
         }
@@ -124,7 +124,7 @@ class ScopePrimitivesTest {
 
     @Test
     void resolveRejectsNullPolicyAndOptions() {
-        BatchExecutionOptions options = BatchExecutionOptions.of("x").build();
+        MultiExecutionOptions options = MultiExecutionOptions.of("x").build();
         assertThatThrownBy(() -> BatchExecutionContext.resolve(null, options, 1, null))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> BatchExecutionContext.resolve(
@@ -164,7 +164,7 @@ class ScopePrimitivesTest {
             ExecutorIdentity identity = new ExecutorIdentity(supplied);
             BatchExecutionContext labelled = BatchExecutionContext.resolve(
                     GlobalExecutionPolicy.builder().build(),
-                    BatchExecutionOptions.of("n").build(),
+                    MultiExecutionOptions.of("n").build(),
                     1,
                     null,
                     null,
@@ -176,7 +176,7 @@ class ScopePrimitivesTest {
 
             BatchExecutionContext anonymous = BatchExecutionContext.resolve(
                     GlobalExecutionPolicy.builder().build(),
-                    BatchExecutionOptions.of("n").build(),
+                    MultiExecutionOptions.of("n").build(),
                     1,
                     null,
                     null,

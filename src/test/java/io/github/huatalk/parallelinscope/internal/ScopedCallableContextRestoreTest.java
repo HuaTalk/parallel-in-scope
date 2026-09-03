@@ -3,8 +3,8 @@ package io.github.huatalk.parallelinscope.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import io.github.huatalk.parallelinscope.spi.TaskListener.TaskEvent;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,7 +65,7 @@ class ScopedCallableContextRestoreTest {
         BatchExecutionContext outer = context("same-name");
         BatchExecutionContext inner = BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("same-name").build(),
+                MultiExecutionOptions.of("same-name").build(),
                 1,
                 outer);
         TaskExecutionContext outerTask = task(outer, 0);
@@ -96,7 +96,7 @@ class ScopedCallableContextRestoreTest {
     private static BatchExecutionContext context(String name) {
         return BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of(name).build(),
+                MultiExecutionOptions.of(name).build(),
                 1,
                 null);
     }

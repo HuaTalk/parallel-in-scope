@@ -8,8 +8,8 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.util.Arrays;
 import java.util.List;
@@ -320,7 +320,7 @@ class ConcurrentLimitExecutorBatchContextTest {
     private static BatchExecutionContext context(int tasks, int parallelism, TaskType type) {
         return BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().defaultTimeoutMillis(5_000).build(),
-                BatchExecutionOptions.of("batch")
+                MultiExecutionOptions.of("batch")
                         .parallelism(parallelism)
                         .taskType(type)
                         .build(),

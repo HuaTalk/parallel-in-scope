@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.huatalk.parallelinscope.internal.ScopedCallable;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CancellationException;
@@ -295,7 +295,7 @@ class CheckpointsTest {
     private static BatchExecutionContext context(String taskName) {
         return BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().defaultTimeoutMillis(1_000).build(),
-                BatchExecutionOptions.of(taskName).build(),
+                MultiExecutionOptions.of(taskName).build(),
                 1,
                 null);
     }

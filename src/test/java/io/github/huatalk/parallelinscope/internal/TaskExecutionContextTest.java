@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import org.junit.jupiter.api.Test;
 
 class TaskExecutionContextTest {
@@ -14,7 +14,7 @@ class TaskExecutionContextTest {
     void siblingTasksShareBatchButKeepIndependentIdentityAndTiming() {
         BatchExecutionContext batch = BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("batch").build(),
+                MultiExecutionOptions.of("batch").build(),
                 3,
                 null);
         TaskExecutionContext first = new TaskExecutionContext(batch, 0, 10L);
@@ -41,7 +41,7 @@ class TaskExecutionContextTest {
     void rejectsNegativeTaskIndex() {
         BatchExecutionContext batch = BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("batch").build(),
+                MultiExecutionOptions.of("batch").build(),
                 1,
                 null);
 
@@ -52,7 +52,7 @@ class TaskExecutionContextTest {
     void installAndRestorePreserveNestedCurrentTask() {
         BatchExecutionContext batch = BatchExecutionContext.resolve(
                 GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("batch").build(),
+                MultiExecutionOptions.of("batch").build(),
                 2,
                 null);
         TaskExecutionContext outer = new TaskExecutionContext(batch, 0, 0L);

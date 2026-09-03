@@ -14,14 +14,14 @@ class BatchExecutionContextTest {
                 GlobalExecutionPolicy.builder().defaultTimeoutMillis(5_000).build();
         BatchExecutionContext parent = BatchExecutionContext.resolve(
                 policy,
-                BatchExecutionOptions.of("outer")
+                MultiExecutionOptions.of("outer")
                         .timeout(Duration.ofMillis(100))
                         .build(),
                 1,
                 null);
         BatchExecutionContext child = BatchExecutionContext.resolve(
                 policy,
-                BatchExecutionOptions.of("inner")
+                MultiExecutionOptions.of("inner")
                         .timeout(Duration.ofSeconds(10))
                         .build(),
                 1,
@@ -35,7 +35,7 @@ class BatchExecutionContextTest {
     void resolvesParallelismAndRuntimeMetadata() {
         GlobalExecutionPolicy policy =
                 GlobalExecutionPolicy.builder().defaultTimeoutMillis(1000).build();
-        BatchExecutionOptions options = BatchExecutionOptions.of("io")
+        MultiExecutionOptions options = MultiExecutionOptions.of("io")
                 .parallelism(99)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
@@ -56,7 +56,7 @@ class BatchExecutionContextTest {
     void rejectsNegativeTaskCount() {
         assertThatThrownBy(() -> BatchExecutionContext.resolve(
                         GlobalExecutionPolicy.builder().build(),
-                        BatchExecutionOptions.of("x").build(),
+                        MultiExecutionOptions.of("x").build(),
                         -1,
                         null))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -70,9 +70,9 @@ class BatchExecutionContextTest {
             GlobalExecutionPolicy policy =
                     GlobalExecutionPolicy.builder().defaultTimeoutMillis(1_000).build();
             BatchExecutionContext parent = BatchExecutionContext.resolve(
-                    policy, BatchExecutionOptions.of("parent").build(), 2, null, observation);
+                    policy, MultiExecutionOptions.of("parent").build(), 2, null, observation);
             BatchExecutionContext child = BatchExecutionContext.resolve(
-                    policy, BatchExecutionOptions.of("child").build(), 1, parent);
+                    policy, MultiExecutionOptions.of("child").build(), 1, parent);
 
             assertThat(parent.taskName()).isEqualTo("parent");
             assertThat(parent.taskCount()).isEqualTo(2);

@@ -6,7 +6,7 @@ Version `0.2.0` replaces the mutable configuration-and-resolver API with an immu
 |---|---|
 | `ParConfig.builder().executor(name, executor)` | `GlobalPar.builder().register(name, executor)` |
 | `new Par(config)` | `global.par(name)` |
-| `ParOptions` | `BatchExecutionOptions` |
+| `ParOptions` | `MultiExecutionOptions` |
 | `par.map(name, items, fn, options)` | `par.map(items, fn, options)` |
 | `ParConfig` timeout/listener defaults | `GlobalExecutionPolicy` |
 | `ParConfig` livelock settings | `GlobalParDeadlockPolicy` |
@@ -14,9 +14,15 @@ Version `0.2.0` replaces the mutable configuration-and-resolver API with an immu
 | executor-name resolution at call time | executor binding at `GlobalPar` build time |
 | `TaskGraph.destroyAfterRequest(config)` | `global.openTaskGraphObservation()` scope |
 
-The new split is intentional: `BatchExecutionOptions` is caller input, while `BatchExecutionContext` is per-batch runtime state. Cancellation, deadline, and executor identity flow through parent-child batch contexts, including nested calls across named `Par` entries.
+The new split is intentional: `MultiExecutionOptions` is caller input, while `BatchExecutionContext` is per-batch runtime state. Cancellation, deadline, and executor identity flow through parent-child batch contexts, including nested calls across named `Par` entries.
 
-Earlier `0.2.x` snapshots named this type `ExecutionOptions`. Rename imports, variable declarations, and `Par.map` arguments to `BatchExecutionOptions`; no compatibility alias is retained during the `0.x` phase.
+Earlier `0.2.x` snapshots named this type `ExecutionOptions` and then `BatchExecutionOptions`. Rename imports, variable declarations, and `Par.map` arguments to `MultiExecutionOptions`; no compatibility alias is retained during the `0.x` phase.
+
+Batch and task-group option types are unified into the single `MultiExecutionOptions`; the earlier
+`BatchExecutionOptions` and `TaskGroupOptions` types are removed. The `taskName()`/`groupName()`
+accessors and the matching builder methods converge on `name()`; every other builder method keeps
+its name. A batch reads name/parallelism/timeout/taskType/rejectEnqueue; a group reads
+name/timeout/listeners, with member execution strategy still supplied per `addTask` call.
 
 Earlier snapshots also exposed this detector as `GlobalParLivelockPolicy` and `LivelockListener`. Rename them to `GlobalParDeadlockPolicy` and `DeadlockDetectionListener`; the detector reports potential dependency-graph deadlocks and does not prove a runtime deadlock or detect livelock.
 
