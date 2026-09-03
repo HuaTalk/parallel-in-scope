@@ -117,8 +117,8 @@ public class CancellationToken {
      * {@code TIMEOUT_CANCELED} when its deadline expires first, and {@code FAIL_FAST_CANCELED}
      * when any future fails. Every canceling transition cancels the futures and the submission
      * canceller; cancelling an already-successful future is a no-op, so a late cancel never
-     * destroys a recorded result. A deadline that has already expired is enforced synchronously
-     * without scheduling.
+     * destroys a recorded result. An already-expired deadline simply schedules the timeout for
+     * immediate execution.
      *
      * @param <T> the task result type
      * @param futures the submitted task futures
@@ -128,20 +128,8 @@ public class CancellationToken {
     public <T> void bind(
             List<ListenableFuture<T>> futures, ListenableFuture<?> submitCanceller, ScheduledExecutorService timer) {
         Objects.requireNonNull(timer);
-        long remainingNanos = deadlineNanos - System.nanoTime();
-        if (remainingNanos <= 0) {
-            boolean won = transitionTo(TIMEOUT_CANCELED);
-            if (won || state.get().shouldInterruptCurrentThread()) {
-                submitCanceller.cancel(true);
-                for (ListenableFuture<T> future : futures) {
-                    future.cancel(true);
-                }
-                futureToken.cancel(true);
-            }
-            return;
-        }
-        FluentFuture<?> failFastFuture =
-                FluentFuture.from(Futures.allAsList(futures)).withTimeout(Duration.ofNanos(remainingNanos), timer);
+        FluentFuture<?> failFastFuture = FluentFuture.from(Futures.allAsList(futures))
+                .withTimeout(Duration.ofNanos(deadlineNanos - System.nanoTime()), timer);
         // A pending successfulAsList is the one cancellable handle that reaches both the task
         // futures and the submission canceller: it stays pending until every input is done, so
         // cancelling it still propagates after one task already failed or was cancelled.

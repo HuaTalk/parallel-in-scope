@@ -88,7 +88,7 @@ public class CancellationTokenTest {
     }
 
     @Test
-    public void expiredDeadlineCancelsBoundWorkSynchronously() throws Exception {
+    public void expiredDeadlineCancelsBoundWorkThroughTheTimeoutChain() throws Exception {
         CancellationToken token = withDeadlineAfter(-1000);
 
         SettableFuture<String> pending = SettableFuture.create();
@@ -98,11 +98,12 @@ public class CancellationTokenTest {
 
         token.bind(Arrays.asList(pending, alreadySucceeded), submitCanceller, TIMER);
 
-        assertThat(token.state()).isEqualTo(CancellationToken.State.TIMEOUT_CANCELED);
-        assertThat(pending).isCancelled();
-        assertThat(submitCanceller).isCancelled();
+        await().untilAsserted(() -> {
+            assertThat(token.state()).isEqualTo(CancellationToken.State.TIMEOUT_CANCELED);
+            assertThat(pending).isCancelled();
+            assertThat(submitCanceller).isCancelled();
+        });
         assertThat(alreadySucceeded).isNotCancelled();
-        assertThat(alreadySucceeded.isDone()).isTrue();
         assertThat(alreadySucceeded.get()).isEqualTo("kept");
     }
 
@@ -244,6 +245,32 @@ public class CancellationTokenTest {
 
         // The future should be cancelled immediately because parent is already canceled
         assertThat(f1).isCancelled();
+    }
+
+    @Test
+    public void timeoutCancelTransitionsAndCancelsBoundWork() {
+        CancellationToken token = CancellationToken.create();
+        SettableFuture<String> task = SettableFuture.create();
+        token.bind(ImmutableList.of(task), Futures.immediateVoidFuture(), TIMER);
+
+        token.timeoutCancel();
+
+        assertThat(token.state()).isEqualTo(CancellationToken.State.TIMEOUT_CANCELED);
+        await().until(task::isCancelled);
+    }
+
+    @Test
+    public void losingStateTransitionDoesNotNotifyListeners() {
+        CancellationToken token = CancellationToken.create();
+        java.util.concurrent.atomic.AtomicInteger notifications = new java.util.concurrent.atomic.AtomicInteger();
+        token.addStateListener(state -> notifications.incrementAndGet());
+
+        token.cancel(true);
+        token.timeoutCancel(); // loses the CAS: already MUTUAL_CANCELED
+        token.cancel(true); // loses again
+
+        assertThat(token.state()).isEqualTo(CancellationToken.State.MUTUAL_CANCELED);
+        assertThat(notifications).hasValue(1);
     }
 
     @Test
