@@ -3,9 +3,9 @@ package io.github.huatalk.parallelinscope.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
 import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import io.github.huatalk.parallelinscope.spi.TaskListener.TaskEvent;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -64,8 +64,9 @@ class ScopedCallableContextRestoreTest {
     void nestedCallRestoresOuterCurrentTask() throws Exception {
         BatchExecutionContext outer = context("same-name");
         BatchExecutionContext inner = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                MultiExecutionOptions.of("same-name").build(),
+                MultiExecutionOptions.of("same-name")
+                        .timeout(Duration.ofSeconds(30))
+                        .build(),
                 1,
                 outer);
         TaskExecutionContext outerTask = task(outer, 0);
@@ -95,10 +96,7 @@ class ScopedCallableContextRestoreTest {
 
     private static BatchExecutionContext context(String name) {
         return BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                MultiExecutionOptions.of(name).build(),
-                1,
-                null);
+                MultiExecutionOptions.of(name).timeout(Duration.ofSeconds(30)).build(), 1, null);
     }
 
     private static TaskExecutionContext task(BatchExecutionContext context, int index) {

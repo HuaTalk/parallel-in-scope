@@ -24,6 +24,10 @@ accessors and the matching builder methods converge on `name()`; every other bui
 its name. A batch reads name/parallelism/timeout/taskType/rejectEnqueue; a group reads
 name/timeout/listeners, with member execution strategy still supplied per `addTask` call.
 
+`MultiExecutionOptions.timeout` is now mandatory: `build()` rejects a missing or null timeout, and
+`GlobalExecutionPolicy.defaultTimeoutMillis` is removed so no silent global default remains.
+`BatchExecutionContext.resolve` consequently no longer takes the policy; drop that argument.
+
 Earlier snapshots also exposed this detector as `GlobalParLivelockPolicy` and `LivelockListener`. Rename them to `GlobalParDeadlockPolicy` and `DeadlockDetectionListener`; the detector reports potential dependency-graph deadlocks and does not prove a runtime deadlock or detect livelock.
 
 The first task-group API in `0.2.0-SNAPSHOT` uses a fixed builder contract. If code was written

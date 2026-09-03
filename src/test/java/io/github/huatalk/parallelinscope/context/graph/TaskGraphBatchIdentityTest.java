@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
 import io.github.huatalk.parallelinscope.scope.ExecutorIdentity;
-import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.GlobalParDeadlockPolicy;
 import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
 import io.github.huatalk.parallelinscope.spi.DeadlockDetectionListener;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -157,8 +157,9 @@ class TaskGraphBatchIdentityTest {
 
     private static BatchExecutionContext context() {
         return BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                MultiExecutionOptions.of("same-name").build(),
+                MultiExecutionOptions.of("same-name")
+                        .timeout(Duration.ofSeconds(30))
+                        .build(),
                 1,
                 null);
     }

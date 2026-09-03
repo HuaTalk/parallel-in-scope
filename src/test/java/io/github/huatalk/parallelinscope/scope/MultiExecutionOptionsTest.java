@@ -35,17 +35,24 @@ class MultiExecutionOptionsTest {
                 .parallelism(7)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
+                .timeout(Duration.ofSeconds(30))
                 .build();
 
         assertThat(options.parallelism()).isEqualTo(7);
         assertThat(options.rejectEnqueue()).isFalse();
-        assertThat(options.timeout()).isNull();
+        assertThat(options.timeout()).isEqualTo(Duration.ofSeconds(30));
+    }
+
+    @Test
+    void timeoutIsMandatory() {
+        assertThatThrownBy(() -> MultiExecutionOptions.of("read").build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("timeout");
     }
 
     @Test
     void resolvesExplicitTimeoutAndParallelismIntoBatchContext() {
         BatchExecutionContext context = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(1_000).build(),
                 MultiExecutionOptions.of("write")
                         .parallelism(8)
                         .timeout(Duration.ofSeconds(3))
@@ -62,14 +69,16 @@ class MultiExecutionOptionsTest {
     }
 
     @Test
-    void resolvesAbsentTimeoutUsingGlobalDefault() {
+    void resolvesExplicitTimeoutIntoBatchContext() {
         BatchExecutionContext context = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(2_500).build(),
-                MultiExecutionOptions.of("read").parallelism(-1).build(),
+                MultiExecutionOptions.of("read")
+                        .parallelism(-1)
+                        .timeout(Duration.ofSeconds(3))
+                        .build(),
                 4,
                 null);
 
         assertThat(context.effectiveParallelism()).isEqualTo(4);
-        assertThat(context.remaining().toMillis()).isLessThanOrEqualTo(2_500);
+        assertThat(context.remaining().toMillis()).isLessThanOrEqualTo(3_000);
     }
 }

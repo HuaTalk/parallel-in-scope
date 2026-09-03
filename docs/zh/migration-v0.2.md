@@ -23,6 +23,10 @@
 `name()`；其余 builder 方法名称不变。批次读取 name/parallelism/timeout/taskType/rejectEnqueue；
 任务组读取 name/timeout/listeners，成员的执行策略仍按 `addTask` 逐个传入。
 
+`MultiExecutionOptions.timeout` 现在是必填项：`build()` 会拒绝缺失或为 null 的 timeout；
+`GlobalExecutionPolicy.defaultTimeoutMillis` 已删除，不再存在隐式的全局默认超时。
+`BatchExecutionContext.resolve` 相应不再接收 policy 参数，调用时删除该实参。
+
 早期快照还曾将这套检测命名为 `GlobalParLivelockPolicy` 和 `LivelockListener`。请分别改为 `GlobalParDeadlockPolicy` 和 `DeadlockDetectionListener`；当前检测针对依赖图中的潜在死锁结构，不证明运行时已经死锁，也不检测活锁。
 
 `TaskListener.TaskEvent` 现在通过 `getTaskContext()` 暴露已完成任务，并通过

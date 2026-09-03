@@ -14,10 +14,10 @@ class MultiExecutionOptionsMatrixTest {
 
     @Test
     void defaultsComeFromTheBuilderFieldInitializers() {
-        MultiExecutionOptions options = MultiExecutionOptions.of("n").build();
+        MultiExecutionOptions options =
+                MultiExecutionOptions.of("n").timeout(Duration.ofSeconds(30)).build();
         assertThat(options.name()).isEqualTo("n");
         assertThat(options.parallelism()).isEqualTo(-1);
-        assertThat(options.timeout()).isNull();
         assertThat(options.taskType()).isEqualTo(TaskType.CPU_BOUND);
         assertThat(options.rejectEnqueue()).isTrue();
     }
@@ -44,10 +44,11 @@ class MultiExecutionOptionsMatrixTest {
     }
 
     @Test
-    void explicitNullTimeoutStaysUnsetWhileNonPositiveValuesAreRejected() {
+    void missingOrExplicitNullTimeoutIsRejectedAsRequired() {
+        assertThatThrownBy(() -> MultiExecutionOptions.of("t").build()).isInstanceOf(NullPointerException.class);
         MultiExecutionOptions.Builder builder = MultiExecutionOptions.of("t");
         builder.timeout(null);
-        assertThat(builder.build().timeout()).isNull();
+        assertThatThrownBy(builder::build).isInstanceOf(NullPointerException.class);
 
         assertThatThrownBy(() -> MultiExecutionOptions.of("t").timeout(Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -57,15 +58,27 @@ class MultiExecutionOptionsMatrixTest {
 
     @Test
     void bothRejectEnqueuePolaritiesRoundTrip() {
-        assertThat(MultiExecutionOptions.of("a").rejectEnqueue(true).build().rejectEnqueue())
+        assertThat(MultiExecutionOptions.of("a")
+                        .rejectEnqueue(true)
+                        .timeout(Duration.ofSeconds(30))
+                        .build()
+                        .rejectEnqueue())
                 .isTrue();
-        assertThat(MultiExecutionOptions.of("b").rejectEnqueue(false).build().rejectEnqueue())
+        assertThat(MultiExecutionOptions.of("b")
+                        .rejectEnqueue(false)
+                        .timeout(Duration.ofSeconds(30))
+                        .build()
+                        .rejectEnqueue())
                 .isFalse();
     }
 
     @Test
     void nameIsPreservedVerbatim() {
         String longName = "order-pipeline-stage-7";
-        assertThat(MultiExecutionOptions.of(longName).build().name()).isEqualTo(longName);
+        assertThat(MultiExecutionOptions.of(longName)
+                        .timeout(Duration.ofSeconds(30))
+                        .build()
+                        .name())
+                .isEqualTo(longName);
     }
 }

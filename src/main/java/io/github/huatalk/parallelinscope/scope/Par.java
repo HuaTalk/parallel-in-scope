@@ -117,14 +117,8 @@ public final class Par {
                 : parent == null && currentObservation != null && currentObservation.owner() == globalPar
                         ? currentObservation
                         : null;
-        BatchExecutionContext batchContext = BatchExecutionContext.resolve(
-                globalPar.executionPolicyFor(displayName),
-                options,
-                taskCount,
-                parent,
-                observation,
-                runtime.identity(),
-                displayName);
+        BatchExecutionContext batchContext =
+                BatchExecutionContext.resolve(options, taskCount, parent, observation, runtime.identity(), displayName);
         return executeGlobal(list, item -> () -> function.apply(item), batchContext);
     }
 

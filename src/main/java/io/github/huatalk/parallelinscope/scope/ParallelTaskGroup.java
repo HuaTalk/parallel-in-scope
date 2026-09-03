@@ -353,8 +353,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
 
         private ParallelTaskGroup buildWhileOpen() {
             long start = System.nanoTime();
-            long groupDeadline =
-                    deadline(start, options.timeout(), global.executionPolicy().defaultTimeoutMillis());
+            long groupDeadline = deadline(start, options.timeout());
             if (structuralParent != null) {
                 groupDeadline = Math.min(groupDeadline, structuralParent.deadlineNanos());
             }
@@ -370,7 +369,6 @@ public final class ParallelTaskGroup implements AutoCloseable {
                 }
                 for (Definition<?> definition : definitions.values()) {
                     BatchExecutionContext batch = BatchExecutionContext.resolve(
-                            global.executionPolicyFor(definition.par.displayName()),
                             definition.options,
                             1,
                             structuralParent,
@@ -497,10 +495,10 @@ public final class ParallelTaskGroup implements AutoCloseable {
         bind((TaskHandle) handle, future);
     }
 
-    private static long deadline(long start, @Nullable Duration timeout, long defaultMillis) {
+    private static long deadline(long start, Duration timeout) {
         long nanos;
         try {
-            nanos = timeout == null ? Math.multiplyExact(defaultMillis, 1_000_000L) : timeout.toNanos();
+            nanos = timeout.toNanos();
         } catch (ArithmeticException overflow) {
             nanos = Long.MAX_VALUE;
         }

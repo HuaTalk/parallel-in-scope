@@ -9,6 +9,7 @@ import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.internal.SubmissionException;
 import io.github.huatalk.parallelinscope.spi.ExecutionPhase;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -140,6 +141,7 @@ class ScopedTaskContractTest {
             AtomicInteger executions = new AtomicInteger();
             MultiExecutionOptions options = MultiExecutionOptions.of("task")
                     .taskType(TaskType.CPU_BOUND)
+                    .timeout(Duration.ofSeconds(30))
                     .build();
 
             ListenableFuture<Object> future = submitSingle(global, entry, "task", options, () -> {
@@ -167,8 +169,10 @@ class ScopedTaskContractTest {
         try {
             observePhases(global, phases);
             AtomicInteger executions = new AtomicInteger();
-            MultiExecutionOptions options =
-                    MultiExecutionOptions.of("task").taskType(TaskType.IO_BOUND).build();
+            MultiExecutionOptions options = MultiExecutionOptions.of("task")
+                    .taskType(TaskType.IO_BOUND)
+                    .timeout(Duration.ofSeconds(30))
+                    .build();
 
             ListenableFuture<Object> future = submitSingle(global, entry, "task", options, () -> {
                 executions.incrementAndGet();
@@ -207,23 +211,29 @@ class ScopedTaskContractTest {
                                 item -> callUnchecked(() -> runUnlessQueued(item, release, queuedRuns)),
                                 MultiExecutionOptions.of("cancel")
                                         .parallelism(2)
+                                        .timeout(Duration.ofSeconds(30))
                                         .build())
                         .results()
                         .get(1);
                 assertThat(queued.cancel(true)).isTrue();
             } else {
-                ParallelTaskGroup.Builder builder = global.taskGroupBuilder(
-                        MultiExecutionOptions.of("cancel").build());
+                ParallelTaskGroup.Builder builder = global.taskGroupBuilder(MultiExecutionOptions.of("cancel")
+                        .timeout(Duration.ofSeconds(30))
+                        .build());
                 builder.addTask(
                         "blocker",
                         global.par("worker"),
                         () -> runUnlessQueued("blocker", release, queuedRuns),
-                        MultiExecutionOptions.of("blocker").build());
+                        MultiExecutionOptions.of("blocker")
+                                .timeout(Duration.ofSeconds(30))
+                                .build());
                 ParallelTaskGroup.TaskHandle<Object> queued = builder.addTask(
                         "queued",
                         global.par("worker"),
                         () -> runUnlessQueued("queued", release, queuedRuns),
-                        MultiExecutionOptions.of("queued").build());
+                        MultiExecutionOptions.of("queued")
+                                .timeout(Duration.ofSeconds(30))
+                                .build());
                 ParallelTaskGroup group = builder.buildAndSubmitAll();
                 assertThat(queued.future().cancel(true)).isTrue();
                 TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
@@ -259,7 +269,9 @@ class ScopedTaskContractTest {
                                         throw new IllegalStateException(e);
                                     }
                                 },
-                                MultiExecutionOptions.of("outer").build())
+                                MultiExecutionOptions.of("outer")
+                                        .timeout(Duration.ofSeconds(30))
+                                        .build())
                         .results()
                         .get(0)
                         .get(2, TimeUnit.SECONDS);
@@ -286,7 +298,12 @@ class ScopedTaskContractTest {
 
     private static ListenableFuture<Object> submitSingle(
             GlobalPar global, Entry entry, String name, Callable<Object> task) {
-        return submitSingle(global, entry, name, MultiExecutionOptions.of(name).build(), task);
+        return submitSingle(
+                global,
+                entry,
+                name,
+                MultiExecutionOptions.of(name).timeout(Duration.ofSeconds(30)).build(),
+                task);
     }
 
     private static ListenableFuture<Object> submitSingle(
@@ -297,8 +314,9 @@ class ScopedTaskContractTest {
                     .results()
                     .get(0);
         }
-        ParallelTaskGroup.Builder builder =
-                global.taskGroupBuilder(MultiExecutionOptions.of("contract").build());
+        ParallelTaskGroup.Builder builder = global.taskGroupBuilder(MultiExecutionOptions.of("contract")
+                .timeout(Duration.ofSeconds(30))
+                .build());
         ParallelTaskGroup.TaskHandle<Object> handle = builder.addTask(name, global.par("worker"), task, options);
         LAST_GROUP.set(builder.buildAndSubmitAll());
         return handle.future();
@@ -335,7 +353,6 @@ class ScopedTaskContractTest {
     private static GlobalPar globalWithListener(ExecutorService executor, List<TaskListener.TaskEvent<?>> events) {
         return GlobalPar.builder()
                 .executionPolicy(GlobalExecutionPolicy.builder()
-                        .defaultTimeoutMillis(5_000)
                         .taskListener(events::add)
                         .build())
                 .register("worker", executor)

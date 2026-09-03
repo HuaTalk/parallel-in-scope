@@ -51,18 +51,11 @@ class ScopePrimitivesTest {
     // ==================== GlobalExecutionPolicy ====================
 
     @Test
-    void executionPolicyDefaultsTimeoutAndSnapshotSemantics() {
+    void executionPolicyExposesListenerSnapshotSemantics() {
         GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
-        assertThat(policy.defaultTimeoutMillis()).isEqualTo(60_000L);
         assertThat(policy.taskListeners()).isEmpty();
 
-        GlobalExecutionPolicy custom =
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(250L).build();
-        assertThat(custom.defaultTimeoutMillis()).isEqualTo(250L);
-
         GlobalExecutionPolicy.Builder builder = GlobalExecutionPolicy.builder();
-        assertThatThrownBy(() -> builder.defaultTimeoutMillis(0)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> builder.defaultTimeoutMillis(-1)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> builder.taskListener(null)).isInstanceOf(NullPointerException.class);
 
         TaskListener listener = event -> {};
@@ -77,25 +70,27 @@ class ScopePrimitivesTest {
 
     private static BatchExecutionContext resolve(
             int parallelism, Duration timeout, int taskCount, BatchExecutionContext parent) {
-        MultiExecutionOptions.Builder options = MultiExecutionOptions.of("batch");
+        MultiExecutionOptions.Builder options =
+                MultiExecutionOptions.of("batch").timeout(timeout);
         if (parallelism > 0) {
             options.parallelism(parallelism);
         }
-        if (timeout != null) {
-            options.timeout(timeout);
-        }
-        return BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(), options.build(), taskCount, parent);
+        return BatchExecutionContext.resolve(options.build(), taskCount, parent);
     }
 
     @Test
     void resolveNormalizesParallelismAgainstTaskCount() {
-        assertThat(resolve(0, null, 4, null).effectiveParallelism()).isEqualTo(4);
-        assertThat(resolve(-1, null, 3, null).effectiveParallelism()).isEqualTo(3);
-        assertThat(resolve(9, null, 3, null).effectiveParallelism()).isEqualTo(3);
-        assertThat(resolve(2, null, 5, null).effectiveParallelism()).isEqualTo(2);
-        assertThat(resolve(2, null, 5, null).taskCount()).isEqualTo(5);
-        assertThatThrownBy(() -> resolve(1, null, -1, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(resolve(0, Duration.ofSeconds(30), 4, null).effectiveParallelism())
+                .isEqualTo(4);
+        assertThat(resolve(-1, Duration.ofSeconds(30), 3, null).effectiveParallelism())
+                .isEqualTo(3);
+        assertThat(resolve(9, Duration.ofSeconds(30), 3, null).effectiveParallelism())
+                .isEqualTo(3);
+        assertThat(resolve(2, Duration.ofSeconds(30), 5, null).effectiveParallelism())
+                .isEqualTo(2);
+        assertThat(resolve(2, Duration.ofSeconds(30), 5, null).taskCount()).isEqualTo(5);
+        assertThatThrownBy(() -> resolve(1, Duration.ofSeconds(30), -1, null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -123,13 +118,8 @@ class ScopePrimitivesTest {
     }
 
     @Test
-    void resolveRejectsNullPolicyAndOptions() {
-        MultiExecutionOptions options = MultiExecutionOptions.of("x").build();
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(null, options, 1, null))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(
-                        GlobalExecutionPolicy.builder().build(), null, 1, null))
-                .isInstanceOf(NullPointerException.class);
+    void resolveRejectsNullOptions() {
+        assertThatThrownBy(() -> BatchExecutionContext.resolve(null, 1, null)).isInstanceOf(NullPointerException.class);
     }
 
     // ==================== ScopedCallable timing ====================
@@ -163,8 +153,9 @@ class ScopePrimitivesTest {
         try {
             ExecutorIdentity identity = new ExecutorIdentity(supplied);
             BatchExecutionContext labelled = BatchExecutionContext.resolve(
-                    GlobalExecutionPolicy.builder().build(),
-                    MultiExecutionOptions.of("n").build(),
+                    MultiExecutionOptions.of("n")
+                            .timeout(Duration.ofSeconds(30))
+                            .build(),
                     1,
                     null,
                     null,
@@ -175,8 +166,9 @@ class ScopePrimitivesTest {
             assertThat(labelledCall.executorName()).isEqualTo("par-label");
 
             BatchExecutionContext anonymous = BatchExecutionContext.resolve(
-                    GlobalExecutionPolicy.builder().build(),
-                    MultiExecutionOptions.of("n").build(),
+                    MultiExecutionOptions.of("n")
+                            .timeout(Duration.ofSeconds(30))
+                            .build(),
                     1,
                     null,
                     null,

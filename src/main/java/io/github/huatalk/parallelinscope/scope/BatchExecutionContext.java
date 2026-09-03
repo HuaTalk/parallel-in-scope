@@ -61,33 +61,24 @@ public final class BatchExecutionContext {
      * compatibility and tests; normal execution uses the identity-aware overload below.
      */
     public static BatchExecutionContext resolve(
-            GlobalExecutionPolicy policy,
-            MultiExecutionOptions options,
-            int taskCount,
-            @Nullable BatchExecutionContext parent) {
-        return resolve(policy, options, taskCount, parent, null);
+            MultiExecutionOptions options, int taskCount, @Nullable BatchExecutionContext parent) {
+        return resolve(options, taskCount, parent, null);
     }
 
     public static BatchExecutionContext resolve(
-            GlobalExecutionPolicy policy,
             MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent,
             @Nullable TaskGraphObservationContext taskGraphObservationContext) {
-        Objects.requireNonNull(policy);
         Objects.requireNonNull(options);
         if (taskCount < 0) throw new IllegalArgumentException("taskCount must not be negative");
         int requested = options.parallelism();
         int effective = requested <= 0 ? taskCount : Math.min(requested, taskCount);
         long timeoutMillis;
-        if (options.timeout() == null) {
-            timeoutMillis = policy.defaultTimeoutMillis();
-        } else {
-            try {
-                timeoutMillis = options.timeout().toMillis();
-            } catch (ArithmeticException overflow) {
-                timeoutMillis = Long.MAX_VALUE / 1_000_000L;
-            }
+        try {
+            timeoutMillis = options.timeout().toMillis();
+        } catch (ArithmeticException overflow) {
+            timeoutMillis = Long.MAX_VALUE / 1_000_000L;
         }
         long now = System.nanoTime();
         long timeoutNanos;
@@ -122,14 +113,13 @@ public final class BatchExecutionContext {
      * the corresponding internal executor runtime.
      */
     public static BatchExecutionContext resolve(
-            GlobalExecutionPolicy policy,
             MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent,
             @Nullable TaskGraphObservationContext taskGraphObservationContext,
             ExecutorIdentity executorIdentity,
             String parLabel) {
-        BatchExecutionContext context = resolve(policy, options, taskCount, parent, taskGraphObservationContext);
+        BatchExecutionContext context = resolve(options, taskCount, parent, taskGraphObservationContext);
         return new BatchExecutionContext(
                 context.taskName,
                 context.taskCount,
@@ -150,7 +140,6 @@ public final class BatchExecutionContext {
      * parent and the group deadline is not necessarily the structural parent's deadline.
      */
     static BatchExecutionContext resolve(
-            GlobalExecutionPolicy policy,
             MultiExecutionOptions options,
             int taskCount,
             @Nullable BatchExecutionContext structuralParent,
@@ -160,20 +149,15 @@ public final class BatchExecutionContext {
             @Nullable TaskGraphObservationContext taskGraphObservationContext,
             ExecutorIdentity executorIdentity,
             String parLabel) {
-        Objects.requireNonNull(policy, "policy cannot be null");
         Objects.requireNonNull(options, "options cannot be null");
         if (taskCount < 0) throw new IllegalArgumentException("taskCount must not be negative");
         int requested = options.parallelism();
         int effective = requested <= 0 ? taskCount : Math.min(requested, taskCount);
         long timeoutMillis;
-        if (options.timeout() == null) {
-            timeoutMillis = policy.defaultTimeoutMillis();
-        } else {
-            try {
-                timeoutMillis = options.timeout().toMillis();
-            } catch (ArithmeticException overflow) {
-                timeoutMillis = Long.MAX_VALUE / 1_000_000L;
-            }
+        try {
+            timeoutMillis = options.timeout().toMillis();
+        } catch (ArithmeticException overflow) {
+            timeoutMillis = Long.MAX_VALUE / 1_000_000L;
         }
         long timeoutNanos;
         try {

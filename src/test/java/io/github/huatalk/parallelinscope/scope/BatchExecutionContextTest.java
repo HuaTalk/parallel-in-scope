@@ -10,17 +10,14 @@ import org.junit.jupiter.api.Test;
 class BatchExecutionContextTest {
     @Test
     void childDeadlineCannotOutliveParentDeadline() {
-        GlobalExecutionPolicy policy =
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(5_000).build();
+        GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
         BatchExecutionContext parent = BatchExecutionContext.resolve(
-                policy,
                 MultiExecutionOptions.of("outer")
                         .timeout(Duration.ofMillis(100))
                         .build(),
                 1,
                 null);
         BatchExecutionContext child = BatchExecutionContext.resolve(
-                policy,
                 MultiExecutionOptions.of("inner")
                         .timeout(Duration.ofSeconds(10))
                         .build(),
@@ -33,16 +30,16 @@ class BatchExecutionContextTest {
 
     @Test
     void resolvesParallelismAndRuntimeMetadata() {
-        GlobalExecutionPolicy policy =
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(1000).build();
+        GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
         MultiExecutionOptions options = MultiExecutionOptions.of("io")
                 .parallelism(99)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
+                .timeout(Duration.ofSeconds(30))
                 .build();
         ExecutorServiceStub executor = new ExecutorServiceStub();
         ExecutorIdentity identity = new ExecutorIdentity(executor);
-        BatchExecutionContext context = BatchExecutionContext.resolve(policy, options, 3, null, null, identity, "http");
+        BatchExecutionContext context = BatchExecutionContext.resolve(options, 3, null, null, identity, "http");
 
         assertThat(context.effectiveParallelism()).isEqualTo(3);
         assertThat(context.executorIdentity()).isSameAs(identity);
@@ -55,8 +52,9 @@ class BatchExecutionContextTest {
     @Test
     void rejectsNegativeTaskCount() {
         assertThatThrownBy(() -> BatchExecutionContext.resolve(
-                        GlobalExecutionPolicy.builder().build(),
-                        MultiExecutionOptions.of("x").build(),
+                        MultiExecutionOptions.of("x")
+                                .timeout(Duration.ofSeconds(30))
+                                .build(),
                         -1,
                         null))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -67,12 +65,19 @@ class BatchExecutionContextTest {
         GlobalPar global = GlobalPar.builder().build();
         TaskGraphObservationContext observation = global.openTaskGraphObservation();
         try {
-            GlobalExecutionPolicy policy =
-                    GlobalExecutionPolicy.builder().defaultTimeoutMillis(1_000).build();
             BatchExecutionContext parent = BatchExecutionContext.resolve(
-                    policy, MultiExecutionOptions.of("parent").build(), 2, null, observation);
+                    MultiExecutionOptions.of("parent")
+                            .timeout(Duration.ofSeconds(30))
+                            .build(),
+                    2,
+                    null,
+                    observation);
             BatchExecutionContext child = BatchExecutionContext.resolve(
-                    policy, MultiExecutionOptions.of("child").build(), 1, parent);
+                    MultiExecutionOptions.of("child")
+                            .timeout(Duration.ofSeconds(30))
+                            .build(),
+                    1,
+                    parent);
 
             assertThat(parent.taskName()).isEqualTo("parent");
             assertThat(parent.taskCount()).isEqualTo(2);

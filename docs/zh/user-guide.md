@@ -10,7 +10,6 @@
 
 ```java
 GlobalExecutionPolicy defaults = GlobalExecutionPolicy.builder()
-        .defaultTimeoutMillis(10_000)
         .taskListener(metricsListener)
         .build();
 
@@ -37,7 +36,7 @@ Par defaultPar = GlobalPar.global().defaultPar();
 
 ## 执行批次
 
-`MultiExecutionOptions` 是单次调用的不可变输入。库将它与 `GlobalExecutionPolicy`、任务数量、父批次和绑定的执行器 identity 解析为内部 `BatchExecutionContext`。
+`MultiExecutionOptions` 是单次调用的不可变输入。库将它与任务数量、父批次和绑定的执行器 identity 解析为内部 `BatchExecutionContext`。
 
 ```java
 MultiExecutionOptions options = MultiExecutionOptions.of("fetch-account")
@@ -55,7 +54,7 @@ AsyncBatchResult<Account> result = httpPar.map(
 List<ListenableFuture<Account>> futures = result.getResults();
 ```
 
-`parallelism` 限制该批次的活跃提交窗口。负数表示让策略解析有效限制；显式 timeout 必须为正，未设置时使用全局默认值。`TaskType.CPU_BOUND` 与 `TaskType.IO_BOUND` 描述调度意图。`rejectEnqueue` 控制绑定执行器支持时是否拒绝排队。
+`parallelism` 限制该批次的活跃提交窗口。负数表示让策略解析有效限制；timeout 为必填且必须为正，没有全局默认值。`TaskType.CPU_BOUND` 与 `TaskType.IO_BOUND` 描述调度意图。`rejectEnqueue` 控制绑定执行器支持时是否拒绝排队。
 
 结果 future 按输入顺序排列。失败、超时、取消、submitter 中断或拒绝导致窗口停止时，未提交 placeholder 也会完成或取消，因此聚合 future 不会永久停留在 live 状态。
 

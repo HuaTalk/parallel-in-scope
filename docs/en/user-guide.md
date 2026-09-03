@@ -14,7 +14,6 @@ Create `GlobalPar` at the composition root. Register every logical entry with th
 
 ```java
 GlobalExecutionPolicy defaults = GlobalExecutionPolicy.builder()
-        .defaultTimeoutMillis(10_000)
         .taskListener(metricsListener)
         .build();
 
@@ -41,7 +40,7 @@ Prefer explicit injection in tests and libraries. `installGlobal` is one-time an
 
 ## Execute a batch
 
-`MultiExecutionOptions` is immutable input for one call. The library resolves it with `GlobalExecutionPolicy`, the item count, any parent batch, and the bound executor identity into an internal `BatchExecutionContext`.
+`MultiExecutionOptions` is immutable input for one call. The library resolves it with the item count, any parent batch, and the bound executor identity into an internal `BatchExecutionContext`.
 
 ```java
 MultiExecutionOptions options = MultiExecutionOptions.of("fetch-account")
@@ -59,7 +58,7 @@ AsyncBatchResult<Account> result = httpPar.map(
 List<ListenableFuture<Account>> futures = result.results();
 ```
 
-`parallelism` limits this batch's active submission window. A negative value leaves the effective limit to policy resolution. An explicit timeout must be positive; omitted timeout uses the global default. `TaskType.CPU_BOUND` and `TaskType.IO_BOUND` describe scheduling intent. `rejectEnqueue` controls whether the batch rejects queueing when the bound executor supports that behavior.
+`parallelism` limits this batch's active submission window. A negative value leaves the effective limit to policy resolution. The timeout is mandatory and must be positive; there is no global default. `TaskType.CPU_BOUND` and `TaskType.IO_BOUND` describe scheduling intent. `rejectEnqueue` controls whether the batch rejects queueing when the bound executor supports that behavior.
 
 The returned futures remain in input order. If failure, timeout, cancellation, submitter interruption, or rejection stops the window, the never-submitted placeholders are completed or cancelled so aggregate futures do not remain live indefinitely.
 

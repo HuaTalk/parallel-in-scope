@@ -22,11 +22,14 @@ import javax.annotation.Nullable;
  *   <li>A group member reads the same fields as a batch, with parallelism applying to nested work
  *       it may submit
  * </ul>
+ *
+ * <p>The timeout is mandatory: every call must state its own bound explicitly instead of
+ * inheriting a silent global default.
  */
 public final class MultiExecutionOptions {
     private final String name;
     private final int parallelism;
-    private final @Nullable Duration timeout;
+    private final Duration timeout;
     private final TaskType taskType;
     private final boolean rejectEnqueue;
     private final List<TaskGroupListener> listeners;
@@ -35,7 +38,8 @@ public final class MultiExecutionOptions {
         this.name = Objects.requireNonNull(builder.name, "name cannot be null");
         if (name.trim().isEmpty()) throw new IllegalArgumentException("name cannot be empty");
         this.parallelism = builder.parallelism;
-        this.timeout = builder.timeout;
+        this.timeout =
+                Objects.requireNonNull(builder.timeout, "timeout is required; call timeout(Duration) explicitly");
         this.taskType = Objects.requireNonNull(builder.taskType, "taskType cannot be null");
         this.rejectEnqueue = builder.rejectEnqueue;
         this.listeners = Collections.unmodifiableList(new ArrayList<>(builder.listeners));
@@ -59,8 +63,8 @@ public final class MultiExecutionOptions {
         return parallelism;
     }
 
-    /** The execution timeout, or {@code null} to inherit the global default. */
-    public @Nullable Duration timeout() {
+    /** The execution timeout; always set, mandatory at build time. */
+    public Duration timeout() {
         return timeout;
     }
 
