@@ -1,0 +1,70 @@
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTokenLateBindRaceTest.java
+  s_4b9ed1392c11d3::t_7362499a2e03a5 57,75,80,110
+docs/en/migration-v0.2.md
+  s_4b9ed1392c11d3::t_82f687e09757af 77-97
+src/main/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroup.java
+  s_4b9ed1392c11d3::t_dd5a3b00c7fe99 196-198,204-215
+  s_4b9ed1392c11d3::t_972ce9d1a03f11 136-137
+  s_4b9ed1392c11d3::t_826ab5cc69ef2c 5,34-41,45-47,103,116,120-126,132-133,139,141,144-146,155-166,168-171,177,181-189,194-195,199-200,202,224,233-241,243-254,351-352
+  s_4b9ed1392c11d3::t_7addcad8786f0e 127-131,201,242
+docs/zh/design/parallel-task-group-contract-final.md
+  s_38b2b4efdf0711::t_1c3895c63d6859 255,515,519,521-524,570-572,761
+docs/en/user-guide.md
+  s_4b9ed1392c11d3::t_8559596b9ff212 98-107
+src/main/java/io/github/huatalk/parallelinscope/cancel/CancellationToken.java
+  s_4b9ed1392c11d3::t_e3dacd7ffa6c11 88,92
+  s_4b9ed1392c11d3::t_7addcad8786f0e 74,78,129,153
+  s_4b9ed1392c11d3::t_edecd8e553ccb2 18,22-24,28,30-34,40-41,45-47,60-72,79,86,101-121,126,131-146,150-152,155-159,183-198,211-212,215-219,221-264
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTokenTest.java
+  s_4b9ed1392c11d3::t_32807aaf95aa78 105-106
+  s_4b9ed1392c11d3::t_7addcad8786f0e 257-261
+  s_4b9ed1392c11d3::t_8a2ec8f00bf414 14,25-28,33,75-90,92-104,109,120,133,137,154,171,182-198,200-209,212-214,225,243,248-256,262-267
+  s_4b9ed1392c11d3::t_70894b62de0d38 199
+  s_4b9ed1392c11d3::t_b2df77aae36276 210-211
+  s_4b9ed1392c11d3::t_2798d3d524bfc0 91
+  s_4b9ed1392c11d3::t_b06b65d7ee56e5 34
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationPropagationCartesianTest.java
+  s_4b9ed1392c11d3::t_7addcad8786f0e 59,87
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTriggerCartesianTest.java
+  s_4b9ed1392c11d3::t_b34dcd4e622e19 98
+  s_4b9ed1392c11d3::t_b5353688657e0e 55-57,61
+src/main/java/io/github/huatalk/parallelinscope/scope/BatchExecutionContext.java
+  s_4b9ed1392c11d3::t_7f35e6d6aed54a 193
+  s_4b9ed1392c11d3::t_7addcad8786f0e 101
+src/main/java/io/github/huatalk/parallelinscope/scope/Par.java
+  s_4b9ed1392c11d3::t_7addcad8786f0e 162
+src/test/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroupTest.java
+  s_4b9ed1392c11d3::t_7addcad8786f0e 213,226-228
+  s_4b9ed1392c11d3::t_ce9238daa3c3e7 184,202-205,221-225,229-254
+AGENTS.md
+  s_4b9ed1392c11d3::t_8559596b9ff212 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "6dd474a1327748dd40ae75ac7a2d1f438d6ac111",
+  "prompts": {},
+  "humans": {
+    "h_a991f50801869b": {
+      "author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_38b2b4efdf0711": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d69a952-6a44-4811-96fd-04d8730fa3fd",
+        "model": "ep-07p4u7vn"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    },
+    "s_4b9ed1392c11d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75801716-d0ca-4f09-8e08-af68db209fe6",
+        "model": "ep-tavmzh6e"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
