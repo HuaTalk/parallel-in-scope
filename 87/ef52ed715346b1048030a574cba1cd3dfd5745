@@ -1,0 +1,21 @@
+docs/zh/design/guava-cancellation-propagation.md
+  s_4b9ed1392c11d3::t_c8a8afcfc84e92 1-144
+mkdocs/mkdocs.yml
+  s_4b9ed1392c11d3::t_01df3eec83ece5 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "87ef52ed715346b1048030a574cba1cd3dfd5745",
+  "prompts": {},
+  "sessions": {
+    "s_4b9ed1392c11d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75801716-d0ca-4f09-8e08-af68db209fe6",
+        "model": "ep-tavmzh6e"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
