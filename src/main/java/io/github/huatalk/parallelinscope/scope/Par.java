@@ -2,15 +2,14 @@ package io.github.huatalk.parallelinscope.scope;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-import com.alibaba.ttl.TtlCallable;
 import com.google.common.collect.ImmutableList;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
 import io.github.huatalk.parallelinscope.internal.ConcurrentLimitExecutor;
 import io.github.huatalk.parallelinscope.internal.ExecutionPhaseHintFuture;
-import io.github.huatalk.parallelinscope.internal.ScopedCallable;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
+import io.github.huatalk.parallelinscope.internal.TaskSubmissions;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -28,7 +27,7 @@ import javax.annotation.Nullable;
  *
  * <ul>
  *   <li>Resolution of {@link BatchExecutionOptions} into a batch context
- *   <li>Creation of {@link ScopedCallable} wrappers with lifecycle instrumentation
+ *   <li>Scoped task preparation via {@link io.github.huatalk.parallelinscope.internal.TaskSubmissions}
  *   <li>Concurrency-limited submission via {@link ConcurrentLimitExecutor}
  *   <li>Parent-child {@link CancellationToken} chaining
  *   <li>Late binding for timeout and fail-fast cancellation
@@ -69,14 +68,11 @@ public final class Par {
 
     ExecutionPhaseHintFuture<Object> prepareGroupTask(
             Callable<Object> callable, BatchExecutionContext batchContext, TaskExecutionContext taskContext) {
-        Callable<Object> scoped = TtlCallable.get(
-                new ScopedCallable<>(
-                        taskContext,
-                        callable,
-                        globalPar.executionPolicyFor(displayName).taskListeners()),
-                true,
-                true);
-        return ExecutionPhaseHintFuture.createDeferred(scoped, runtime.phaseObserver());
+        return TaskSubmissions.prepare(
+                taskContext,
+                callable,
+                globalPar.executionPolicyFor(displayName).taskListeners(),
+                runtime.phaseObserver());
     }
 
     ExecutorIdentity executorIdentity() {
@@ -147,17 +143,15 @@ public final class Par {
                 runtime.blockingRisk() == BlockingRisk.BOUNDED_PLATFORM_POOL);
         logForking(batchContext, edge);
         com.google.common.base.Ticker ticker = com.google.common.base.Ticker.systemTicker();
-        List<Callable<R>> tasks = java.util.stream.IntStream.range(0, list.size())
-                .mapToObj(index -> TtlCallable.get(
-                        new ScopedCallable<>(
-                                new TaskExecutionContext(batchContext, index, ticker.read()),
-                                callableMapper.apply(list.get(index)),
-                                globalPar.executionPolicyFor(displayName).taskListeners()),
-                        true,
-                        true))
+        List<ExecutionPhaseHintFuture<R>> tasks = java.util.stream.IntStream.range(0, list.size())
+                .mapToObj(index -> TaskSubmissions.prepare(
+                        new TaskExecutionContext(batchContext, index, ticker.read()),
+                        callableMapper.apply(list.get(index)),
+                        globalPar.executionPolicyFor(displayName).taskListeners(),
+                        runtime.phaseObserver()))
                 .collect(toImmutableList());
         AsyncBatchResult<R> result = new ConcurrentLimitExecutor<R>(
-                        runtime.submissionExecutor(), batchContext, globalPar.submitterPool(), runtime.phaseObserver())
+                        runtime.submissionExecutor(), batchContext, globalPar.submitterPool())
                 .submitAll(tasks);
         batchContext.cancellationToken().bind(result.results(), result.submitCanceller(), globalPar.timeoutScheduler());
         globalPar.retainUntilComplete(result.results());

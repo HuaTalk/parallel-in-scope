@@ -6,12 +6,12 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
-import io.github.huatalk.parallelinscope.context.SubmissionScope;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
 import io.github.huatalk.parallelinscope.internal.ExecutionPhaseHintFuture;
 import io.github.huatalk.parallelinscope.internal.SubmissionException;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
+import io.github.huatalk.parallelinscope.internal.TaskSubmissions;
 import io.github.huatalk.parallelinscope.spi.TaskGroupListener;
 import io.github.huatalk.parallelinscope.spi.TaskGroupListener.TaskGroupEvent;
 import java.time.Duration;
@@ -466,12 +466,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
 
         /** Submits once with the member's batch scope installed; CPU-bound work runs inline on rejection. */
         private void submit() {
-            BatchExecutionContext previous = SubmissionScope.install(context.batchContext());
-            try {
-                future.submitPrepared(executor, cpuBound);
-            } finally {
-                SubmissionScope.restore(previous);
-            }
+            TaskSubmissions.submitScoped(future, context.batchContext(), executor, cpuBound);
         }
     }
 
