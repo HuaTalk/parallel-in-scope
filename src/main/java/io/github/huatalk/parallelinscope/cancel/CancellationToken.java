@@ -9,6 +9,7 @@ import static io.github.huatalk.parallelinscope.cancel.CancellationToken.State.S
 import static io.github.huatalk.parallelinscope.cancel.CancellationToken.State.TIMEOUT_CANCELED;
 
 import com.google.common.util.concurrent.FluentFuture;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -44,7 +45,6 @@ public class CancellationToken {
     private final @Nullable CancellationToken parent;
     private final long deadlineNanos;
     private final List<Consumer<State>> stateListeners = new CopyOnWriteArrayList<>();
-    private @Nullable ListenableFuture<?> submitCanceller;
 
     /**
      * Creates a token linked to a parent, or a root token if {@code parent} is {@code null}.
@@ -76,7 +76,7 @@ public class CancellationToken {
             parent.futureToken.addListener(
                     () -> {
                         if (parent.state().shouldInterruptCurrentThread() && transitionTo(PROPAGATING_CANCELED)) {
-                            cancelBoundWork(true);
+                            futureToken.cancel(true);
                         }
                     },
                     directExecutor());
@@ -128,7 +128,6 @@ public class CancellationToken {
     public <T> void bind(
             List<ListenableFuture<T>> futures, ListenableFuture<?> submitCanceller, ScheduledExecutorService timer) {
         Objects.requireNonNull(timer);
-        storeSubmitCanceller(submitCanceller);
         long remainingNanos = deadlineNanos - System.nanoTime();
         if (remainingNanos <= 0) {
             boolean won = transitionTo(TIMEOUT_CANCELED);
@@ -141,25 +140,29 @@ public class CancellationToken {
             }
             return;
         }
-        FluentFuture<?> failFastFuture = FluentFuture.from(Futures.allAsList(futures))
-                .withTimeout(Duration.ofNanos(remainingNanos), timer)
-                .transform(ignored -> transitionTo(SUCCESS), directExecutor())
-                .catchingAsync(
-                        Throwable.class,
-                        ex -> {
-                            // Notify before cancelling: a listener can still fix a cause (a task
-                            // group escalating a member timeout) before cascade cancellation makes
-                            // every path look like fail-fast.
-                            transitionTo(ex instanceof TimeoutException ? TIMEOUT_CANCELED : FAIL_FAST_CANCELED);
-                            submitCanceller.cancel(true);
-                            // Cancel the futures directly: the combined future is already failed
-                            // on this path, and cancelling it would not reach them.
-                            for (ListenableFuture<T> future : futures) {
-                                future.cancel(true);
-                            }
-                            return Futures.immediateCancelledFuture();
-                        },
-                        directExecutor());
+        FluentFuture<?> failFastFuture =
+                FluentFuture.from(Futures.allAsList(futures)).withTimeout(Duration.ofNanos(remainingNanos), timer);
+        // A pending successfulAsList is the one cancellable handle that reaches both the task
+        // futures and the submission canceller: it stays pending until every input is done, so
+        // cancelling it still propagates after one task already failed or was cancelled.
+        ListenableFuture<?> allFutures = Futures.successfulAsList(Futures.successfulAsList(futures), submitCanceller);
+        failFastFuture.addCallback(
+                new FutureCallback<Object>() {
+                    @Override
+                    public void onSuccess(Object result) {
+                        transitionTo(SUCCESS);
+                    }
+
+                    @Override
+                    public void onFailure(Throwable failure) {
+                        // Commit the state before cancelling: a listener can still fix a cause (a
+                        // task group escalating a member timeout) before cascade cancellation makes
+                        // every path look like fail-fast.
+                        transitionTo(failure instanceof TimeoutException ? TIMEOUT_CANCELED : FAIL_FAST_CANCELED);
+                        allFutures.cancel(true);
+                    }
+                },
+                directExecutor());
         futureToken.setFuture(failFastFuture);
     }
 
@@ -181,7 +184,7 @@ public class CancellationToken {
      */
     public void cancel(boolean useInterrupt) {
         if (transitionTo(MUTUAL_CANCELED)) {
-            cancelBoundWork(useInterrupt);
+            futureToken.cancel(useInterrupt);
         }
     }
 
@@ -194,7 +197,7 @@ public class CancellationToken {
      */
     public void timeoutCancel() {
         if (transitionTo(TIMEOUT_CANCELED)) {
-            cancelBoundWork(true);
+            futureToken.cancel(true);
         }
     }
 
@@ -239,29 +242,6 @@ public class CancellationToken {
                 LOGGER.log(Level.WARNING, "CancellationToken state listener failed", failure);
             }
         }
-    }
-
-    /**
-     * Stores the submission canceller, cancelling it immediately if the token already entered a
-     * canceling state; guarded so a cancel racing this store still observes the canceller.
-     */
-    private synchronized void storeSubmitCanceller(ListenableFuture<?> submitCanceller) {
-        this.submitCanceller = submitCanceller;
-        if (state.get().shouldInterruptCurrentThread()) {
-            submitCanceller.cancel(true);
-        }
-    }
-
-    /** Cancels the submission canceller and the token future, which cascades to the bound work. */
-    private void cancelBoundWork(boolean useInterrupt) {
-        ListenableFuture<?> bound;
-        synchronized (this) {
-            bound = this.submitCanceller;
-        }
-        if (bound != null) {
-            bound.cancel(true);
-        }
-        futureToken.cancel(useInterrupt);
     }
 
     /** Lifecycle state of a {@link CancellationToken}. */
