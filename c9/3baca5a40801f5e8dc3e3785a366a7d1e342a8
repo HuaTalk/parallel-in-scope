@@ -1,0 +1,22 @@
+llm_arena/cancellation-deadline-bind/README.md
+  s_454af757c032d4::t_992c32495a25b9 43-88
+llm_arena/cancellation-deadline-bind/run-agent.sh
+  s_454af757c032d4::t_7531810f5b352f 34
+  s_454af757c032d4::t_592d9c5ed3b014 1-33,35-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "c93baca5a40801f5e8dc3e3785a366a7d1e342a8",
+  "prompts": {},
+  "sessions": {
+    "s_454af757c032d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3d7956d-bc5d-477c-bd15-02a21ae0e9c4",
+        "model": "ep-07p4u7vn"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
