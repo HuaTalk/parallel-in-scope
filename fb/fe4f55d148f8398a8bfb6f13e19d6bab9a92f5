@@ -1,0 +1,26 @@
+src/test/java/io/github/huatalk/parallelinscope/cancel/CancellationTriggerCartesianTest.java
+  s_4b9ed1392c11d3::t_548ebf1bb5f83d 70-71,102,122-128
+src/main/java/io/github/huatalk/parallelinscope/cancel/CancellationToken.java
+  s_4b9ed1392c11d3::t_c763d4a3a4f10f 12
+  s_4b9ed1392c11d3::t_7003363d73fc24 79
+  s_4b9ed1392c11d3::t_db1ac54195bf32 143-147,149-165
+  s_4b9ed1392c11d3::t_efa4232ccde729 148
+  s_4b9ed1392c11d3::t_d0e9f5594a4ef4 200
+  s_4b9ed1392c11d3::t_e50a1d9e5f4a64 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "fbfe4f55d148f8398a8bfb6f13e19d6bab9a92f5",
+  "prompts": {},
+  "sessions": {
+    "s_4b9ed1392c11d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75801716-d0ca-4f09-8e08-af68db209fe6",
+        "model": "ep-tavmzh6e"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
