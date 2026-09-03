@@ -99,4 +99,5 @@ cd parallel-in-scope/llm_arena/cancellation-deadline-bind
 
 | agent | commit(s) | 测试结果 | 根因命中 | 设计备注 |
 |---|---|---|---|---|
+| codex (gpt-5.6-sol, yolo) | `faf795c` (+657/-234, 15 files) | 410/410 绿（独立复跑确认） | ✗ 未命中 | 保留 catchingAsync 结构，加 cancelWork() 在每取消入口直接 cancel 原始 futures + volatile 字段双保险；取消动作冗余（futureToken 级联 + 手动 cancel 各一遍）；归因含 failedMemberName==null 特判；agent 自曝 stateListener 注册竞态无锁 |
 |      |           |          |          |          |
