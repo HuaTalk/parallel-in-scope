@@ -489,6 +489,57 @@ class ParallelTaskGroupTest {
     }
 
     @Test
+    void ancestorTimeoutPropagatesAsTimeoutIntoNestedGroup() throws Exception {
+        ExecutorService outer = Executors.newSingleThreadExecutor();
+        ExecutorService inner = Executors.newSingleThreadExecutor();
+        GlobalPar global = GlobalPar.builder()
+                .register("outer", outer)
+                .register("inner", inner)
+                .build();
+        AtomicReference<ParallelTaskGroup> nestedGroup = new AtomicReference<>();
+        try {
+            AsyncBatchResult<Object> result = global.par("outer")
+                    .map(
+                            Arrays.asList(1),
+                            ignored -> {
+                                ParallelTaskGroup.Builder builder = global.taskGroupBuilder(
+                                        TaskGroupOptions.of("nested").build());
+                                builder.addTask(
+                                        "child",
+                                        global.par("inner"),
+                                        () -> {
+                                            Thread.sleep(10_000);
+                                            return 1;
+                                        },
+                                        BatchExecutionOptions.of("child").build());
+                                nestedGroup.set(builder.buildAndSubmitAll());
+                                try {
+                                    new CountDownLatch(1).await(10, TimeUnit.SECONDS);
+                                } catch (InterruptedException interrupted) {
+                                    Thread.currentThread().interrupt();
+                                }
+                                return null;
+                            },
+                            BatchExecutionOptions.of("outer")
+                                    .timeout(Duration.ofMillis(50))
+                                    .build());
+
+            // The outer batch deadline cancels the outer task and propagates into the nested
+            // group's token tree; the group keeps the originating timeout reason.
+            org.awaitility.Awaitility.await().atMost(2, TimeUnit.SECONDS).until(() -> nestedGroup.get() != null);
+            TaskGroupResult nested = nestedGroup.get().completionFuture().get(2, TimeUnit.SECONDS);
+
+            assertThat(result.results().get(0)).isCancelled();
+            assertThat(nested.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
+            assertThat(nested.members().get("child").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
+        } finally {
+            global.close();
+            outer.shutdownNow();
+            inner.shutdownNow();
+        }
+    }
+
+    @Test
     void groupIdentifiersExposeConfiguredAndGeneratedValues() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         GlobalPar global = GlobalPar.builder().register("worker", executor).build();

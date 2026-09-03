@@ -103,8 +103,10 @@ member reports `MEMBER_CANCELED`, `FAIL_FAST`, `TIMEOUT`, or `GROUP_CANCELED` ra
 cancellation; a member exceeding its own deadline escalates the group to `TIMEOUT`. Group and
 member deadlines start at the build boundary, and member deadlines are capped by the group
 deadline. A group built inside a scoped task inherits outer cancellation and its deadline ceiling;
-each member remains a real child task, while membership itself does not add dependency edges
-between siblings.
+cancellation propagated from an ancestor keeps its originating reason
+(`CancellationToken.originState()`), so an ancestor deadline expiring still converges the group as
+`TIMEOUT` rather than a plain `CANCELED`. Each member remains a real child task, while membership
+itself does not add dependency edges between siblings.
 
 ## Cancellation and nested batches
 

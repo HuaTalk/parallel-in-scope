@@ -199,6 +199,28 @@ public class CancellationToken {
     }
 
     /**
+     * Returns the terminal state that originated the cancellation, following propagation links.
+     *
+     * <p>When this token was canceled by its parent, its own state is {@code PROPAGATING_CANCELED}
+     * and carries no reason; this method walks the parent chain to the first token whose terminal
+     * state is not {@code PROPAGATING_CANCELED} and returns that originating state. A token that
+     * reached its terminal state on its own (or is still running) simply reports {@link #state()}.
+     * The walk is safe at any moment: a token only transitions to {@code PROPAGATING_CANCELED}
+     * after its parent committed a terminal state, and terminal states never change afterwards.
+     *
+     * @return the originating terminal state, or the current state when nothing propagated
+     */
+    public State originState() {
+        CancellationToken token = this;
+        State s = token.state();
+        while (s == PROPAGATING_CANCELED && token.parent != null) {
+            token = token.parent;
+            s = token.state();
+        }
+        return s;
+    }
+
+    /**
      * Registers a callback invoked synchronously right after a terminal transition commits and
      * before the associated cancellation actions run.
      *

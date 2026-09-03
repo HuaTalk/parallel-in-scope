@@ -195,7 +195,9 @@ public final class ParallelTaskGroup implements AutoCloseable {
      * Classifies a cancelled member by reading token states only. The member token records its own
      * deadline; the group token is otherwise the single authority, because it commits its state
      * before cancelling member futures. A group token still RUNNING means no framework path
-     * cancelled the member: the user cancelled it directly.
+     * cancelled the member: the user cancelled it directly. A propagated cancellation keeps the
+     * originating reason via {@link CancellationToken#originState()}, so an ancestor timeout is
+     * still reported as {@link TaskOutcome#TIMEOUT}.
      */
     private TaskOutcome classifyCancelled(MemberState member) {
         if (member.context.batchContext().cancellationToken().state() == CancellationToken.State.TIMEOUT_CANCELED) {
@@ -206,8 +208,13 @@ public final class ParallelTaskGroup implements AutoCloseable {
                 return TaskOutcome.TIMEOUT;
             case FAIL_FAST_CANCELED:
                 return TaskOutcome.FAIL_FAST;
-            case MUTUAL_CANCELED:
             case PROPAGATING_CANCELED:
+                // An ancestor timeout stays a timeout; any other propagated cause is a plain
+                // group cancellation from this group's viewpoint.
+                return groupToken.originState() == CancellationToken.State.TIMEOUT_CANCELED
+                        ? TaskOutcome.TIMEOUT
+                        : TaskOutcome.GROUP_CANCELED;
+            case MUTUAL_CANCELED:
                 return TaskOutcome.GROUP_CANCELED;
             case SUCCESS:
             case RUNNING:
@@ -240,8 +247,11 @@ public final class ParallelTaskGroup implements AutoCloseable {
                 return TaskGroupCompletionReason.TIMEOUT;
             case FAIL_FAST_CANCELED:
                 return failedMemberName != null ? TaskGroupCompletionReason.FAILED : TaskGroupCompletionReason.CANCELED;
-            case MUTUAL_CANCELED:
             case PROPAGATING_CANCELED:
+                return groupToken.originState() == CancellationToken.State.TIMEOUT_CANCELED
+                        ? TaskGroupCompletionReason.TIMEOUT
+                        : TaskGroupCompletionReason.CANCELED;
+            case MUTUAL_CANCELED:
                 return TaskGroupCompletionReason.CANCELED;
             case SUCCESS:
             case RUNNING:
