@@ -608,6 +608,7 @@ class ParallelTaskGroupTest {
         try {
             AtomicReference<CancellationToken> outerToken = new AtomicReference<>();
             AtomicReference<ParallelTaskGroup> publishedGroup = new AtomicReference<>();
+            AtomicReference<String> observedReason = new AtomicReference<>();
             CountDownLatch groupBuilt = new CountDownLatch(1);
             AsyncBatchResult<String> outerBatch = global.par("outer")
                     .map(
@@ -633,10 +634,17 @@ class ParallelTaskGroupTest {
                                 // outer batch token is still RUNNING when the test cancels it.
                                 while (true) {
                                     try {
-                                        return group.completionFuture()
+                                        String reason = group.completionFuture()
                                                 .get()
                                                 .completionReason()
                                                 .name();
+                                        // Record what the running task observed instead of
+                                        // asserting on the outer future: the cancel cascade
+                                        // hard-cancels bound futures right after the group
+                                        // converges, so the task's return value races the
+                                        // cancellation and is not a stable signal.
+                                        observedReason.set(reason);
+                                        return reason;
                                     } catch (InterruptedException interrupted) {
                                         // cancellation reached this task before the group settled;
                                         // keep waiting for the group's terminal reason
@@ -650,10 +658,14 @@ class ParallelTaskGroupTest {
             outerToken.get().cancel(true);
             ParallelTaskGroup group = publishedGroup.get();
 
-            assertThat(outerBatch.results().get(0).get(2, TimeUnit.SECONDS)).isEqualTo("CANCELED");
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
             assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.GROUP_CANCELED);
+            org.awaitility.Awaitility.await()
+                    .atMost(2, TimeUnit.SECONDS)
+                    .until(() -> observedReason.get() != null
+                            && outerBatch.results().get(0).isDone());
+            assertThat(observedReason.get()).isEqualTo("CANCELED");
         } finally {
             global.close();
             outer.shutdownNow();
