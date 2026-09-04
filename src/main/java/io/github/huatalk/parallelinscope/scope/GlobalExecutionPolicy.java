@@ -12,7 +12,7 @@ import java.util.List;
  * retain batch state. A per-Par override replaces this policy for that entry during batch
  * resolution; it does not create another executor or resource-ownership scope.
  *
- * <p>Timeouts are deliberately not part of this policy: every {@link MultiExecutionOptions} must
+ * <p>Timeouts are deliberately not part of this policy: every {@link MultiTaskOptions} must
  * state its own timeout explicitly.
  */
 public final class GlobalExecutionPolicy {

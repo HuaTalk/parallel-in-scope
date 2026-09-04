@@ -304,13 +304,13 @@ public final class ParallelTaskGroup implements AutoCloseable {
     /** One-shot, non-thread-safe task-group builder. */
     public static final class Builder {
         private final GlobalPar global;
-        private final MultiExecutionOptions options;
+        private final MultiTaskOptions options;
         private final @Nullable BatchExecutionContext structuralParent;
         private final @Nullable TaskGraphObservationContext observation;
         private final LinkedHashMap<String, Definition<?>> definitions = new LinkedHashMap<>();
         private boolean consumed;
 
-        Builder(GlobalPar global, MultiExecutionOptions options) {
+        Builder(GlobalPar global, MultiTaskOptions options) {
             this.global = Objects.requireNonNull(global, "global cannot be null");
             this.options = Objects.requireNonNull(options, "options cannot be null");
             TaskExecutionContext currentTask = TaskExecutionContext.current();
@@ -326,7 +326,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         }
 
         public <T> TaskHandle<T> addTask(
-                String memberName, Par par, Callable<T> callable, MultiExecutionOptions taskOptions) {
+                String memberName, Par par, Callable<T> callable, MultiTaskOptions taskOptions) {
             ensureConfiguring();
             Objects.requireNonNull(memberName, "memberName cannot be null");
             if (memberName.trim().isEmpty()) throw new IllegalArgumentException("memberName cannot be empty");
@@ -436,11 +436,10 @@ public final class ParallelTaskGroup implements AutoCloseable {
         private final String name;
         private final Par par;
         private final Callable<T> callable;
-        private final MultiExecutionOptions options;
+        private final MultiTaskOptions options;
         private final TaskHandle<T> handle;
 
-        private Definition(
-                String name, Par par, Callable<T> callable, MultiExecutionOptions options, TaskHandle<T> handle) {
+        private Definition(String name, Par par, Callable<T> callable, MultiTaskOptions options, TaskHandle<T> handle) {
             this.name = name;
             this.par = par;
             this.callable = callable;

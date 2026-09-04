@@ -12,17 +12,9 @@ class BatchExecutionContextTest {
     void childDeadlineCannotOutliveParentDeadline() {
         GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
         BatchExecutionContext parent = BatchExecutionContext.resolve(
-                MultiExecutionOptions.of("outer")
-                        .timeout(Duration.ofMillis(100))
-                        .build(),
-                1,
-                null);
+                MultiTaskOptions.of("outer").timeout(Duration.ofMillis(100)).build(), 1, null);
         BatchExecutionContext child = BatchExecutionContext.resolve(
-                MultiExecutionOptions.of("inner")
-                        .timeout(Duration.ofSeconds(10))
-                        .build(),
-                1,
-                parent);
+                MultiTaskOptions.of("inner").timeout(Duration.ofSeconds(10)).build(), 1, parent);
 
         assertThat(child.deadlineNanos()).isLessThanOrEqualTo(parent.deadlineNanos());
         assertThat(child.cancellationToken()).isNotNull();
@@ -31,7 +23,7 @@ class BatchExecutionContextTest {
     @Test
     void resolvesParallelismAndRuntimeMetadata() {
         GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
-        MultiExecutionOptions options = MultiExecutionOptions.of("io")
+        MultiTaskOptions options = MultiTaskOptions.of("io")
                 .parallelism(99)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
@@ -52,11 +44,7 @@ class BatchExecutionContextTest {
     @Test
     void rejectsNegativeTaskCount() {
         assertThatThrownBy(() -> BatchExecutionContext.resolve(
-                        MultiExecutionOptions.of("x")
-                                .timeout(Duration.ofSeconds(30))
-                                .build(),
-                        -1,
-                        null))
+                        MultiTaskOptions.of("x").timeout(Duration.ofSeconds(30)).build(), -1, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -66,18 +54,14 @@ class BatchExecutionContextTest {
         TaskGraphObservationContext observation = global.openTaskGraphObservation();
         try {
             BatchExecutionContext parent = BatchExecutionContext.resolve(
-                    MultiExecutionOptions.of("parent")
+                    MultiTaskOptions.of("parent")
                             .timeout(Duration.ofSeconds(30))
                             .build(),
                     2,
                     null,
                     observation);
             BatchExecutionContext child = BatchExecutionContext.resolve(
-                    MultiExecutionOptions.of("child")
-                            .timeout(Duration.ofSeconds(30))
-                            .build(),
-                    1,
-                    parent);
+                    MultiTaskOptions.of("child").timeout(Duration.ofSeconds(30)).build(), 1, parent);
 
             assertThat(parent.taskName()).isEqualTo("parent");
             assertThat(parent.taskCount()).isEqualTo(2);

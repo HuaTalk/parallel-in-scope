@@ -36,10 +36,10 @@ Par defaultPar = GlobalPar.global().defaultPar();
 
 ## 执行批次
 
-`MultiExecutionOptions` 是单次调用的不可变输入。库将它与任务数量、父批次和绑定的执行器 identity 解析为内部 `BatchExecutionContext`。
+`MultiTaskOptions` 是单次调用的不可变输入。库将它与任务数量、父批次和绑定的执行器 identity 解析为内部 `BatchExecutionContext`。
 
 ```java
-MultiExecutionOptions options = MultiExecutionOptions.of("fetch-account")
+MultiTaskOptions options = MultiTaskOptions.of("fetch-account")
         .taskType(TaskType.IO_BOUND)
         .parallelism(16)
         .timeout(Duration.ofSeconds(5))

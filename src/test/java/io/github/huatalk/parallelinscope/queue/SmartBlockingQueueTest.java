@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.time.Duration;
 import java.util.concurrent.SynchronousQueue;
@@ -66,7 +66,7 @@ class SmartBlockingQueueTest {
 
     private static BatchExecutionContext context(TaskType taskType, boolean rejectEnqueue) {
         return BatchExecutionContext.resolve(
-                MultiExecutionOptions.of("queue")
+                MultiTaskOptions.of("queue")
                         .taskType(taskType)
                         .rejectEnqueue(rejectEnqueue)
                         .timeout(Duration.ofSeconds(30))

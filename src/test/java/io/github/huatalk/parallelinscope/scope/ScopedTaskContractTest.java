@@ -139,7 +139,7 @@ class ScopedTaskContractTest {
         try {
             observePhases(global, phases);
             AtomicInteger executions = new AtomicInteger();
-            MultiExecutionOptions options = MultiExecutionOptions.of("task")
+            MultiTaskOptions options = MultiTaskOptions.of("task")
                     .taskType(TaskType.CPU_BOUND)
                     .timeout(Duration.ofSeconds(30))
                     .build();
@@ -169,7 +169,7 @@ class ScopedTaskContractTest {
         try {
             observePhases(global, phases);
             AtomicInteger executions = new AtomicInteger();
-            MultiExecutionOptions options = MultiExecutionOptions.of("task")
+            MultiTaskOptions options = MultiTaskOptions.of("task")
                     .taskType(TaskType.IO_BOUND)
                     .timeout(Duration.ofSeconds(30))
                     .build();
@@ -209,7 +209,7 @@ class ScopedTaskContractTest {
                         .map(
                                 java.util.Arrays.asList("blocker", "queued"),
                                 item -> callUnchecked(() -> runUnlessQueued(item, release, queuedRuns)),
-                                MultiExecutionOptions.of("cancel")
+                                MultiTaskOptions.of("cancel")
                                         .parallelism(2)
                                         .timeout(Duration.ofSeconds(30))
                                         .build())
@@ -217,21 +217,21 @@ class ScopedTaskContractTest {
                         .get(1);
                 assertThat(queued.cancel(true)).isTrue();
             } else {
-                ParallelTaskGroup.Builder builder = global.taskGroupBuilder(MultiExecutionOptions.of("cancel")
+                ParallelTaskGroup.Builder builder = global.taskGroupBuilder(MultiTaskOptions.of("cancel")
                         .timeout(Duration.ofSeconds(30))
                         .build());
                 builder.addTask(
                         "blocker",
                         global.par("worker"),
                         () -> runUnlessQueued("blocker", release, queuedRuns),
-                        MultiExecutionOptions.of("blocker")
+                        MultiTaskOptions.of("blocker")
                                 .timeout(Duration.ofSeconds(30))
                                 .build());
                 ParallelTaskGroup.TaskHandle<Object> queued = builder.addTask(
                         "queued",
                         global.par("worker"),
                         () -> runUnlessQueued("queued", release, queuedRuns),
-                        MultiExecutionOptions.of("queued")
+                        MultiTaskOptions.of("queued")
                                 .timeout(Duration.ofSeconds(30))
                                 .build());
                 ParallelTaskGroup group = builder.buildAndSubmitAll();
@@ -269,7 +269,7 @@ class ScopedTaskContractTest {
                                         throw new IllegalStateException(e);
                                     }
                                 },
-                                MultiExecutionOptions.of("outer")
+                                MultiTaskOptions.of("outer")
                                         .timeout(Duration.ofSeconds(30))
                                         .build())
                         .results()
@@ -302,21 +302,20 @@ class ScopedTaskContractTest {
                 global,
                 entry,
                 name,
-                MultiExecutionOptions.of(name).timeout(Duration.ofSeconds(30)).build(),
+                MultiTaskOptions.of(name).timeout(Duration.ofSeconds(30)).build(),
                 task);
     }
 
     private static ListenableFuture<Object> submitSingle(
-            GlobalPar global, Entry entry, String name, MultiExecutionOptions options, Callable<Object> task) {
+            GlobalPar global, Entry entry, String name, MultiTaskOptions options, Callable<Object> task) {
         if (entry == Entry.BATCH) {
             return global.par("worker")
                     .map(Collections.singletonList("item"), item -> callUnchecked(task), options)
                     .results()
                     .get(0);
         }
-        ParallelTaskGroup.Builder builder = global.taskGroupBuilder(MultiExecutionOptions.of("contract")
-                .timeout(Duration.ofSeconds(30))
-                .build());
+        ParallelTaskGroup.Builder builder = global.taskGroupBuilder(
+                MultiTaskOptions.of("contract").timeout(Duration.ofSeconds(30)).build());
         ParallelTaskGroup.TaskHandle<Object> handle = builder.addTask(name, global.par("worker"), task, options);
         LAST_GROUP.set(builder.buildAndSubmitAll());
         return handle.future();

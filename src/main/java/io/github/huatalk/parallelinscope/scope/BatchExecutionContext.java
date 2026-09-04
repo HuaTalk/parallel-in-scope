@@ -61,12 +61,12 @@ public final class BatchExecutionContext {
      * compatibility and tests; normal execution uses the identity-aware overload below.
      */
     public static BatchExecutionContext resolve(
-            MultiExecutionOptions options, int taskCount, @Nullable BatchExecutionContext parent) {
+            MultiTaskOptions options, int taskCount, @Nullable BatchExecutionContext parent) {
         return resolve(options, taskCount, parent, null);
     }
 
     public static BatchExecutionContext resolve(
-            MultiExecutionOptions options,
+            MultiTaskOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent,
             @Nullable TaskGraphObservationContext taskGraphObservationContext) {
@@ -113,7 +113,7 @@ public final class BatchExecutionContext {
      * the corresponding internal executor runtime.
      */
     public static BatchExecutionContext resolve(
-            MultiExecutionOptions options,
+            MultiTaskOptions options,
             int taskCount,
             @Nullable BatchExecutionContext parent,
             @Nullable TaskGraphObservationContext taskGraphObservationContext,
@@ -140,7 +140,7 @@ public final class BatchExecutionContext {
      * parent and the group deadline is not necessarily the structural parent's deadline.
      */
     static BatchExecutionContext resolve(
-            MultiExecutionOptions options,
+            MultiTaskOptions options,
             int taskCount,
             @Nullable BatchExecutionContext structuralParent,
             @Nullable CancellationToken cancellationParent,

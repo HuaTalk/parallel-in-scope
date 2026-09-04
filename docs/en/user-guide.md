@@ -40,10 +40,10 @@ Prefer explicit injection in tests and libraries. `installGlobal` is one-time an
 
 ## Execute a batch
 
-`MultiExecutionOptions` is immutable input for one call. The library resolves it with the item count, any parent batch, and the bound executor identity into an internal `BatchExecutionContext`.
+`MultiTaskOptions` is immutable input for one call. The library resolves it with the item count, any parent batch, and the bound executor identity into an internal `BatchExecutionContext`.
 
 ```java
-MultiExecutionOptions options = MultiExecutionOptions.of("fetch-account")
+MultiTaskOptions options = MultiTaskOptions.of("fetch-account")
         .taskType(TaskType.IO_BOUND)
         .parallelism(16)
         .timeout(Duration.ofSeconds(5))
@@ -69,22 +69,22 @@ different types or use different `Par` entries. `addTask` only records definitio
 create execution contexts, capture TTL values, start timers, or submit work. `buildAndSubmitAll`
 freezes the complete set, prepares every member, and then submits them.
 
-Groups and batches share one option type, `MultiExecutionOptions`: the group reads name, timeout,
+Groups and batches share one option type, `MultiTaskOptions`: the group reads name, timeout,
 and listeners, while each member reads the execution subset (parallelism, task type, enqueue
 policy, timeout).
 
 ```java
 ParallelTaskGroup.Builder builder = global.taskGroupBuilder(
-        MultiExecutionOptions.of("account-page")
+        MultiTaskOptions.of("account-page")
                 .timeout(Duration.ofSeconds(3))
                 .build());
 
 ParallelTaskGroup.TaskHandle<User> user = builder.addTask(
         "user", databasePar, userRepository::load,
-        MultiExecutionOptions.of("load-user").build());
+        MultiTaskOptions.of("load-user").build());
 ParallelTaskGroup.TaskHandle<List<Order>> orders = builder.addTask(
         "orders", httpPar, orderClient::load,
-        MultiExecutionOptions.of("load-orders").taskType(TaskType.IO_BOUND).build());
+        MultiTaskOptions.of("load-orders").taskType(TaskType.IO_BOUND).build());
 
 try (ParallelTaskGroup group = builder.buildAndSubmitAll()) {
     User userValue = user.future().get();

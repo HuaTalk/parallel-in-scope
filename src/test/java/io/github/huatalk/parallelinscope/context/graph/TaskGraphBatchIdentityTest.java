@@ -7,7 +7,7 @@ import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
 import io.github.huatalk.parallelinscope.scope.ExecutorIdentity;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.GlobalParDeadlockPolicy;
-import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.spi.DeadlockDetectionListener;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
@@ -157,11 +157,7 @@ class TaskGraphBatchIdentityTest {
 
     private static BatchExecutionContext context() {
         return BatchExecutionContext.resolve(
-                MultiExecutionOptions.of("same-name")
-                        .timeout(Duration.ofSeconds(30))
-                        .build(),
-                1,
-                null);
+                MultiTaskOptions.of("same-name").timeout(Duration.ofSeconds(30)).build(), 1, null);
     }
 
     private static TaskEdge edge() {

@@ -6,10 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
-class MultiExecutionOptionsTest {
+class MultiTaskOptionsTest {
     @Test
     void remainsAnImmutablePerCallInput() {
-        MultiExecutionOptions options = MultiExecutionOptions.of("load")
+        MultiTaskOptions options = MultiTaskOptions.of("load")
                 .parallelism(3)
                 .timeout(Duration.ofSeconds(2))
                 .taskType(TaskType.IO_BOUND)
@@ -23,15 +23,15 @@ class MultiExecutionOptionsTest {
 
     @Test
     void rejectsNonPositiveExplicitTimeouts() {
-        assertThatThrownBy(() -> MultiExecutionOptions.of("load").timeout(Duration.ZERO))
+        assertThatThrownBy(() -> MultiTaskOptions.of("load").timeout(Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> MultiExecutionOptions.of("load").timeout(Duration.ofMillis(-1)))
+        assertThatThrownBy(() -> MultiTaskOptions.of("load").timeout(Duration.ofMillis(-1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void retainsAllExecutionHints() {
-        MultiExecutionOptions options = MultiExecutionOptions.of("write")
+        MultiTaskOptions options = MultiTaskOptions.of("write")
                 .parallelism(7)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
@@ -45,7 +45,7 @@ class MultiExecutionOptionsTest {
 
     @Test
     void timeoutIsMandatory() {
-        assertThatThrownBy(() -> MultiExecutionOptions.of("read").build())
+        assertThatThrownBy(() -> MultiTaskOptions.of("read").build())
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("timeout");
     }
@@ -53,7 +53,7 @@ class MultiExecutionOptionsTest {
     @Test
     void resolvesExplicitTimeoutAndParallelismIntoBatchContext() {
         BatchExecutionContext context = BatchExecutionContext.resolve(
-                MultiExecutionOptions.of("write")
+                MultiTaskOptions.of("write")
                         .parallelism(8)
                         .timeout(Duration.ofSeconds(3))
                         .taskType(TaskType.IO_BOUND)
@@ -71,7 +71,7 @@ class MultiExecutionOptionsTest {
     @Test
     void resolvesExplicitTimeoutIntoBatchContext() {
         BatchExecutionContext context = BatchExecutionContext.resolve(
-                MultiExecutionOptions.of("read")
+                MultiTaskOptions.of("read")
                         .parallelism(-1)
                         .timeout(Duration.ofSeconds(3))
                         .build(),

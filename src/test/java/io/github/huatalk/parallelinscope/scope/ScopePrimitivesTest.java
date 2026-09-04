@@ -70,8 +70,7 @@ class ScopePrimitivesTest {
 
     private static BatchExecutionContext resolve(
             int parallelism, Duration timeout, int taskCount, BatchExecutionContext parent) {
-        MultiExecutionOptions.Builder options =
-                MultiExecutionOptions.of("batch").timeout(timeout);
+        MultiTaskOptions.Builder options = MultiTaskOptions.of("batch").timeout(timeout);
         if (parallelism > 0) {
             options.parallelism(parallelism);
         }
@@ -153,9 +152,7 @@ class ScopePrimitivesTest {
         try {
             ExecutorIdentity identity = new ExecutorIdentity(supplied);
             BatchExecutionContext labelled = BatchExecutionContext.resolve(
-                    MultiExecutionOptions.of("n")
-                            .timeout(Duration.ofSeconds(30))
-                            .build(),
+                    MultiTaskOptions.of("n").timeout(Duration.ofSeconds(30)).build(),
                     1,
                     null,
                     null,
@@ -166,14 +163,7 @@ class ScopePrimitivesTest {
             assertThat(labelledCall.executorName()).isEqualTo("par-label");
 
             BatchExecutionContext anonymous = BatchExecutionContext.resolve(
-                    MultiExecutionOptions.of("n")
-                            .timeout(Duration.ofSeconds(30))
-                            .build(),
-                    1,
-                    null,
-                    null,
-                    identity,
-                    null);
+                    MultiTaskOptions.of("n").timeout(Duration.ofSeconds(30)).build(), 1, null, null, identity, null);
             ScopedCallable<String> anonymousCall =
                     new ScopedCallable<>(task(anonymous, 0), () -> "ok", java.util.Collections.emptyList());
             assertThat(anonymousCall.executorName()).isEqualTo("NA");

@@ -26,7 +26,7 @@ import javax.annotation.Nullable;
  * <p>The timeout is mandatory: every call must state its own bound explicitly instead of
  * inheriting a silent global default.
  */
-public final class MultiExecutionOptions {
+public final class MultiTaskOptions {
     private final String name;
     private final int parallelism;
     private final Duration timeout;
@@ -34,7 +34,7 @@ public final class MultiExecutionOptions {
     private final boolean rejectEnqueue;
     private final List<TaskGroupListener> listeners;
 
-    private MultiExecutionOptions(Builder builder) {
+    private MultiTaskOptions(Builder builder) {
         this.name = Objects.requireNonNull(builder.name, "name cannot be null");
         if (name.trim().isEmpty()) throw new IllegalArgumentException("name cannot be empty");
         this.parallelism = builder.parallelism;
@@ -123,8 +123,8 @@ public final class MultiExecutionOptions {
             return this;
         }
 
-        public MultiExecutionOptions build() {
-            return new MultiExecutionOptions(this);
+        public MultiTaskOptions build() {
+            return new MultiTaskOptions(this);
         }
     }
 }

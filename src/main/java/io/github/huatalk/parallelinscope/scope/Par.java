@@ -26,7 +26,7 @@ import javax.annotation.Nullable;
  * pipeline:
  *
  * <ul>
- *   <li>Resolution of {@link MultiExecutionOptions} into a batch context
+ *   <li>Resolution of {@link MultiTaskOptions} into a batch context
  *   <li>Scoped task preparation via {@link io.github.huatalk.parallelinscope.internal.TaskSubmissions}
  *   <li>Concurrency-limited submission via {@link ConcurrentLimitExecutor}
  *   <li>Parent-child {@link CancellationToken} chaining
@@ -99,13 +99,13 @@ public final class Par {
      * @throws IllegalStateException if the owning GlobalPar has begun shutdown
      */
     public <T, R> AsyncBatchResult<R> map(
-            @Nullable List<T> list, Function<? super T, ? extends R> function, MultiExecutionOptions options) {
+            @Nullable List<T> list, Function<? super T, ? extends R> function, MultiTaskOptions options) {
         Objects.requireNonNull(options, "options cannot be null");
         return globalPar.whileOpen(() -> mapWhileOpen(list, function, options));
     }
 
     private <T, R> AsyncBatchResult<R> mapWhileOpen(
-            @Nullable List<T> list, Function<? super T, ? extends R> function, MultiExecutionOptions options) {
+            @Nullable List<T> list, Function<? super T, ? extends R> function, MultiTaskOptions options) {
         int taskCount = list == null ? 0 : list.size();
         TaskExecutionContext currentTask = TaskExecutionContext.current();
         BatchExecutionContext parent = currentTask == null ? null : currentTask.batchContext();

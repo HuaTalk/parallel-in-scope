@@ -10,7 +10,7 @@ import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
 import io.github.huatalk.parallelinscope.scope.ExecutorIdentity;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.GlobalParDeadlockPolicy;
-import io.github.huatalk.parallelinscope.scope.MultiExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -193,7 +193,7 @@ class TaskGraphExportTest {
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
-                                                MultiExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
                                                         .timeout(Duration.ofSeconds(30))
                                                         .build());
                                 try {
@@ -202,7 +202,7 @@ class TaskGraphExportTest {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            MultiExecutionOptions.of("outer")
+                            MultiTaskOptions.of("outer")
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
 
@@ -252,7 +252,7 @@ class TaskGraphExportTest {
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
-                                                MultiExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
                                                         .timeout(Duration.ofSeconds(30))
                                                         .build());
                                 try {
@@ -261,7 +261,7 @@ class TaskGraphExportTest {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            MultiExecutionOptions.of("outer")
+                            MultiTaskOptions.of("outer")
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
 
@@ -295,7 +295,7 @@ class TaskGraphExportTest {
                     .map(
                             Collections.singletonList(1),
                             value -> value + 1,
-                            MultiExecutionOptions.of("direct")
+                            MultiTaskOptions.of("direct")
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
 

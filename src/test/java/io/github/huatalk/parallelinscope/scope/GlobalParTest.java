@@ -32,7 +32,7 @@ class GlobalParTest {
                     .map(
                             java.util.Arrays.asList(1, 2),
                             ignored -> context.get(),
-                            MultiExecutionOptions.of("ttl")
+                            MultiTaskOptions.of("ttl")
                                     .parallelism(1)
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
@@ -98,7 +98,7 @@ class GlobalParTest {
                     .map(
                             Collections.singletonList(2),
                             value -> value + 1,
-                            MultiExecutionOptions.of("increment")
+                            MultiTaskOptions.of("increment")
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
 
@@ -118,7 +118,7 @@ class GlobalParTest {
                             .map(
                                     null,
                                     value -> value,
-                                    MultiExecutionOptions.of("empty")
+                                    MultiTaskOptions.of("empty")
                                             .timeout(Duration.ofSeconds(30))
                                             .build())
                             .results())
@@ -127,7 +127,7 @@ class GlobalParTest {
                             .map(
                                     Collections.<Integer>emptyList(),
                                     value -> value,
-                                    MultiExecutionOptions.of("empty")
+                                    MultiTaskOptions.of("empty")
                                             .timeout(Duration.ofSeconds(30))
                                             .build())
                             .results())
@@ -156,7 +156,7 @@ class GlobalParTest {
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
-                                                MultiExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
                                                         .timeout(Duration.ofSeconds(30))
                                                         .build());
                                 try {
@@ -165,7 +165,7 @@ class GlobalParTest {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            MultiExecutionOptions.of("outer")
+                            MultiTaskOptions.of("outer")
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
 
@@ -201,7 +201,7 @@ class GlobalParTest {
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
-                                                MultiExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
                                                         .timeout(Duration.ofSeconds(30))
                                                         .build());
                                 try {
@@ -210,7 +210,7 @@ class GlobalParTest {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            MultiExecutionOptions.of("outer")
+                            MultiTaskOptions.of("outer")
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
 
@@ -241,7 +241,7 @@ class GlobalParTest {
                                         .map(
                                                 java.util.Arrays.asList(1, 2),
                                                 value -> value + 1,
-                                                MultiExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
                                                         .parallelism(1)
                                                         .timeout(Duration.ofSeconds(30))
                                                         .build());
@@ -251,7 +251,7 @@ class GlobalParTest {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            MultiExecutionOptions.of("outer")
+                            MultiTaskOptions.of("outer")
                                     .parallelism(1)
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
@@ -277,7 +277,7 @@ class GlobalParTest {
                                 global.close();
                                 return value + 1;
                             },
-                            MultiExecutionOptions.of("cpu")
+                            MultiTaskOptions.of("cpu")
                                     .taskType(TaskType.CPU_BOUND)
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
@@ -362,7 +362,7 @@ class GlobalParTest {
                             .map(
                                     Collections.singletonList(1),
                                     value -> value + 1,
-                                    MultiExecutionOptions.of("closed")
+                                    MultiTaskOptions.of("closed")
                                             .timeout(Duration.ofSeconds(30))
                                             .build()))
                     .isInstanceOf(IllegalStateException.class)
@@ -404,7 +404,7 @@ class GlobalParTest {
                             .map(
                                     Collections.singletonList(1),
                                     value -> value + 1,
-                                    MultiExecutionOptions.of("closed")
+                                    MultiTaskOptions.of("closed")
                                             .timeout(Duration.ofSeconds(30))
                                             .build()))
                     .isInstanceOf(IllegalStateException.class);
@@ -433,7 +433,7 @@ class GlobalParTest {
                                 }
                                 return value + 1;
                             },
-                            MultiExecutionOptions.of("drain")
+                            MultiTaskOptions.of("drain")
                                     .parallelism(1)
                                     .timeout(Duration.ofSeconds(30))
                                     .build());
