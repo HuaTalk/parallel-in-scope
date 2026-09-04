@@ -2,7 +2,7 @@
 
 > 本文档面向当前 `0.2.0-SNAPSHOT` API。使用 `ParConfig` 或 `ParOptions` 的 `0.1.x` 示例不能直接用于本版本，请先阅读 [v0.2 迁移指南](migration-v0.2.md)。
 
-`parallel-in-scope` 将一个有限列表作为可取消的批次执行。应用装配层负责长期资源，`Par` 负责一个已绑定的执行器，`BatchExecutionContext` 负责单次调用的运行时状态。
+`parallel-in-scope` 将一个有限列表作为可取消的批次执行。应用装配层负责长期资源，`Par` 负责一个已绑定的执行器，`MultiTaskContext` 负责单次调用的运行时状态。
 
 ## 构建执行拓扑
 
@@ -36,7 +36,7 @@ Par defaultPar = GlobalPar.global().defaultPar();
 
 ## 执行批次
 
-`MultiTaskOptions` 是单次调用的不可变输入。库将它与任务数量、父批次和绑定的执行器 identity 解析为内部 `BatchExecutionContext`。
+`MultiTaskOptions` 是单次调用的不可变输入。库将它与任务数量、父批次和绑定的执行器 identity 解析为内部 `MultiTaskContext`。
 
 ```java
 MultiTaskOptions options = MultiTaskOptions.of("fetch-account")
@@ -72,7 +72,7 @@ httpPar.map(accountIds, id -> {
 }, options);
 ```
 
-任务内部再次调用 `map` 时，子调用继承当前 `BatchExecutionContext`。子批次继承父取消令牌和 deadline，记录父子边，并可使用不同的 `Par`：
+任务内部再次调用 `map` 时，子调用继承当前 `MultiTaskContext`。子批次继承父取消令牌和 deadline，记录父子边，并可使用不同的 `Par`：
 
 ```java
 databasePar.map(ids, id -> {
@@ -146,4 +146,4 @@ Job job = queue.take(); // 排空前返回真实元素；排空后返回 poison
 - 注册执行器的所有权在库外；由拥有它的组件负责关闭。
 - 为每批任务提供稳定 task name，并在长 CPU 任务中设置 checkpoint。
 - 需要隔离的资源应使用不同 `Par`，即使它们同为 IO。
-- `BatchExecutionContext`、`ExecutorRuntime` 和 `ExecutorIdentity` 是运行时/内部概念，不应由应用构造或缓存。
+- `MultiTaskContext`、`ExecutorRuntime` 和 `ExecutorIdentity` 是运行时/内部概念，不应由应用构造或缓存。

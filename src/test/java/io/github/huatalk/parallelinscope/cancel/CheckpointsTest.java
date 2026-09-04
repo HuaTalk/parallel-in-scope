@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.huatalk.parallelinscope.internal.ScopedCallable;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -32,18 +32,18 @@ class CheckpointsTest {
 
     @Test
     void checkpointHonorsTaskNameAndCancellationKind() throws Exception {
-        BatchExecutionContext context = context("task");
+        MultiTaskContext context = context("task");
         assertThat(runInTask(context, () -> Checkpoints.checkpoint("other", true)))
                 .isNull();
 
-        BatchExecutionContext leanContext = context("task");
+        MultiTaskContext leanContext = context("task");
         assertThatThrownBy(() -> runInTask(leanContext, () -> {
                     leanContext.cancellationToken().cancel(false);
                     Checkpoints.checkpoint("task", true);
                 }))
                 .isInstanceOf(LeanCancellationException.class);
 
-        BatchExecutionContext fatContext = context("task");
+        MultiTaskContext fatContext = context("task");
         assertThatThrownBy(() -> runInTask(fatContext, () -> {
                     fatContext.cancellationToken().cancel(false);
                     Checkpoints.checkpoint("task", false);
@@ -52,7 +52,7 @@ class CheckpointsTest {
                 .isNotInstanceOf(LeanCancellationException.class);
     }
 
-    private static Void runInTask(BatchExecutionContext context, Runnable action) throws Exception {
+    private static Void runInTask(MultiTaskContext context, Runnable action) throws Exception {
         return new ScopedCallable<Void>(
                         new TaskExecutionContext(context, 0, System.nanoTime()),
                         () -> {
@@ -291,8 +291,8 @@ class CheckpointsTest {
         Thread.interrupted();
     }
 
-    private static BatchExecutionContext context(String taskName) {
-        return BatchExecutionContext.resolve(
+    private static MultiTaskContext context(String taskName) {
+        return MultiTaskContext.resolve(
                 MultiTaskOptions.of(taskName).timeout(Duration.ofSeconds(30)).build(), 1, null);
     }
 }

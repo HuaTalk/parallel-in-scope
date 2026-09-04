@@ -18,7 +18,7 @@ Every package declares `@ParametersAreNonnullByDefault` in `package-info.java`. 
 
 ## When to use `@Nullable`
 
-Use it when a return value can be absent, when a constructor explicitly accepts `null`, or when a parameter has an optional value. Examples include a nullable parent `BatchExecutionContext`, a nullable parent `CancellationToken`, and an optional `submitCanceller` in `AsyncBatchResult`.
+Use it when a return value can be absent, when a constructor explicitly accepts `null`, or when a parameter has an optional value. Examples include a nullable parent `MultiTaskContext`, a nullable parent `CancellationToken`, and an optional `submitCanceller` in `AsyncBatchResult`.
 
 Do not add redundant annotations to non-null parameters covered by the package default or to non-null return values guaranteed by the implementation.
 

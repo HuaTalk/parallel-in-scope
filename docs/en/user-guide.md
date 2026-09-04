@@ -2,7 +2,7 @@
 
 > This guide documents the current `0.2.0-SNAPSHOT` API. `0.1.x` examples using `ParConfig` or `ParOptions` do not compile against this version; see the [migration guide](migration-v0.2.md).
 
-`parallel-in-scope` executes a finite list as a cancellable batch. Application wiring owns long-lived resources, a `Par` owns one executor binding, and a `BatchExecutionContext` owns one invocation's runtime state.
+`parallel-in-scope` executes a finite list as a cancellable batch. Application wiring owns long-lived resources, a `Par` owns one executor binding, and a `MultiTaskContext` owns one invocation's runtime state.
 
 It also coordinates a fixed heterogeneous set of named operations through `ParallelTaskGroup`. A
 group is described as a reusable `TaskGroupSpec` and submitted at one explicit boundary; it is not
@@ -40,7 +40,7 @@ Prefer explicit injection in tests and libraries. `installGlobal` is one-time an
 
 ## Execute a batch
 
-`MultiTaskOptions` is immutable input for one call. The library resolves it with the item count, any parent batch, and the bound executor identity into an internal `BatchExecutionContext`.
+`MultiTaskOptions` is immutable input for one call. The library resolves it with the item count, any parent batch, and the bound executor identity into an internal `MultiTaskContext`.
 
 ```java
 MultiTaskOptions options = MultiTaskOptions.of("fetch-account")
@@ -130,7 +130,7 @@ httpPar.map(accountIds, id -> {
 }, options);
 ```
 
-Nested `map` calls inherit the current `BatchExecutionContext` when they run inside a task. The child receives the parent cancellation token and deadline, records an edge to the parent, and may target a different `Par`:
+Nested `map` calls inherit the current `MultiTaskContext` when they run inside a task. The child receives the parent cancellation token and deadline, records an edge to the parent, and may target a different `Par`:
 
 ```java
 databasePar.map(ids, id -> {
@@ -205,4 +205,4 @@ Consumers can still take elements that were queued before `close()`; no recovery
 - Keep registered executor ownership outside the library; shut executors down in the owning component.
 - Give each batch a stable task name and add checkpoints to long CPU work.
 - Use different `Par` entries for resources that require isolation, even when both are IO-bound.
-- Treat `BatchExecutionContext`, `ExecutorRuntime`, and `ExecutorIdentity` as runtime/internal concepts, not configuration objects to cache or construct.
+- Treat `MultiTaskContext`, `ExecutorRuntime`, and `ExecutorIdentity` as runtime/internal concepts, not configuration objects to cache or construct.

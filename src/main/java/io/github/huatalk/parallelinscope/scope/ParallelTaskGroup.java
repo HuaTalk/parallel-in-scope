@@ -341,7 +341,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
     private static ParallelTaskGroup buildWhileOpen(GlobalPar env, TaskGroupSpec spec) {
         MultiTaskOptions options = spec.groupOptions();
         TaskExecutionContext currentTask = TaskExecutionContext.current();
-        BatchExecutionContext structuralParent = currentTask == null ? null : currentTask.batchContext();
+        MultiTaskContext structuralParent = currentTask == null ? null : currentTask.batchContext();
         TaskGraphObservationContext currentObservation = TaskGraphObservationContext.current();
         TaskGraphObservationContext observation = structuralParent != null
                         && structuralParent.taskGraphObservationContext() != null
@@ -378,7 +378,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
             for (TaskGroupSpec.MemberSpec<?> member : spec.members()) {
                 Par par = env.par(member.executorName());
                 memberPars.add(par);
-                BatchExecutionContext batch = BatchExecutionContext.resolve(
+                MultiTaskContext batch = MultiTaskContext.resolve(
                         member.options(),
                         1,
                         structuralParent,
@@ -462,8 +462,8 @@ public final class ParallelTaskGroup implements AutoCloseable {
         return nanos > Long.MAX_VALUE - start ? Long.MAX_VALUE : start + nanos;
     }
 
-    private static void logForking(BatchExecutionContext context, BlockingRisk blockingRisk) {
-        BatchExecutionContext parent = context.parent();
+    private static void logForking(MultiTaskContext context, BlockingRisk blockingRisk) {
+        MultiTaskContext parent = context.parent();
         if (parent == null) return;
         TaskEdge edge = new TaskEdge(
                 1,

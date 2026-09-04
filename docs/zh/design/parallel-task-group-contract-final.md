@@ -132,7 +132,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
 
 - `TaskGroupSpec.Builder.task()` 只校验并保存不可变任务定义（memberName 为空或重复、参数为
   null 立即拒绝）；不得提交 executor、启动 timer、创建
-  `BatchExecutionContext`/`TaskExecutionContext` 或占用运行期资源；
+  `MultiTaskContext`/`TaskExecutionContext` 或占用运行期资源；
 - `ParallelTaskGroup.submit()` 是唯一的冻结与提交入口；它按提交线程解析结构父任务与
   observation、创建并注册全部成员后才允许任何成员进入 executor；spec 本身可重复提交；
 - `TaskRef<T>` 是配置期发放的类型化令牌，不携带执行状态；`group.future(ref)` 在组内解析成员
@@ -241,7 +241,7 @@ ParallelTaskGroup ── created/running ── all terminal ── closed
 每个成员对象生命周期
 MemberSpec ── added ── frozen ─┐
 MemberState ──────────────────────── prepared/submitted/running ── terminal
-BatchExecutionContext ────────────────────────────────────────────────
+MultiTaskContext ────────────────────────────────────────────────
 TaskExecutionContext ─ created ─ queued ─ run ─ completed/event ─────
 
 动态线程绑定
@@ -293,9 +293,9 @@ failure（可空）
 
 生命周期从 build 的全量注册阶段开始，到 Group result 不再被引用为止。成员可能在用户函数开始前取消，此时 MemberState 存在，但 `TaskExecutionContext` 从未安装，且不得伪造 `TaskListener.TaskEvent`。
 
-### 4.4 BatchExecutionContext
+### 4.4 MultiTaskContext
 
-每个成员创建一个单任务 `BatchExecutionContext`：
+每个成员创建一个单任务 `MultiTaskContext`：
 
 ```text
 taskCount = 1
@@ -339,7 +339,7 @@ TaskListener 回调期间 `TaskExecutionContext.current()` MUST 为 null，避�
 成员每次真正调用目标 executor 的 `execute/submit` 时，必须临时安装成员 Batch：
 
 ```java
-BatchExecutionContext previous = SubmissionScope.install(memberBatch);
+MultiTaskContext previous = SubmissionScope.install(memberBatch);
 try {
     executor.execute(memberFuture);
 } finally {
@@ -363,7 +363,7 @@ try {
 
 ## 5. 结构化 parent、取消 parent 与 deadline 上限必须解耦
 
-现有 `BatchExecutionContext.resolve()` 把三件事都从 `parent BatchExecutionContext` 推导：
+现有 `MultiTaskContext.resolve()` 把三件事都从 `parent MultiTaskContext` 推导：
 
 1. TaskGraph/嵌套结构 parent；
 2. cancellation token parent；
@@ -372,10 +372,10 @@ try {
 Group member 证明这三者不总是同一个对象。实现 MUST 抽取一个新的解析重载或内部 factory，使其可独立传入：
 
 ```java
-BatchExecutionContext resolve(
+MultiTaskContext resolve(
         MultiTaskOptions options,
         int taskCount,
-        @Nullable BatchExecutionContext structuralParent,
+        @Nullable MultiTaskContext structuralParent,
         @Nullable CancellationToken cancellationParent,
         long deadlineCeilingNanos,
         @Nullable TaskGraphObservationContext observation,
@@ -627,7 +627,7 @@ memberDeadline = min(member requested/default deadline, groupDeadline)
 - `ConcurrentLimitExecutor`：Group 不使用滑动窗口、placeholder 或 completion queue 驱动提交；
 - `AsyncBatchResult`：Group 是异构成员和固定的具名集合；
 - `Par.map(singletonList, ...)`：会引入错误抽象和不必要包装；
-- 虚构的 Group `BatchExecutionContext`：membership 不是 Batch；
+- 虚构的 Group `MultiTaskContext`：membership 不是 Batch；
 - Group ThreadLocal/TTL：Group 由显式对象持有，不是线程隐式状态。
 
 ### 9.3 建议代码组织
@@ -657,7 +657,7 @@ internal/
 
 ```text
 Par/package-private entry
-  ├─ validate owner and resolve member BatchExecutionContext
+  ├─ validate owner and resolve member MultiTaskContext
   ├─ create TaskExecutionContext + ScopedCallable + TTL wrapper
   └─ internal kernel prepare execution future
 
@@ -820,7 +820,7 @@ fake-group-batch -> A/B/C
 
 推荐按以下顺序实现，每一步保持测试可运行：
 
-1. 解耦 `BatchExecutionContext` 的 structural parent、cancellation parent 和 deadline ceiling，并保持现有 `Par.map()` 行为不变；
+1. 解耦 `MultiTaskContext` 的 structural parent、cancellation parent 和 deadline ceiling，并保持现有 `Par.map()` 行为不变；
 2. 抽取两阶段单任务提交内核，先让 `Par.map()` 或针对 helper 的测试证明 TTL、SubmissionScope、phase、rejection 和 inline 语义；
 3. 实现组级/成员级 `MultiTaskOptions` 三态 timeout、结果枚举和不可变结果对象；
 4. 实现 `TaskGroupSpec`、`TaskRef<T>`、一次性 `submit`、全量冻结 registry、计数和 completion future；

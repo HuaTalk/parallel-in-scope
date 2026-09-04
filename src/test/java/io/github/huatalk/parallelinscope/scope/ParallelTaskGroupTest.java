@@ -598,14 +598,14 @@ class ParallelTaskGroupTest {
                 .register("inner", inner)
                 .build();
         try {
-            AsyncBatchResult<BatchExecutionContext> result = global.par("outer")
+            AsyncBatchResult<MultiTaskContext> result = global.par("outer")
                     .map(
                             Arrays.asList(1),
                             ignored -> {
-                                BatchExecutionContext expectedParent =
+                                MultiTaskContext expectedParent =
                                         TaskExecutionContext.current().batchContext();
                                 TaskGroupSpec.Builder spec = TaskGroupSpec.builder(groupOptions("nested"));
-                                TaskRef<BatchExecutionContext> child = spec.task(
+                                TaskRef<MultiTaskContext> child = spec.task(
                                         "child",
                                         "inner",
                                         () -> TaskExecutionContext.current()

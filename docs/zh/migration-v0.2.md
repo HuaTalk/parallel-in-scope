@@ -14,9 +14,11 @@
 | 调用时按名称解析执行器 | `GlobalPar` 构建期绑定执行器 |
 | `TaskGraph.destroyAfterRequest(config)` | `global.openTaskGraphObservation()` 作用域 |
 
-新的类型边界是刻意设计：`MultiTaskOptions` 是调用方输入，`BatchExecutionContext` 是单批运行时状态。取消、deadline 和执行器 identity 通过父子批次上下文传播，也支持跨具名 `Par` 的嵌套调用。
+新的类型边界是刻意设计：`MultiTaskOptions` 是调用方输入，`MultiTaskContext` 是单批运行时状态。取消、deadline 和执行器 identity 通过父子批次上下文传播，也支持跨具名 `Par` 的嵌套调用。
 
 早期 `0.2.x` 快照曾将该类型命名为 `ExecutionOptions`，随后改为 `BatchExecutionOptions`。请将 import、变量声明和 `Par.map` 参数统一改为 `MultiTaskOptions`；在 `0.x` 阶段不保留兼容别名。
+
+单次调用的运行时上下文也因同样理由改名：原 `BatchExecutionContext` 现为 `MultiTaskContext`，因为它同时支撑 `Par.map` 批次与任务组成员。请更新 import 与 `resolve(...)` 调用点；`batchId()`、`batchContext()` 等访问器名称不变。
 
 批次与任务组的选项类型已统一为单一的 `MultiTaskOptions`；原先的 `BatchExecutionOptions`
 和 `TaskGroupOptions` 已删除。`taskName()`/`groupName()` 访问器及对应的 builder 方法统一为
@@ -28,7 +30,7 @@
 两者都未声明或同时声明时 `build()` 抛出 `IllegalArgumentException`。访问器由
 `Duration timeout()` 改为 `Optional<Duration> timeout()`；空值表示继承。
 `GlobalExecutionPolicy.defaultTimeoutMillis` 已删除，不再存在隐式的全局默认超时。
-`BatchExecutionContext.resolve` 相应不再接收 policy 参数，调用时删除该实参。
+`MultiTaskContext.resolve` 相应不再接收 policy 参数，调用时删除该实参。
 
 deadline 解析遵循统一规则：显式 timeout 取自身上限与外层硬 deadline 的较早者；继承时解析为
 外层 deadline——`Par.map` 批次或任务组继承所在 scoped task 的 deadline，组成员继承组的

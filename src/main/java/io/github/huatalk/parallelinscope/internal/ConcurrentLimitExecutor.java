@@ -10,7 +10,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.SettableFuture;
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
 import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.util.List;
 import java.util.Objects;
@@ -39,12 +39,12 @@ public class ConcurrentLimitExecutor<V> {
 
     private final ListenableCompletionService<V> cs;
     private final BlockingQueue<ListenableFuture<V>> blockingQueue = new LinkedBlockingQueue<>();
-    private final BatchExecutionContext batchContext;
+    private final MultiTaskContext batchContext;
     private final ListeningExecutorService submitterPool;
 
     /** Creates a submitter for the new immutable batch runtime context. */
     public ConcurrentLimitExecutor(
-            ListeningExecutorService pool, BatchExecutionContext batchContext, ListeningExecutorService submitterPool) {
+            ListeningExecutorService pool, MultiTaskContext batchContext, ListeningExecutorService submitterPool) {
         this.batchContext = Objects.requireNonNull(batchContext, "batchContext cannot be null");
         this.submitterPool = Objects.requireNonNull(submitterPool, "submitterPool cannot be null");
         this.cs = new ListenableCompletionService<>(pool, blockingQueue);
@@ -116,7 +116,7 @@ public class ConcurrentLimitExecutor<V> {
 
     private ListenableFuture<V> fallbackSubmit(List<? extends ExecutionPhaseHintFuture<V>> tasks, int i) {
         ExecutionPhaseHintFuture<V> task = tasks.get(i);
-        BatchExecutionContext previous = SubmissionScope.install(batchContext);
+        MultiTaskContext previous = SubmissionScope.install(batchContext);
         try {
             return TaskType.CPU_BOUND == taskType() ? cs.submitOrRunInline(task) : cs.submit(task);
         } finally {

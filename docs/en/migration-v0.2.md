@@ -14,9 +14,11 @@ Version `0.2.0` replaces the mutable configuration-and-resolver API with an immu
 | executor-name resolution at call time | executor binding at `GlobalPar` build time |
 | `TaskGraph.destroyAfterRequest(config)` | `global.openTaskGraphObservation()` scope |
 
-The new split is intentional: `MultiTaskOptions` is caller input, while `BatchExecutionContext` is per-batch runtime state. Cancellation, deadline, and executor identity flow through parent-child batch contexts, including nested calls across named `Par` entries.
+The new split is intentional: `MultiTaskOptions` is caller input, while `MultiTaskContext` is per-batch runtime state. Cancellation, deadline, and executor identity flow through parent-child batch contexts, including nested calls across named `Par` entries.
 
 Earlier `0.2.x` snapshots named this type `ExecutionOptions` and then `BatchExecutionOptions`. Rename imports, variable declarations, and `Par.map` arguments to `MultiTaskOptions`; no compatibility alias is retained during the `0.x` phase.
+
+The per-invocation runtime context was renamed for the same reason: the former `BatchExecutionContext` is now `MultiTaskContext`, because it backs both `Par.map` batches and task-group members. Update imports and `resolve(...)` call sites; accessors such as `batchId()` and `batchContext()` keep their names.
 
 Batch and task-group option types are unified into the single `MultiTaskOptions`; the earlier
 `BatchExecutionOptions` and `TaskGroupOptions` types are removed. The `taskName()`/`groupName()`
@@ -31,7 +33,7 @@ declares that the enclosing scope's deadline is inherited. `build()` rejects a b
 declares neither (`IllegalArgumentException`: call `timeout(Duration)` or `inheritTimeout()`) or
 both. The accessor changed from `Duration timeout()` to `Optional<Duration> timeout()`; an empty
 value means inherit. `GlobalExecutionPolicy.defaultTimeoutMillis` is removed so no silent global
-default remains. `BatchExecutionContext.resolve` consequently no longer takes the policy; drop
+default remains. `MultiTaskContext.resolve` consequently no longer takes the policy; drop
 that argument.
 
 Deadline resolution follows one uniform rule. An explicit timeout resolves to the earlier of its

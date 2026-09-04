@@ -67,7 +67,7 @@ public final class Par {
     }
 
     ExecutionPhaseHintFuture<Object> prepareGroupTask(
-            Callable<Object> callable, BatchExecutionContext batchContext, TaskExecutionContext taskContext) {
+            Callable<Object> callable, MultiTaskContext batchContext, TaskExecutionContext taskContext) {
         return TaskSubmissions.prepare(
                 taskContext,
                 callable,
@@ -113,7 +113,7 @@ public final class Par {
         if (!options.timeout().isPresent() && currentTask == null) {
             throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
         }
-        BatchExecutionContext parent = currentTask == null ? null : currentTask.batchContext();
+        MultiTaskContext parent = currentTask == null ? null : currentTask.batchContext();
         TaskGraphObservationContext currentObservation = TaskGraphObservationContext.current();
         TaskGraphObservationContext observation = parent != null
                         && parent.taskGraphObservationContext() != null
@@ -122,13 +122,13 @@ public final class Par {
                 : parent == null && currentObservation != null && currentObservation.owner() == globalPar
                         ? currentObservation
                         : null;
-        BatchExecutionContext batchContext =
-                BatchExecutionContext.resolve(options, taskCount, parent, observation, runtime.identity(), displayName);
+        MultiTaskContext batchContext =
+                MultiTaskContext.resolve(options, taskCount, parent, observation, runtime.identity(), displayName);
         return executeGlobal(list, item -> () -> function.apply(item), batchContext);
     }
 
     private <T, R> AsyncBatchResult<R> executeGlobal(
-            @Nullable List<T> list, Function<T, Callable<R>> callableMapper, BatchExecutionContext batchContext) {
+            @Nullable List<T> list, Function<T, Callable<R>> callableMapper, MultiTaskContext batchContext) {
         if (list == null || list.isEmpty()) return emptyBatchResult();
         TaskEdge edge = new TaskEdge(
                 batchContext.effectiveParallelism(),
@@ -161,8 +161,8 @@ public final class Par {
      * Records one parent-to-child batch edge. Batch IDs, rather than reusable task names, preserve
      * graph correctness when the same named operation is invoked concurrently.
      */
-    private static void logForking(BatchExecutionContext context, TaskEdge edge) {
-        BatchExecutionContext parent = context.parent();
+    private static void logForking(MultiTaskContext context, TaskEdge edge) {
+        MultiTaskContext parent = context.parent();
         TaskGraphObservationContext.logTaskPair(
                 parent == null ? null : parent.batchId(),
                 parent == null ? null : parent.taskName(),

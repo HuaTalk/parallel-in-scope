@@ -7,7 +7,7 @@ import static org.awaitility.Awaitility.await;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.time.Duration;
@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 class ConcurrentLimitExecutorBatchContextTest {
     @Test
     void installsBatchScopeForInitialAndSlidingWindowSubmissions() throws Exception {
-        ConcurrentLinkedQueue<BatchExecutionContext> submittedBatches = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<MultiTaskContext> submittedBatches = new ConcurrentLinkedQueue<>();
         ThreadPoolExecutor worker =
                 new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()) {
                     @Override
@@ -41,7 +41,7 @@ class ConcurrentLimitExecutorBatchContextTest {
         ListeningExecutorService workers = MoreExecutors.listeningDecorator(worker);
         ListeningExecutorService submitter = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
         try {
-            BatchExecutionContext batch = context(2, 1, TaskType.IO_BOUND);
+            MultiTaskContext batch = context(2, 1, TaskType.IO_BOUND);
             ConcurrentLimitExecutor<Integer> executor = new ConcurrentLimitExecutor<>(workers, batch, submitter);
 
             assertThat(executor.submitAll(futures(() -> 1, () -> 2)).results())
@@ -169,7 +169,7 @@ class ConcurrentLimitExecutorBatchContextTest {
         ListeningExecutorService workers = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(3));
         ListeningExecutorService submitter = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
         try {
-            BatchExecutionContext context = context(3, 1, TaskType.IO_BOUND);
+            MultiTaskContext context = context(3, 1, TaskType.IO_BOUND);
             AtomicInteger active = new AtomicInteger();
             AtomicInteger maximum = new AtomicInteger();
             CountDownLatch release = new CountDownLatch(1);
@@ -317,8 +317,8 @@ class ConcurrentLimitExecutorBatchContextTest {
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    private static BatchExecutionContext context(int tasks, int parallelism, TaskType type) {
-        return BatchExecutionContext.resolve(
+    private static MultiTaskContext context(int tasks, int parallelism, TaskType type) {
+        return MultiTaskContext.resolve(
                 MultiTaskOptions.of("batch")
                         .parallelism(parallelism)
                         .taskType(type)

@@ -2,7 +2,7 @@ package io.github.huatalk.parallelinscope.spi;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.TaskContext;
 import io.github.huatalk.parallelinscope.spi.TaskListener.TaskEvent;
@@ -49,11 +49,11 @@ class TaskListenerTest {
     }
 
     private static TaskContext taskContext() {
-        BatchExecutionContext batch = BatchExecutionContext.resolve(
+        MultiTaskContext batch = MultiTaskContext.resolve(
                 MultiTaskOptions.of("task").timeout(Duration.ofSeconds(30)).build(), 1, null);
         return new TaskContext() {
             @Override
-            public BatchExecutionContext batchContext() {
+            public MultiTaskContext batchContext() {
                 return batch;
             }
 

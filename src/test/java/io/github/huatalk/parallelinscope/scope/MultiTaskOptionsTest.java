@@ -81,7 +81,7 @@ class MultiTaskOptionsTest {
 
     @Test
     void resolvesExplicitTimeoutAndParallelismIntoBatchContext() {
-        BatchExecutionContext context = BatchExecutionContext.resolve(
+        MultiTaskContext context = MultiTaskContext.resolve(
                 MultiTaskOptions.of("write")
                         .parallelism(8)
                         .timeout(Duration.ofSeconds(3))
@@ -99,7 +99,7 @@ class MultiTaskOptionsTest {
 
     @Test
     void resolvesExplicitTimeoutIntoBatchContext() {
-        BatchExecutionContext context = BatchExecutionContext.resolve(
+        MultiTaskContext context = MultiTaskContext.resolve(
                 MultiTaskOptions.of("read")
                         .parallelism(-1)
                         .timeout(Duration.ofSeconds(3))
@@ -113,7 +113,7 @@ class MultiTaskOptionsTest {
 
     @Test
     void inheritedTimeoutWithoutParentIsRejectedAtResolution() {
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(
+        assertThatThrownBy(() -> MultiTaskContext.resolve(
                         MultiTaskOptions.of("read").inheritTimeout().build(), 1, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("no enclosing deadline to inherit");
@@ -121,9 +121,9 @@ class MultiTaskOptionsTest {
 
     @Test
     void inheritedTimeoutResolvesToTheParentDeadline() {
-        BatchExecutionContext parent = BatchExecutionContext.resolve(
+        MultiTaskContext parent = MultiTaskContext.resolve(
                 MultiTaskOptions.of("outer").timeout(Duration.ofMillis(100)).build(), 1, null);
-        BatchExecutionContext child = BatchExecutionContext.resolve(
+        MultiTaskContext child = MultiTaskContext.resolve(
                 MultiTaskOptions.of("inner").inheritTimeout().build(), 1, parent);
 
         assertThat(child.deadlineNanos()).isEqualTo(parent.deadlineNanos());

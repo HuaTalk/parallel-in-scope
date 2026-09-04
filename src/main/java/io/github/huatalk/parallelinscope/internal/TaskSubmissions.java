@@ -2,7 +2,7 @@ package io.github.huatalk.parallelinscope.internal;
 
 import com.alibaba.ttl.TtlCallable;
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import io.github.huatalk.parallelinscope.spi.ExecutionPhase;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
 import java.util.List;
@@ -65,11 +65,8 @@ public final class TaskSubmissions {
      * running user code.
      */
     public static void submitScoped(
-            ExecutionPhaseHintFuture<?> future,
-            BatchExecutionContext batchContext,
-            Executor executor,
-            boolean cpuBound) {
-        BatchExecutionContext previous = SubmissionScope.install(batchContext);
+            ExecutionPhaseHintFuture<?> future, MultiTaskContext batchContext, Executor executor, boolean cpuBound) {
+        MultiTaskContext previous = SubmissionScope.install(batchContext);
         try {
             future.submitPrepared(executor, cpuBound);
         } finally {

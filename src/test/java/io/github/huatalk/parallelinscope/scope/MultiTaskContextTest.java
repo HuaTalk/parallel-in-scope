@@ -7,13 +7,13 @@ import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
-class BatchExecutionContextTest {
+class MultiTaskContextTest {
     @Test
     void childDeadlineCannotOutliveParentDeadline() {
         GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
-        BatchExecutionContext parent = BatchExecutionContext.resolve(
+        MultiTaskContext parent = MultiTaskContext.resolve(
                 MultiTaskOptions.of("outer").timeout(Duration.ofMillis(100)).build(), 1, null);
-        BatchExecutionContext child = BatchExecutionContext.resolve(
+        MultiTaskContext child = MultiTaskContext.resolve(
                 MultiTaskOptions.of("inner").timeout(Duration.ofSeconds(10)).build(), 1, parent);
 
         assertThat(child.deadlineNanos()).isLessThanOrEqualTo(parent.deadlineNanos());
@@ -31,7 +31,7 @@ class BatchExecutionContextTest {
                 .build();
         ExecutorServiceStub executor = new ExecutorServiceStub();
         ExecutorIdentity identity = new ExecutorIdentity(executor);
-        BatchExecutionContext context = BatchExecutionContext.resolve(options, 3, null, null, identity, "http");
+        MultiTaskContext context = MultiTaskContext.resolve(options, 3, null, null, identity, "http");
 
         assertThat(context.effectiveParallelism()).isEqualTo(3);
         assertThat(context.executorIdentity()).isSameAs(identity);
@@ -43,7 +43,7 @@ class BatchExecutionContextTest {
 
     @Test
     void rejectsNegativeTaskCount() {
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(
+        assertThatThrownBy(() -> MultiTaskContext.resolve(
                         MultiTaskOptions.of("x").timeout(Duration.ofSeconds(30)).build(), -1, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -53,14 +53,14 @@ class BatchExecutionContextTest {
         GlobalPar global = GlobalPar.builder().build();
         TaskGraphObservationContext observation = global.openTaskGraphObservation();
         try {
-            BatchExecutionContext parent = BatchExecutionContext.resolve(
+            MultiTaskContext parent = MultiTaskContext.resolve(
                     MultiTaskOptions.of("parent")
                             .timeout(Duration.ofSeconds(30))
                             .build(),
                     2,
                     null,
                     observation);
-            BatchExecutionContext child = BatchExecutionContext.resolve(
+            MultiTaskContext child = MultiTaskContext.resolve(
                     MultiTaskOptions.of("child").timeout(Duration.ofSeconds(30)).build(), 1, parent);
 
             assertThat(parent.taskName()).isEqualTo("parent");
