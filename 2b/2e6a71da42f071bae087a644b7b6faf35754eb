@@ -1,0 +1,22 @@
+src/main/java/io/github/huatalk/parallelinscope/scope/TaskGroupSpec.java
+  h_a991f50801869b 16
+src/main/java/io/github/huatalk/parallelinscope/scope/TaskGroup.java
+  h_a991f50801869b 47-48,68,332,335,341,415
+src/test/java/io/github/huatalk/parallelinscope/scope/ScopedTaskContractTest.java
+  h_a991f50801869b 237,320,338,341
+src/main/java/io/github/huatalk/parallelinscope/scope/TaskRef.java
+  h_a991f50801869b 11
+src/test/java/io/github/huatalk/parallelinscope/scope/TaskGroupTest.java
+  h_a991f50801869b 23,49,88,124-125,153,170,204,243-244,273,308,342-343,375-376,402,406-407,424,429,451,475,520,542,569,611,637,652,684,704,721,743,762,791
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "2b2e6a71da42f071bae087a644b7b6faf35754eb",
+  "prompts": {},
+  "humans": {
+    "h_a991f50801869b": {
+      "author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
