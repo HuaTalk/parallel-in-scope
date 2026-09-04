@@ -1,0 +1,56 @@
+src/main/java/io/github/huatalk/parallelinscope/internal/TaskExecutionContext.java
+  h_a991f50801869b 3,13,20,27
+src/test/java/io/github/huatalk/parallelinscope/scope/MultiTaskOptionsTest.java
+  h_a991f50801869b 84,102,116,124,126
+src/test/java/io/github/huatalk/parallelinscope/cancel/CheckpointsTest.java
+  h_a991f50801869b 8,35,39,46,55,294-295
+src/test/java/io/github/huatalk/parallelinscope/internal/TaskExecutionContextTest.java
+  h_a991f50801869b 6,15,39,47
+src/main/java/io/github/huatalk/parallelinscope/context/SubmissionScope.java
+  h_a991f50801869b 3,13,18,23-24,29-30
+src/test/java/io/github/huatalk/parallelinscope/scope/MultiTaskContextTest.java
+  h_a991f50801869b 10,14,16,34,46,56,63
+src/test/java/io/github/huatalk/parallelinscope/internal/ConcurrentLimitExecutorBatchContextTest.java
+  h_a991f50801869b 10,32,44,172,320-321
+src/main/java/io/github/huatalk/parallelinscope/internal/ScopedCallable.java
+  h_a991f50801869b 5,113
+src/main/java/io/github/huatalk/parallelinscope/internal/ConcurrentLimitExecutor.java
+  h_a991f50801869b 13,42,47,119
+src/main/java/io/github/huatalk/parallelinscope/cancel/Checkpoints.java
+  h_a991f50801869b 4
+src/test/java/io/github/huatalk/parallelinscope/context/graph/TaskGraphBatchIdentityTest.java
+  h_a991f50801869b 23-24,158-159
+src/test/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroupTest.java
+  h_a991f50801869b 601,605,608
+src/test/java/io/github/huatalk/parallelinscope/spi/TaskListenerTest.java
+  h_a991f50801869b 5,52,56
+src/test/java/io/github/huatalk/parallelinscope/scope/ScopePrimitivesTest.java
+  h_a991f50801869b 18,71,112
+src/test/java/io/github/huatalk/parallelinscope/queue/SmartBlockingQueueTest.java
+  h_a991f50801869b 7,47,57,67
+src/main/java/io/github/huatalk/parallelinscope/scope/TaskContext.java
+  h_a991f50801869b 7
+src/main/java/io/github/huatalk/parallelinscope/scope/ParallelTaskGroup.java
+  h_a991f50801869b 344,381,465-466
+src/main/java/io/github/huatalk/parallelinscope/scope/Par.java
+  h_a991f50801869b 70,116,125-126,131,164-165
+src/main/java/io/github/huatalk/parallelinscope/internal/TaskSubmissions.java
+  h_a991f50801869b 5,69
+src/main/java/io/github/huatalk/parallelinscope/scope/MultiTaskContext.java
+  h_a991f50801869b 21,28,35,41,65,69,72,106,125,128,132-133,152,155,189,234
+src/main/java/io/github/huatalk/parallelinscope/queue/SmartBlockingQueue.java
+  h_a991f50801869b 5,66
+src/test/java/io/github/huatalk/parallelinscope/internal/ScopedCallableContextRestoreTest.java
+  h_a991f50801869b 5,16,44,65-66,93-94,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "41b0acc25a28444874b7f4750bd91ac3f652c7c7",
+  "prompts": {},
+  "humans": {
+    "h_a991f50801869b": {
+      "author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
