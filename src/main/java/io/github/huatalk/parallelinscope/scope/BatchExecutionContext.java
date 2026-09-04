@@ -4,6 +4,7 @@ import io.github.huatalk.parallelinscope.cancel.CancellationToken;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import javax.annotation.Nullable;
 
@@ -12,9 +13,10 @@ import javax.annotation.Nullable;
  * {@code GlobalPar}.
  *
  * <p>Resolution is the only place where user options become executable values: requested
- * parallelism is capped by task count, absent timeout uses the global default, and a nested batch
- * uses the earlier of its requested and parent deadlines. The cancellation token is always a new
- * child token, so cancellation propagates downward without making child failure cancel its parent.
+ * parallelism is capped by task count, an explicit timeout uses the earlier of its own and any
+ * parent deadline, and an inherited timeout resolves to the enclosing deadline (rejected when there
+ * is none). The cancellation token is always a new child token, so cancellation propagates downward
+ * without making child failure cancel its parent.
  */
 public final class BatchExecutionContext {
     private final String batchId;
@@ -74,21 +76,30 @@ public final class BatchExecutionContext {
         if (taskCount < 0) throw new IllegalArgumentException("taskCount must not be negative");
         int requested = options.parallelism();
         int effective = requested <= 0 ? taskCount : Math.min(requested, taskCount);
-        long timeoutMillis;
-        try {
-            timeoutMillis = options.timeout().toMillis();
-        } catch (ArithmeticException overflow) {
-            timeoutMillis = Long.MAX_VALUE / 1_000_000L;
-        }
+        Optional<Duration> timeout = options.timeout();
         long now = System.nanoTime();
-        long timeoutNanos;
-        try {
-            timeoutNanos = Math.multiplyExact(timeoutMillis, 1_000_000L);
-        } catch (ArithmeticException overflow) {
-            timeoutNanos = Long.MAX_VALUE;
+        long deadline;
+        if (timeout.isPresent()) {
+            long timeoutMillis;
+            try {
+                timeoutMillis = timeout.get().toMillis();
+            } catch (ArithmeticException overflow) {
+                timeoutMillis = Long.MAX_VALUE / 1_000_000L;
+            }
+            long timeoutNanos;
+            try {
+                timeoutNanos = Math.multiplyExact(timeoutMillis, 1_000_000L);
+            } catch (ArithmeticException overflow) {
+                timeoutNanos = Long.MAX_VALUE;
+            }
+            long requestedDeadline = timeoutNanos > Long.MAX_VALUE - now ? Long.MAX_VALUE : now + timeoutNanos;
+            deadline = parent == null ? requestedDeadline : Math.min(parent.deadlineNanos, requestedDeadline);
+        } else {
+            if (parent == null) {
+                throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
+            }
+            deadline = parent.deadlineNanos;
         }
-        long requestedDeadline = timeoutNanos > Long.MAX_VALUE - now ? Long.MAX_VALUE : now + timeoutNanos;
-        long deadline = parent == null ? requestedDeadline : Math.min(parent.deadlineNanos, requestedDeadline);
         CancellationToken token = new CancellationToken(parent == null ? null : parent.cancellationToken, deadline);
         TaskGraphObservationContext effectiveObservation = taskGraphObservationContext != null
                 ? taskGraphObservationContext
@@ -153,21 +164,28 @@ public final class BatchExecutionContext {
         if (taskCount < 0) throw new IllegalArgumentException("taskCount must not be negative");
         int requested = options.parallelism();
         int effective = requested <= 0 ? taskCount : Math.min(requested, taskCount);
-        long timeoutMillis;
-        try {
-            timeoutMillis = options.timeout().toMillis();
-        } catch (ArithmeticException overflow) {
-            timeoutMillis = Long.MAX_VALUE / 1_000_000L;
+        long requestedDeadline;
+        Optional<Duration> timeout = options.timeout();
+        if (timeout.isPresent()) {
+            long timeoutMillis;
+            try {
+                timeoutMillis = timeout.get().toMillis();
+            } catch (ArithmeticException overflow) {
+                timeoutMillis = Long.MAX_VALUE / 1_000_000L;
+            }
+            long timeoutNanos;
+            try {
+                timeoutNanos = Math.multiplyExact(timeoutMillis, 1_000_000L);
+            } catch (ArithmeticException overflow) {
+                timeoutNanos = Long.MAX_VALUE;
+            }
+            requestedDeadline = timeoutNanos > Long.MAX_VALUE - resolutionTimeNanos
+                    ? Long.MAX_VALUE
+                    : resolutionTimeNanos + timeoutNanos;
+        } else {
+            // A member that inherits its timeout resolves to the enclosing group deadline.
+            requestedDeadline = deadlineCeilingNanos;
         }
-        long timeoutNanos;
-        try {
-            timeoutNanos = Math.multiplyExact(timeoutMillis, 1_000_000L);
-        } catch (ArithmeticException overflow) {
-            timeoutNanos = Long.MAX_VALUE;
-        }
-        long requestedDeadline = timeoutNanos > Long.MAX_VALUE - resolutionTimeNanos
-                ? Long.MAX_VALUE
-                : resolutionTimeNanos + timeoutNanos;
         long deadline = Math.min(requestedDeadline, deadlineCeilingNanos);
         return new BatchExecutionContext(
                 options.name(),

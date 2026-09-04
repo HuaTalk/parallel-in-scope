@@ -34,7 +34,7 @@ class MultiTaskOptionsMatrixTest {
 
         assertThat(options.name()).isEqualTo("chain");
         assertThat(options.parallelism()).isEqualTo(3);
-        assertThat(options.timeout()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(options.timeout()).contains(Duration.ofSeconds(2));
         assertThat(options.taskType()).isEqualTo(TaskType.IO_BOUND);
         assertThat(options.rejectEnqueue()).isFalse();
 
@@ -44,11 +44,9 @@ class MultiTaskOptionsMatrixTest {
     }
 
     @Test
-    void missingOrExplicitNullTimeoutIsRejectedAsRequired() {
-        assertThatThrownBy(() -> MultiTaskOptions.of("t").build()).isInstanceOf(NullPointerException.class);
-        MultiTaskOptions.Builder builder = MultiTaskOptions.of("t");
-        builder.timeout(null);
-        assertThatThrownBy(builder::build).isInstanceOf(NullPointerException.class);
+    void missingTimeoutDeclarationIsRejectedAtBuild() {
+        assertThatThrownBy(() -> MultiTaskOptions.of("t").build()).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MultiTaskOptions.of("t").timeout(null)).isInstanceOf(NullPointerException.class);
 
         assertThatThrownBy(() -> MultiTaskOptions.of("t").timeout(Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);

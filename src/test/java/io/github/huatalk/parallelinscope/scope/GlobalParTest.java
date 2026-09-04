@@ -109,6 +109,29 @@ class GlobalParTest {
     }
 
     @Test
+    void topLevelBatchWithInheritedTimeoutIsRejectedWithoutAnEnclosingTask() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            GlobalPar global = GlobalPar.builder().register("io", executor).build();
+            try {
+                assertThatThrownBy(() -> global.par("io")
+                                .map(
+                                        Collections.singletonList(1),
+                                        value -> value + 1,
+                                        MultiTaskOptions.of("orphan")
+                                                .inheritTimeout()
+                                                .build()))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("no enclosing deadline to inherit");
+            } finally {
+                global.close();
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void nullAndEmptyInputsProduceUsableEmptyBatchResults() {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {

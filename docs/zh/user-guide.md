@@ -54,7 +54,7 @@ AsyncBatchResult<Account> result = httpPar.map(
 List<ListenableFuture<Account>> futures = result.getResults();
 ```
 
-`parallelism` 限制该批次的活跃提交窗口。负数表示让策略解析有效限制；timeout 为必填且必须为正，没有全局默认值。`TaskType.CPU_BOUND` 与 `TaskType.IO_BOUND` 描述调度意图。`rejectEnqueue` 控制绑定执行器支持时是否拒绝排队。
+`parallelism` 限制该批次的活跃提交窗口。负数表示让策略解析有效限制；timeout 必须显式二选一：调用 `timeout(Duration)` 设置正数超时，或调用 `inheritTimeout()` 继承外层作用域的 deadline——两者都未声明或同时声明时 `build()` 拒绝。显式 timeout 会被外层 deadline 截断；在没有外层 scoped task 时声明继承会在入口点被拒绝。`TaskType.CPU_BOUND` 与 `TaskType.IO_BOUND` 描述调度意图。`rejectEnqueue` 控制绑定执行器支持时是否拒绝排队。
 
 结果 future 按输入顺序排列。失败、超时、取消、submitter 中断或拒绝导致窗口停止时，未提交 placeholder 也会完成或取消，因此聚合 future 不会永久停留在 live 状态。
 

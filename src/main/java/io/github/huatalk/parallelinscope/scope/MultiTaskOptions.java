@@ -6,30 +6,34 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nullable;
 
 /**
- * Immutable execution options shared by every multi-task entry point.
+ * Immutable option set for every multi-task entry point.
  *
- * <p>The same option set describes a {@code Par.map} batch, a {@code ParallelTaskGroup}, and a
- * group member; each entry point reads the subset it owns:
+ * <p>The same option set describes a {@code Par.map} batch, a {@code TaskGroupSpec} group level,
+ * and a group member; each entry point reads the subset it owns:
  *
  * <ul>
  *   <li>A batch uses {@link #name()}, {@link #parallelism()}, {@link #timeout()}, {@link
  *       #taskType()}, and {@link #rejectEnqueue()}
- *   <li>A group uses {@link #name()}, {@link #timeout()}, and {@link #listeners()}; member-level
- *       execution strategy (parallelism, task type, enqueue policy) is per member
+ *   <li>A group level uses {@link #name()}, {@link #timeout()}, and {@link #listeners()};
+ *       member-level execution strategy (parallelism, task type, enqueue policy) is per member
  *   <li>A group member reads the same fields as a batch, with parallelism applying to nested work
  *       it may submit
  * </ul>
  *
- * <p>The timeout is mandatory: every call must state its own bound explicitly instead of
- * inheriting a silent global default.
+ * <p>The timeout is a forced explicit choice between two mutually exclusive builder declarations:
+ * {@link Builder#timeout(Duration)} sets an explicit timeout, while {@link Builder#inheritTimeout()}
+ * declares that the enclosing scope's deadline is inherited. {@link Builder#build()} rejects a
+ * builder on which neither or both were called, so every call site must state its intent instead of
+ * silently inheriting a global default.
  */
 public final class MultiTaskOptions {
     private final String name;
     private final int parallelism;
-    private final Duration timeout;
+    private final @Nullable Duration timeout;
     private final TaskType taskType;
     private final boolean rejectEnqueue;
     private final List<TaskGroupListener> listeners;
@@ -37,9 +41,14 @@ public final class MultiTaskOptions {
     private MultiTaskOptions(Builder builder) {
         this.name = Objects.requireNonNull(builder.name, "name cannot be null");
         if (name.trim().isEmpty()) throw new IllegalArgumentException("name cannot be empty");
+        if (!builder.timeoutDeclared && !builder.inheritDeclared) {
+            throw new IllegalArgumentException("timeout is required; call timeout(Duration) or inheritTimeout()");
+        }
+        if (builder.timeoutDeclared && builder.inheritDeclared) {
+            throw new IllegalArgumentException("timeout(Duration) and inheritTimeout() are mutually exclusive");
+        }
         this.parallelism = builder.parallelism;
-        this.timeout =
-                Objects.requireNonNull(builder.timeout, "timeout is required; call timeout(Duration) explicitly");
+        this.timeout = builder.timeout;
         this.taskType = Objects.requireNonNull(builder.taskType, "taskType cannot be null");
         this.rejectEnqueue = builder.rejectEnqueue;
         this.listeners = Collections.unmodifiableList(new ArrayList<>(builder.listeners));
@@ -63,9 +72,9 @@ public final class MultiTaskOptions {
         return parallelism;
     }
 
-    /** The execution timeout; always set, mandatory at build time. */
-    public Duration timeout() {
-        return timeout;
+    /** The explicit execution timeout; empty means the enclosing scope's deadline is inherited. */
+    public Optional<Duration> timeout() {
+        return Optional.ofNullable(timeout);
     }
 
     public TaskType taskType() {
@@ -86,6 +95,8 @@ public final class MultiTaskOptions {
         private String name = "task";
         private int parallelism = -1;
         private @Nullable Duration timeout;
+        private boolean timeoutDeclared;
+        private boolean inheritDeclared;
         private TaskType taskType = TaskType.CPU_BOUND;
         private boolean rejectEnqueue = true;
         private final List<TaskGroupListener> listeners = new ArrayList<>();
@@ -100,11 +111,20 @@ public final class MultiTaskOptions {
             return this;
         }
 
-        public Builder timeout(@Nullable Duration timeout) {
-            if (timeout != null && (timeout.isNegative() || timeout.isZero())) {
+        /** Declares an explicit timeout; mutually exclusive with {@link #inheritTimeout()}. */
+        public Builder timeout(Duration timeout) {
+            Objects.requireNonNull(timeout, "timeout cannot be null");
+            if (timeout.isNegative() || timeout.isZero()) {
                 throw new IllegalArgumentException("timeout must be positive when configured");
             }
             this.timeout = timeout;
+            this.timeoutDeclared = true;
+            return this;
+        }
+
+        /** Declares that the enclosing scope's deadline is inherited. */
+        public Builder inheritTimeout() {
+            this.inheritDeclared = true;
             return this;
         }
 

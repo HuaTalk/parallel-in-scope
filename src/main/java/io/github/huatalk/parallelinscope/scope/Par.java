@@ -96,6 +96,8 @@ public final class Par {
      * @param list input elements, or {@code null} for an empty batch
      * @param function synchronous mapping function, run at most once for each submitted element
      * @param options immutable per-batch request; it cannot select an executor
+     * @throws IllegalArgumentException if the options declare an inherited timeout and no scoped
+     *     task encloses this call
      * @throws IllegalStateException if the owning GlobalPar has begun shutdown
      */
     public <T, R> AsyncBatchResult<R> map(
@@ -108,6 +110,9 @@ public final class Par {
             @Nullable List<T> list, Function<? super T, ? extends R> function, MultiTaskOptions options) {
         int taskCount = list == null ? 0 : list.size();
         TaskExecutionContext currentTask = TaskExecutionContext.current();
+        if (!options.timeout().isPresent() && currentTask == null) {
+            throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
+        }
         BatchExecutionContext parent = currentTask == null ? null : currentTask.batchContext();
         TaskGraphObservationContext currentObservation = TaskGraphObservationContext.current();
         TaskGraphObservationContext observation = parent != null

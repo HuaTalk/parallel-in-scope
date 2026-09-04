@@ -32,7 +32,12 @@ import java.util.logging.Logger;
 import javax.annotation.Nullable;
 
 /**
- * A fixed, heterogeneous set of named tasks submitted at one explicit build boundary.
+ * A fixed, heterogeneous set of named tasks submitted at one explicit boundary.
+ *
+ * <p>A group is described by a reusable {@link TaskGroupSpec} and submitted via {@link
+ * #submit(GlobalPar, TaskGroupSpec)}, which builds, starts, and submits all members in one call.
+ * Member futures are looked up by name ({@link #members()}, {@link #findMember(String)}) or through
+ * the typed {@link TaskRef} tokens handed out while configuring the spec ({@link #future(TaskRef)}).
  *
  * <p>Cancellation is fully structured: a member failure, a direct member cancellation, the group
  * deadline, or any single member deadline cancels every unfinished member. All outcomes are
@@ -96,6 +101,17 @@ public final class ParallelTaskGroup implements AutoCloseable {
 
     public Map<String, ListenableFuture<?>> members() {
         return members;
+    }
+
+    /** Resolves the future of the member the token was created for in this group. */
+    @SuppressWarnings("unchecked")
+    public <T> ListenableFuture<T> future(TaskRef<T> ref) {
+        Objects.requireNonNull(ref, "ref cannot be null");
+        ListenableFuture<?> future = members.get(ref.memberName());
+        if (future == null) {
+            throw new IllegalArgumentException("No member named '" + ref.memberName() + "'");
+        }
+        return (ListenableFuture<T>) future;
     }
 
     /** Cancels every unfinished member without blocking for user code to stop. */
@@ -301,151 +317,105 @@ public final class ParallelTaskGroup implements AutoCloseable {
         }
     }
 
-    /** One-shot, non-thread-safe task-group builder. */
-    public static final class Builder {
-        private final GlobalPar global;
-        private final MultiTaskOptions options;
-        private final @Nullable BatchExecutionContext structuralParent;
-        private final @Nullable TaskGraphObservationContext observation;
-        private final LinkedHashMap<String, Definition<?>> definitions = new LinkedHashMap<>();
-        private boolean consumed;
+    /**
+     * Builds a group from the spec and submits all of its members at one boundary.
+     *
+     * <p>The structural parent, graph observation, and group deadline are resolved from the calling
+     * thread at submit time, so a {@link TaskGroupSpec} may be reused across submissions. A group
+     * options timeout of {@link MultiTaskOptions.Builder#inheritTimeout()} requires an enclosing
+     * scoped task; without one this method throws {@link IllegalArgumentException}.
+     *
+     * @throws IllegalArgumentException if a member references an unregistered executor name, or if
+     *     the group inherits a deadline that does not exist
+     * @throws IllegalStateException if the given GlobalPar has begun shutdown
+     */
+    public static ParallelTaskGroup submit(GlobalPar env, TaskGroupSpec spec) {
+        Objects.requireNonNull(env, "env cannot be null");
+        Objects.requireNonNull(spec, "spec cannot be null");
+        ParallelTaskGroup group = env.whileOpen(() -> buildWhileOpen(env, spec));
+        group.start(env);
+        group.submitPrepared();
+        return group;
+    }
 
-        Builder(GlobalPar global, MultiTaskOptions options) {
-            this.global = Objects.requireNonNull(global, "global cannot be null");
-            this.options = Objects.requireNonNull(options, "options cannot be null");
-            TaskExecutionContext currentTask = TaskExecutionContext.current();
-            this.structuralParent = currentTask == null ? null : currentTask.batchContext();
-            TaskGraphObservationContext currentObservation = TaskGraphObservationContext.current();
-            this.observation = structuralParent != null
-                            && structuralParent.taskGraphObservationContext() != null
-                            && structuralParent.taskGraphObservationContext().owner() == global
-                    ? structuralParent.taskGraphObservationContext()
-                    : structuralParent == null && currentObservation != null && currentObservation.owner() == global
-                            ? currentObservation
-                            : null;
-        }
-
-        public <T> TaskHandle<T> addTask(
-                String memberName, Par par, Callable<T> callable, MultiTaskOptions taskOptions) {
-            ensureConfiguring();
-            Objects.requireNonNull(memberName, "memberName cannot be null");
-            if (memberName.trim().isEmpty()) throw new IllegalArgumentException("memberName cannot be empty");
-            Objects.requireNonNull(par, "par cannot be null");
-            Objects.requireNonNull(callable, "callable cannot be null");
-            Objects.requireNonNull(taskOptions, "options cannot be null");
-            if (par.globalPar() != global) throw new IllegalArgumentException("Par belongs to another GlobalPar");
-            if (definitions.containsKey(memberName)) {
-                throw new IllegalArgumentException("Duplicate memberName '" + memberName + "'");
-            }
-            TaskHandle<T> handle = new TaskHandle<>(memberName);
-            definitions.put(memberName, new Definition<>(memberName, par, callable, taskOptions, handle));
-            return handle;
-        }
-
-        public ParallelTaskGroup buildAndSubmitAll() {
-            ensureConfiguring();
-            consumed = true;
-            ParallelTaskGroup group = global.whileOpen(this::buildWhileOpen);
-            group.start(global);
-            group.submitPrepared();
-            return group;
-        }
-
-        private ParallelTaskGroup buildWhileOpen() {
-            long start = System.nanoTime();
-            long groupDeadline = deadline(start, options.timeout());
+    private static ParallelTaskGroup buildWhileOpen(GlobalPar env, TaskGroupSpec spec) {
+        MultiTaskOptions options = spec.groupOptions();
+        TaskExecutionContext currentTask = TaskExecutionContext.current();
+        BatchExecutionContext structuralParent = currentTask == null ? null : currentTask.batchContext();
+        TaskGraphObservationContext currentObservation = TaskGraphObservationContext.current();
+        TaskGraphObservationContext observation = structuralParent != null
+                        && structuralParent.taskGraphObservationContext() != null
+                        && structuralParent.taskGraphObservationContext().owner() == env
+                ? structuralParent.taskGraphObservationContext()
+                : structuralParent == null && currentObservation != null && currentObservation.owner() == env
+                        ? currentObservation
+                        : null;
+        long start = System.nanoTime();
+        long groupDeadline;
+        Optional<Duration> groupTimeout = options.timeout();
+        if (groupTimeout.isPresent()) {
+            groupDeadline = deadline(start, groupTimeout.get());
             if (structuralParent != null) {
                 groupDeadline = Math.min(groupDeadline, structuralParent.deadlineNanos());
             }
-            CancellationToken groupToken = new CancellationToken(
-                    structuralParent == null ? null : structuralParent.cancellationToken(), groupDeadline);
-            Map<String, MemberState> states = new LinkedHashMap<>();
-            TaskGraphObservationContext previousObservation = TaskGraphObservationContext.current();
-            try {
-                if (observation != null && !observation.closed()) {
-                    TaskGraphObservationContext.install(observation);
-                } else {
-                    TaskGraphObservationContext.restore(null);
-                }
-                for (Definition<?> definition : definitions.values()) {
-                    BatchExecutionContext batch = BatchExecutionContext.resolve(
-                            definition.options,
-                            1,
-                            structuralParent,
-                            groupToken,
-                            groupDeadline,
-                            start,
-                            observation,
-                            definition.par.executorIdentity(),
-                            definition.par.displayName());
-                    TaskExecutionContext taskContext = new TaskExecutionContext(batch, 0, start);
-                    ExecutionPhaseHintFuture<Object> future =
-                            definition.par.prepareGroupTask(castCallable(definition.callable), batch, taskContext);
-                    MemberState state = new MemberState(
-                            definition.name,
-                            taskContext,
-                            future,
-                            definition.par.submissionExecutor(),
-                            batch.taskType() == TaskType.CPU_BOUND);
-                    states.put(definition.name, state);
-                }
-                for (Definition<?> definition : definitions.values()) {
-                    MemberState state = states.get(definition.name);
-                    bindUnknown(definition.handle, state.future);
-                    logForking(
-                            state.context.batchContext(),
-                            definition.par.runtime().blockingRisk());
-                }
-            } catch (Throwable failure) {
-                for (MemberState state : states.values()) state.future.cancel(true);
-                throw failure;
-            } finally {
-                TaskGraphObservationContext.restore(previousObservation);
+        } else {
+            if (structuralParent == null) {
+                throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
             }
-            ParallelTaskGroup group = new ParallelTaskGroup(
-                    options.name(), start, groupDeadline, options.listeners(), groupToken, states);
-            global.retainUntilComplete(new ArrayList<>(group.members.values()));
-            return group;
+            groupDeadline = structuralParent.deadlineNanos();
         }
-
-        private void ensureConfiguring() {
-            if (consumed) throw new IllegalStateException("Task group builder is already consumed");
+        CancellationToken groupToken = new CancellationToken(
+                structuralParent == null ? null : structuralParent.cancellationToken(), groupDeadline);
+        Map<String, MemberState> states = new LinkedHashMap<>();
+        TaskGraphObservationContext previousObservation = TaskGraphObservationContext.current();
+        try {
+            if (observation != null && !observation.closed()) {
+                TaskGraphObservationContext.install(observation);
+            } else {
+                TaskGraphObservationContext.restore(null);
+            }
+            List<Par> memberPars = new ArrayList<>();
+            for (TaskGroupSpec.MemberSpec<?> member : spec.members()) {
+                Par par = env.par(member.executorName());
+                memberPars.add(par);
+                BatchExecutionContext batch = BatchExecutionContext.resolve(
+                        member.options(),
+                        1,
+                        structuralParent,
+                        groupToken,
+                        groupDeadline,
+                        start,
+                        observation,
+                        par.executorIdentity(),
+                        par.displayName());
+                TaskExecutionContext taskContext = new TaskExecutionContext(batch, 0, start);
+                ExecutionPhaseHintFuture<Object> future =
+                        par.prepareGroupTask(castCallable(member.callable()), batch, taskContext);
+                states.put(
+                        member.memberName(),
+                        new MemberState(
+                                member.memberName(),
+                                taskContext,
+                                future,
+                                par.submissionExecutor(),
+                                batch.taskType() == TaskType.CPU_BOUND));
+            }
+            int index = 0;
+            for (MemberState state : states.values()) {
+                logForking(
+                        state.context.batchContext(),
+                        memberPars.get(index++).runtime().blockingRisk());
+            }
+        } catch (Throwable failure) {
+            for (MemberState state : states.values()) state.future.cancel(true);
+            throw failure;
+        } finally {
+            TaskGraphObservationContext.restore(previousObservation);
         }
-    }
-
-    /** Type-safe reference to a member future, bound by {@link Builder#buildAndSubmitAll()}. */
-    public static final class TaskHandle<T> {
-        private final String memberName;
-        private @Nullable ListenableFuture<T> future;
-
-        private TaskHandle(String memberName) {
-            this.memberName = memberName;
-        }
-
-        public String memberName() {
-            return memberName;
-        }
-
-        public synchronized ListenableFuture<T> future() {
-            if (future == null) throw new IllegalStateException("Task group has not been built");
-            return future;
-        }
-    }
-
-    private static final class Definition<T> {
-        private final String name;
-        private final Par par;
-        private final Callable<T> callable;
-        private final MultiTaskOptions options;
-        private final TaskHandle<T> handle;
-
-        private Definition(String name, Par par, Callable<T> callable, MultiTaskOptions options, TaskHandle<T> handle) {
-            this.name = name;
-            this.par = par;
-            this.callable = callable;
-            this.options = options;
-            this.handle = handle;
-        }
+        ParallelTaskGroup group =
+                new ParallelTaskGroup(options.name(), start, groupDeadline, options.listeners(), groupToken, states);
+        env.retainUntilComplete(new ArrayList<>(group.members.values()));
+        return group;
     }
 
     private static final class MemberState {
@@ -480,18 +450,6 @@ public final class ParallelTaskGroup implements AutoCloseable {
     @SuppressWarnings("unchecked")
     private static Callable<Object> castCallable(Callable<?> callable) {
         return (Callable<Object>) callable;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> void bind(TaskHandle<T> handle, ListenableFuture<?> future) {
-        synchronized (handle) {
-            handle.future = (ListenableFuture<T>) future;
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void bindUnknown(TaskHandle<?> handle, ListenableFuture<Object> future) {
-        bind((TaskHandle) handle, future);
     }
 
     private static long deadline(long start, Duration timeout) {

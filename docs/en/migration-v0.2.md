@@ -22,19 +22,38 @@ Batch and task-group option types are unified into the single `MultiTaskOptions`
 `BatchExecutionOptions` and `TaskGroupOptions` types are removed. The `taskName()`/`groupName()`
 accessors and the matching builder methods converge on `name()`; every other builder method keeps
 its name. A batch reads name/parallelism/timeout/taskType/rejectEnqueue; a group reads
-name/timeout/listeners, with member execution strategy still supplied per `addTask` call.
+name/timeout/listeners, with member execution strategy supplied per `TaskGroupSpec.Builder.task`
+call.
 
-`MultiTaskOptions.timeout` is now mandatory: `build()` rejects a missing or null timeout, and
-`GlobalExecutionPolicy.defaultTimeoutMillis` is removed so no silent global default remains.
-`BatchExecutionContext.resolve` consequently no longer takes the policy; drop that argument.
+`MultiTaskOptions.timeout` is a forced explicit choice between two mutually exclusive builder
+declarations: `timeout(Duration)` sets an explicit positive timeout, and `inheritTimeout()`
+declares that the enclosing scope's deadline is inherited. `build()` rejects a builder that
+declares neither (`IllegalArgumentException`: call `timeout(Duration)` or `inheritTimeout()`) or
+both. The accessor changed from `Duration timeout()` to `Optional<Duration> timeout()`; an empty
+value means inherit. `GlobalExecutionPolicy.defaultTimeoutMillis` is removed so no silent global
+default remains. `BatchExecutionContext.resolve` consequently no longer takes the policy; drop
+that argument.
+
+Deadline resolution follows one uniform rule. An explicit timeout resolves to the earlier of its
+own bound and the enclosing hard deadline. An inherited timeout resolves to the enclosing deadline:
+for a `Par.map` batch or a task group that is the deadline of the enclosing scoped task, and for a
+group member it is the group deadline. Inheriting with no enclosing deadline is rejected at the
+entry point: a top-level `Par.map` and a top-level `ParallelTaskGroup.submit` both throw
+`IllegalArgumentException` telling you to call `timeout(Duration)`.
 
 Earlier snapshots also exposed this detector as `GlobalParLivelockPolicy` and `LivelockListener`. Rename them to `GlobalParDeadlockPolicy` and `DeadlockDetectionListener`; the detector reports potential dependency-graph deadlocks and does not prove a runtime deadlock or detect livelock.
 
-The first task-group API in `0.2.0-SNAPSHOT` uses a fixed builder contract. If code was written
-against an earlier task-group draft, replace `openTaskGroup()`, dynamic `submit()`, and `seal()` with
-`taskGroupBuilder()`, `addTask()`, and the one-shot `buildAndSubmitAll()`. `addTask()` returns a
-typed `ParallelTaskGroup.TaskHandle<T>`; call `future()` only after build. There is no compatibility
-shim because the dynamic-admission API was not released as a stable contract.
+The task-group API now centers on an immutable, reusable spec. Replace the earlier builder
+ceremony — `GlobalPar.taskGroupBuilder(options)`, `ParallelTaskGroup.Builder.addTask(name, par,
+callable, options)`, the one-shot `buildAndSubmitAll()`, and `ParallelTaskGroup.TaskHandle<T>` —
+with `TaskGroupSpec.builder(groupOptions)`, `TaskGroupSpec.Builder.task(memberName, executorName,
+callable, options)`, the one-shot `ParallelTaskGroup.submit(global, spec)`, and `TaskRef<T>`.
+Members reference their executor by registered name instead of a `Par` object. `task()` returns a
+typed `TaskRef<T>` token that carries no execution state; after submission, resolve the member's
+future with `group.future(ref)`. A spec captures no thread context, so the structural parent and
+observation scope are resolved from the submitting thread at each `submit` call, and one spec may
+be submitted repeatedly. There is no compatibility shim because the earlier builder API was not
+released as a stable contract.
 
 `TaskListener.TaskEvent` now exposes the completed task through `taskContext()` and its outcome
 through `successful()`, `result()`, and `exception()`. A successful task may return null, so

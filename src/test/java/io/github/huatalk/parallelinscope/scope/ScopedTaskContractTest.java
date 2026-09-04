@@ -217,25 +217,25 @@ class ScopedTaskContractTest {
                         .get(1);
                 assertThat(queued.cancel(true)).isTrue();
             } else {
-                ParallelTaskGroup.Builder builder = global.taskGroupBuilder(MultiTaskOptions.of("cancel")
+                TaskGroupSpec.Builder spec = TaskGroupSpec.builder(MultiTaskOptions.of("cancel")
                         .timeout(Duration.ofSeconds(30))
                         .build());
-                builder.addTask(
+                spec.task(
                         "blocker",
-                        global.par("worker"),
+                        "worker",
                         () -> runUnlessQueued("blocker", release, queuedRuns),
                         MultiTaskOptions.of("blocker")
                                 .timeout(Duration.ofSeconds(30))
                                 .build());
-                ParallelTaskGroup.TaskHandle<Object> queued = builder.addTask(
+                TaskRef<Object> queued = spec.task(
                         "queued",
-                        global.par("worker"),
+                        "worker",
                         () -> runUnlessQueued("queued", release, queuedRuns),
                         MultiTaskOptions.of("queued")
                                 .timeout(Duration.ofSeconds(30))
                                 .build());
-                ParallelTaskGroup group = builder.buildAndSubmitAll();
-                assertThat(queued.future().cancel(true)).isTrue();
+                ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+                assertThat(group.future(queued).cancel(true)).isTrue();
                 TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
                 assertThat(result.members().get("queued").completionReason()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
             }
@@ -314,11 +314,12 @@ class ScopedTaskContractTest {
                     .results()
                     .get(0);
         }
-        ParallelTaskGroup.Builder builder = global.taskGroupBuilder(
+        TaskGroupSpec.Builder spec = TaskGroupSpec.builder(
                 MultiTaskOptions.of("contract").timeout(Duration.ofSeconds(30)).build());
-        ParallelTaskGroup.TaskHandle<Object> handle = builder.addTask(name, global.par("worker"), task, options);
-        LAST_GROUP.set(builder.buildAndSubmitAll());
-        return handle.future();
+        TaskRef<Object> ref = spec.task(name, "worker", task, options);
+        ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+        LAST_GROUP.set(group);
+        return group.future(ref);
     }
 
     private static Object callUnchecked(Callable<Object> task) {

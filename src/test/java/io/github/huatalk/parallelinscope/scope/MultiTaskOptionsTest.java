@@ -17,8 +17,33 @@ class MultiTaskOptionsTest {
 
         assertThat(options.name()).isEqualTo("load");
         assertThat(options.parallelism()).isEqualTo(3);
-        assertThat(options.timeout()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(options.timeout()).contains(Duration.ofSeconds(2));
         assertThat(options.taskType()).isEqualTo(TaskType.IO_BOUND);
+    }
+
+    @Test
+    void timeoutRequiresExactlyOneDeclaration() {
+        assertThatThrownBy(() -> MultiTaskOptions.of("read").build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("timeout(Duration) or inheritTimeout()");
+        assertThatThrownBy(() -> MultiTaskOptions.of("read")
+                        .timeout(Duration.ofSeconds(1))
+                        .inheritTimeout()
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mutually exclusive");
+        assertThatThrownBy(() -> MultiTaskOptions.of("read")
+                        .inheritTimeout()
+                        .timeout(Duration.ofSeconds(1))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mutually exclusive");
+    }
+
+    @Test
+    void inheritTimeoutYieldsAnEmptyTimeoutAccessor() {
+        assertThat(MultiTaskOptions.of("read").inheritTimeout().build().timeout())
+                .isEmpty();
     }
 
     @Test
@@ -27,6 +52,17 @@ class MultiTaskOptionsTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> MultiTaskOptions.of("load").timeout(Duration.ofMillis(-1)))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MultiTaskOptions.of("load").timeout(null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void repeatedTimeoutDeclarationsKeepTheLastValue() {
+        MultiTaskOptions options = MultiTaskOptions.of("load")
+                .timeout(Duration.ofSeconds(1))
+                .timeout(Duration.ofSeconds(5))
+                .build();
+
+        assertThat(options.timeout()).contains(Duration.ofSeconds(5));
     }
 
     @Test
@@ -40,14 +76,7 @@ class MultiTaskOptionsTest {
 
         assertThat(options.parallelism()).isEqualTo(7);
         assertThat(options.rejectEnqueue()).isFalse();
-        assertThat(options.timeout()).isEqualTo(Duration.ofSeconds(30));
-    }
-
-    @Test
-    void timeoutIsMandatory() {
-        assertThatThrownBy(() -> MultiTaskOptions.of("read").build())
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("timeout");
+        assertThat(options.timeout()).contains(Duration.ofSeconds(30));
     }
 
     @Test
@@ -80,5 +109,23 @@ class MultiTaskOptionsTest {
 
         assertThat(context.effectiveParallelism()).isEqualTo(4);
         assertThat(context.remaining().toMillis()).isLessThanOrEqualTo(3_000);
+    }
+
+    @Test
+    void inheritedTimeoutWithoutParentIsRejectedAtResolution() {
+        assertThatThrownBy(() -> BatchExecutionContext.resolve(
+                        MultiTaskOptions.of("read").inheritTimeout().build(), 1, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no enclosing deadline to inherit");
+    }
+
+    @Test
+    void inheritedTimeoutResolvesToTheParentDeadline() {
+        BatchExecutionContext parent = BatchExecutionContext.resolve(
+                MultiTaskOptions.of("outer").timeout(Duration.ofMillis(100)).build(), 1, null);
+        BatchExecutionContext child = BatchExecutionContext.resolve(
+                MultiTaskOptions.of("inner").inheritTimeout().build(), 1, parent);
+
+        assertThat(child.deadlineNanos()).isEqualTo(parent.deadlineNanos());
     }
 }
