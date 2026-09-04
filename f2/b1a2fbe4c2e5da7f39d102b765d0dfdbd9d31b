@@ -1,0 +1,43 @@
+blogs/coding-agent表面修复陷阱-guava取消传播根因复盘.md
+  s_454af757c032d4::t_b0e866f0ac066c 72
+  s_454af757c032d4::t_820b3dd59227d4 153
+  s_454af757c032d4::t_84ca31c228510d 170
+  s_454af757c032d4::t_f102feb5dd86a7 5
+  s_454af757c032d4::t_ab919a2f307b9c 42-44,46-47,49,51-52
+  s_454af757c032d4::t_20160e279127be 111-113
+  s_454af757c032d4::t_dec3fdd6d4d845 208-212
+  s_454af757c032d4::t_0e97f1f6b84076 149
+  s_454af757c032d4::t_f2e1bdf4665701 132
+  s_454af757c032d4::t_ee37b7ddcd12a3 1
+  s_454af757c032d4::t_5bf5195c959d83 86
+  s_454af757c032d4::t_533cb2cd5619ea 9-39
+  s_454af757c032d4::t_89c1f94af98c93 121
+  s_454af757c032d4::t_ef2defd2c51829 142
+  s_454af757c032d4::t_805007a15ec8dd 7-8,40-41,45,48,50
+  s_454af757c032d4::t_edad6a8184dca2 78-80
+  s_454af757c032d4::t_f4b34e735b7eb1 82
+  s_454af757c032d4::t_c328ce1bf29293 117
+  s_454af757c032d4::t_bd35fa5aa10b87 119
+  s_454af757c032d4::t_ff0dca32dfe0ba 216-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "f2b1a2fbe4c2e5da7f39d102b765d0dfdbd9d31b",
+  "prompts": {},
+  "humans": {
+    "h_a991f50801869b": {
+      "author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_454af757c032d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3d7956d-bc5d-477c-bd15-02a21ae0e9c4",
+        "model": "ep-07p4u7vn"
+      },
+      "human_author": "Eric Lin <linqinghua4@gmail.com>"
+    }
+  }
+}
