@@ -8,7 +8,7 @@ import java.util.Objects;
  * <p>A {@code TaskRef} is returned by {@link TaskGroupSpec.Builder#task(String, String,
  * java.util.concurrent.Callable, MultiTaskOptions)} at configuration time. It carries no
  * execution state; after the spec is submitted, the same token resolves the member's future via
- * {@link ParallelTaskGroup#future(TaskRef)}.
+ * {@link TaskGroup#future(TaskRef)}.
  */
 public final class TaskRef<T> {
     private final String memberName;

@@ -179,7 +179,7 @@ public class CancellationToken {
     /**
      * Cancels this token as a timeout without waiting for its own deadline to expire.
      *
-     * <p>Intended for {@code io.github.huatalk.parallelinscope.scope.ParallelTaskGroup}: when a
+     * <p>Intended for {@code io.github.huatalk.parallelinscope.scope.TaskGroup}: when a
      * member exceeds its own deadline, the group escalates that timeout onto the group token so
      * the group's completion reason stays {@code TIMEOUT} instead of collapsing into fail-fast.
      */
@@ -224,7 +224,7 @@ public class CancellationToken {
      * Registers a callback invoked synchronously right after a terminal transition commits and
      * before the associated cancellation actions run.
      *
-     * <p>Intended for {@code io.github.huatalk.parallelinscope.scope.ParallelTaskGroup}: a group
+     * <p>Intended for {@code io.github.huatalk.parallelinscope.scope.TaskGroup}: a group
      * listens on a member token so a member timeout escalates to the group before cascade
      * cancellation runs. It is public only because the {@code scope} and {@code cancel} packages
      * cannot share package-private access; it is not a general-purpose hook and external callers

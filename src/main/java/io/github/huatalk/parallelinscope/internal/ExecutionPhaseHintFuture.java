@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  * A listenable future and runnable that publishes hints about its execution phase.
  *
  * <p>This is the shared single-task future for the whole library: both {@code Par.map} and
- * {@code ParallelTaskGroup} prepare it through {@link TaskSubmissions}, then the batch path
+ * {@code TaskGroup} prepare it through {@link TaskSubmissions}, then the batch path
  * submits it via {@link ListenableCompletionService} while the group submits it after its frozen
  * build boundary. Both call sites share this one phase state machine; it must not be
  * re-implemented per caller.

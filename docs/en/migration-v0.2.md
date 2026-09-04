@@ -40,7 +40,7 @@ Deadline resolution follows one uniform rule. An explicit timeout resolves to th
 own bound and the enclosing hard deadline. An inherited timeout resolves to the enclosing deadline:
 for a `Par.map` batch or a task group that is the deadline of the enclosing scoped task, and for a
 group member it is the group deadline. Inheriting with no enclosing deadline is rejected at the
-entry point: a top-level `Par.map` and a top-level `ParallelTaskGroup.submit` both throw
+entry point: a top-level `Par.map` and a top-level `TaskGroup.submit` both throw
 `IllegalArgumentException` telling you to call `timeout(Duration)`.
 
 Earlier snapshots also exposed this detector as `GlobalParLivelockPolicy` and `LivelockListener`. Rename them to `GlobalParDeadlockPolicy` and `DeadlockDetectionListener`; the detector reports potential dependency-graph deadlocks and does not prove a runtime deadlock or detect livelock.
@@ -49,13 +49,14 @@ The task-group API now centers on an immutable, reusable spec. Replace the earli
 ceremony — `GlobalPar.taskGroupBuilder(options)`, `ParallelTaskGroup.Builder.addTask(name, par,
 callable, options)`, the one-shot `buildAndSubmitAll()`, and `ParallelTaskGroup.TaskHandle<T>` —
 with `TaskGroupSpec.builder(groupOptions)`, `TaskGroupSpec.Builder.task(memberName, executorName,
-callable, options)`, the one-shot `ParallelTaskGroup.submit(global, spec)`, and `TaskRef<T>`.
+callable, options)`, the one-shot `TaskGroup.submit(global, spec)`, and `TaskRef<T>`.
 Members reference their executor by registered name instead of a `Par` object. `task()` returns a
 typed `TaskRef<T>` token that carries no execution state; after submission, resolve the member's
 future with `group.future(ref)`. A spec captures no thread context, so the structural parent and
 observation scope are resolved from the submitting thread at each `submit` call, and one spec may
-be submitted repeatedly. There is no compatibility shim because the earlier builder API was not
-released as a stable contract.
+be submitted repeatedly. The group entry class itself was renamed from `ParallelTaskGroup` to
+`TaskGroup`, joining its `TaskGroupSpec`/`TaskGroupResult`/`TaskGroupListener` family. There is no
+compatibility shim because the earlier builder API was not released as a stable contract.
 
 `TaskListener.TaskEvent` now exposes the completed task through `taskContext()` and its outcome
 through `successful()`, `result()`, and `exception()`. A successful task may return null, so

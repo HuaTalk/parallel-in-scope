@@ -4,7 +4,7 @@
 
 `parallel-in-scope` executes a finite list as a cancellable batch. Application wiring owns long-lived resources, a `Par` owns one executor binding, and a `MultiTaskContext` owns one invocation's runtime state.
 
-It also coordinates a fixed heterogeneous set of named operations through `ParallelTaskGroup`. A
+It also coordinates a fixed heterogeneous set of named operations through `TaskGroup`. A
 group is described as a reusable `TaskGroupSpec` and submitted at one explicit boundary; it is not
 a dynamically growing batch.
 
@@ -68,7 +68,7 @@ Use a task group when a request has a small fixed set of independent operations 
 different types or use different `Par` entries. A group is described by a `TaskGroupSpec`: an
 immutable, reusable, pure-data description. `TaskGroupSpec.Builder.task` only records a definition;
 it does not create execution contexts, capture TTL values, start timers, or submit work.
-`ParallelTaskGroup.submit(global, spec)` resolves the calling thread's context at submission time,
+`TaskGroup.submit(global, spec)` resolves the calling thread's context at submission time,
 freezes the complete member set, prepares every member, and then submits them.
 
 Groups and batches share one option type, `MultiTaskOptions`: the group reads name, timeout,
@@ -90,7 +90,7 @@ TaskRef<List<Order>> orders = spec.task(
         "orders", "http", orderClient::load,
         MultiTaskOptions.of("load-orders").taskType(TaskType.IO_BOUND).inheritTimeout().build());
 
-try (ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build())) {
+try (TaskGroup group = TaskGroup.submit(global, spec.build())) {
     User userValue = group.future(user).get();
     List<Order> orderValues = group.future(orders).get();
     TaskGroupResult result = group.completionFuture().get();

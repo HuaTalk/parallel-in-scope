@@ -28,7 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Cross-entry contract tests: {@code Par.map} and {@code ParallelTaskGroup} prepare and submit
+ * Cross-entry contract tests: {@code Par.map} and {@code TaskGroup} prepare and submit
  * every task through the same {@code TaskSubmissions} pipeline, so the single-task semantics —
  * instrumentation, TTL capture, phase hints, and rejection handling — must agree across both
  * entry points.
@@ -234,7 +234,7 @@ class ScopedTaskContractTest {
                         MultiTaskOptions.of("queued")
                                 .timeout(Duration.ofSeconds(30))
                                 .build());
-                ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+                TaskGroup group = TaskGroup.submit(global, spec.build());
                 assertThat(group.future(queued).cancel(true)).isTrue();
                 TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
                 assertThat(result.members().get("queued").completionReason()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
@@ -317,7 +317,7 @@ class ScopedTaskContractTest {
         TaskGroupSpec.Builder spec = TaskGroupSpec.builder(
                 MultiTaskOptions.of("contract").timeout(Duration.ofSeconds(30)).build());
         TaskRef<Object> ref = spec.task(name, "worker", task, options);
-        ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+        TaskGroup group = TaskGroup.submit(global, spec.build());
         LAST_GROUP.set(group);
         return group.future(ref);
     }
@@ -335,10 +335,10 @@ class ScopedTaskContractTest {
     // Tracks the group built by submitSingle so assertions can inspect the terminal snapshot
     // without changing the submission call sites. Tests are single-threaded per entry case.
 
-    private static final ThreadLocal<ParallelTaskGroup> LAST_GROUP = new ThreadLocal<>();
+    private static final ThreadLocal<TaskGroup> LAST_GROUP = new ThreadLocal<>();
 
     private static TaskGroupResult lastGroupResult(GlobalPar global) throws Exception {
-        ParallelTaskGroup group = LAST_GROUP.get();
+        TaskGroup group = LAST_GROUP.get();
         if (group == null) {
             throw new IllegalStateException("no group was built");
         }

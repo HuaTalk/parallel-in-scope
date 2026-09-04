@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 /**
  * Shared single-task preparation and submission used by both entry points.
  *
- * <p>{@code Par.map} and {@code ParallelTaskGroup} must not each grow their own copy of the
+ * <p>{@code Par.map} and {@code TaskGroup} must not each grow their own copy of the
  * scoped-task pipeline. This class owns the two pieces that are identical for every task:
  *
  * <ul>

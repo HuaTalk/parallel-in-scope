@@ -44,8 +44,8 @@ import javax.annotation.Nullable;
  * attributed by reading {@link CancellationToken} states after the fact — never by capturing who
  * initiated a cancel — so attribution stays correct under races.
  */
-public final class ParallelTaskGroup implements AutoCloseable {
-    private static final Logger LOGGER = Logger.getLogger(ParallelTaskGroup.class.getName());
+public final class TaskGroup implements AutoCloseable {
+    private static final Logger LOGGER = Logger.getLogger(TaskGroup.class.getName());
 
     /** Null-object submission canceller: group members carry no submission pipeline to stop. */
     private static final ListenableFuture<Void> NO_SUBMISSION = Futures.immediateVoidFuture();
@@ -65,7 +65,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
     private @Nullable String failedMemberName;
     private boolean closed;
 
-    private ParallelTaskGroup(
+    private TaskGroup(
             String groupName,
             long startTimeNanos,
             long deadlineNanos,
@@ -329,16 +329,16 @@ public final class ParallelTaskGroup implements AutoCloseable {
      *     the group inherits a deadline that does not exist
      * @throws IllegalStateException if the given GlobalPar has begun shutdown
      */
-    public static ParallelTaskGroup submit(GlobalPar env, TaskGroupSpec spec) {
+    public static TaskGroup submit(GlobalPar env, TaskGroupSpec spec) {
         Objects.requireNonNull(env, "env cannot be null");
         Objects.requireNonNull(spec, "spec cannot be null");
-        ParallelTaskGroup group = env.whileOpen(() -> buildWhileOpen(env, spec));
+        TaskGroup group = env.whileOpen(() -> buildWhileOpen(env, spec));
         group.start(env);
         group.submitPrepared();
         return group;
     }
 
-    private static ParallelTaskGroup buildWhileOpen(GlobalPar env, TaskGroupSpec spec) {
+    private static TaskGroup buildWhileOpen(GlobalPar env, TaskGroupSpec spec) {
         MultiTaskOptions options = spec.groupOptions();
         TaskExecutionContext currentTask = TaskExecutionContext.current();
         MultiTaskContext structuralParent = currentTask == null ? null : currentTask.batchContext();
@@ -412,8 +412,7 @@ public final class ParallelTaskGroup implements AutoCloseable {
         } finally {
             TaskGraphObservationContext.restore(previousObservation);
         }
-        ParallelTaskGroup group =
-                new ParallelTaskGroup(options.name(), start, groupDeadline, options.listeners(), groupToken, states);
+        TaskGroup group = new TaskGroup(options.name(), start, groupDeadline, options.listeners(), groupToken, states);
         env.retainUntilComplete(new ArrayList<>(group.members.values()));
         return group;
     }

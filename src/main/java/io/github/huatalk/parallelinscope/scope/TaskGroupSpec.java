@@ -13,7 +13,7 @@ import java.util.concurrent.Callable;
  * <p>A spec captures only configuration: the group-level {@link MultiTaskOptions} (of which the
  * group reads name, timeout, and listeners) and the ordered member definitions. It binds no thread
  * context, executor, or deadline; those are resolved from the submitting environment at each
- * {@link ParallelTaskGroup#submit(GlobalPar, TaskGroupSpec)} call, so one spec can be submitted
+ * {@link TaskGroup#submit(GlobalPar, TaskGroupSpec)} call, so one spec can be submitted
  * repeatedly.
  */
 public final class TaskGroupSpec {

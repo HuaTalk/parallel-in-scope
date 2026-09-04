@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
-class ParallelTaskGroupTest {
+class TaskGroupTest {
 
     private static MultiTaskOptions groupOptions(String name) {
         return MultiTaskOptions.of(name).timeout(Duration.ofSeconds(30)).build();
@@ -46,7 +46,7 @@ class ParallelTaskGroupTest {
             TaskRef<Integer> number =
                     spec.task("number", "second", () -> 40 + executions.incrementAndGet(), memberOptions("number"));
 
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
             assertThat(group.future(text).get(2, TimeUnit.SECONDS)).startsWith("value-");
             assertThat(group.future(number).get(2, TimeUnit.SECONDS)).isBetween(41, 42);
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
@@ -85,7 +85,7 @@ class ParallelTaskGroupTest {
 
             assertThat(calls).hasValue(0);
             ttl.set("submit");
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
 
             assertThat(group.future(member).get(2, TimeUnit.SECONDS)).isEqualTo("submit");
             assertThat(calls).hasValue(1);
@@ -121,9 +121,8 @@ class ParallelTaskGroupTest {
                     },
                     memberOptions("failure"));
 
-            TaskGroupResult result = ParallelTaskGroup.submit(global, spec.build())
-                    .completionFuture()
-                    .get(2, TimeUnit.SECONDS);
+            TaskGroupResult result =
+                    TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.FAILED);
             assertThat(result.failedMemberName()).isEqualTo("failure");
@@ -151,7 +150,7 @@ class ParallelTaskGroupTest {
                         return 1;
                     },
                     MultiTaskOptions.of("slow").timeout(Duration.ofSeconds(2)).build());
-            TaskGroupResult first = ParallelTaskGroup.submit(global, groupDeadline.build())
+            TaskGroupResult first = TaskGroup.submit(global, groupDeadline.build())
                     .completionFuture()
                     .get(2, TimeUnit.SECONDS);
             assertThat(first.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
@@ -168,7 +167,7 @@ class ParallelTaskGroupTest {
                         return 1;
                     },
                     MultiTaskOptions.of("slow").timeout(Duration.ofMillis(30)).build());
-            TaskGroupResult second = ParallelTaskGroup.submit(global, memberDeadline.build())
+            TaskGroupResult second = TaskGroup.submit(global, memberDeadline.build())
                     .completionFuture()
                     .get(2, TimeUnit.SECONDS);
             assertThat(second.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
@@ -202,7 +201,7 @@ class ParallelTaskGroupTest {
                         return 2;
                     },
                     memberOptions("sibling"));
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
             group.future(canceled).cancel(true);
 
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
@@ -241,9 +240,8 @@ class ParallelTaskGroupTest {
                     },
                     memberOptions("sibling"));
 
-            TaskGroupResult result = ParallelTaskGroup.submit(global, spec.build())
-                    .completionFuture()
-                    .get(2, TimeUnit.SECONDS);
+            TaskGroupResult result =
+                    TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
             assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
@@ -272,7 +270,7 @@ class ParallelTaskGroupTest {
                         },
                         memberOptions(name));
             }
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
             assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
 
             group.cancel();
@@ -307,7 +305,7 @@ class ParallelTaskGroupTest {
                     memberOptions("first"));
             TaskRef<Integer> second = spec.task("second", "direct", () -> 2, memberOptions("second"));
 
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
 
             assertThat(firstThread.get()).isSameAs(submitThread);
             assertThat(group.members().keySet()).containsExactly("first", "second");
@@ -341,9 +339,8 @@ class ParallelTaskGroupTest {
                             .build());
             spec.task("later", "normal", calls::incrementAndGet, memberOptions("later"));
 
-            TaskGroupResult result = ParallelTaskGroup.submit(global, spec.build())
-                    .completionFuture()
-                    .get(2, TimeUnit.SECONDS);
+            TaskGroupResult result =
+                    TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.FAILED);
             assertThat(result.members().get("rejected").completionReason()).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
@@ -375,9 +372,8 @@ class ParallelTaskGroupTest {
             TaskGroupSpec.Builder spec = TaskGroupSpec.builder(options);
             spec.task("one", "direct", () -> 1, memberOptions("one"));
 
-            TaskGroupResult result = ParallelTaskGroup.submit(global, spec.build())
-                    .completionFuture()
-                    .get(2, TimeUnit.SECONDS);
+            TaskGroupResult result =
+                    TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(observed.get()).isSameAs(result);
             assertThat(current.get()).isNull();
@@ -403,12 +399,12 @@ class ParallelTaskGroupTest {
 
             TaskGroupSpec.Builder unknownExecutor = TaskGroupSpec.builder(groupOptions("unknown"));
             unknownExecutor.task("member", "missing", () -> 1, memberOptions("member"));
-            assertThatThrownBy(() -> ParallelTaskGroup.submit(global, unknownExecutor.build()))
+            assertThatThrownBy(() -> TaskGroup.submit(global, unknownExecutor.build()))
                     .isInstanceOf(IllegalArgumentException.class);
 
             TaskGroupSpec reusable = spec.build();
-            ParallelTaskGroup first = ParallelTaskGroup.submit(global, reusable);
-            ParallelTaskGroup second = ParallelTaskGroup.submit(global, reusable);
+            TaskGroup first = TaskGroup.submit(global, reusable);
+            TaskGroup second = TaskGroup.submit(global, reusable);
             assertThat(first.groupId()).isNotEqualTo(second.groupId());
             assertThat(first.completionFuture().get(2, TimeUnit.SECONDS).completionReason())
                     .isEqualTo(TaskGroupCompletionReason.SUCCESS);
@@ -425,12 +421,12 @@ class ParallelTaskGroupTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         GlobalPar global = GlobalPar.builder().register("worker", executor).build();
         try {
-            ParallelTaskGroup empty = ParallelTaskGroup.submit(
+            TaskGroup empty = TaskGroup.submit(
                     global, TaskGroupSpec.builder(groupOptions("empty")).build());
             assertThat(empty.completionFuture().get().completionReason()).isEqualTo(TaskGroupCompletionReason.SUCCESS);
 
             global.close();
-            assertThatThrownBy(() -> ParallelTaskGroup.submit(
+            assertThatThrownBy(() -> TaskGroup.submit(
                             global,
                             TaskGroupSpec.builder(groupOptions("closed")).build()))
                     .isInstanceOf(IllegalStateException.class);
@@ -452,7 +448,7 @@ class ParallelTaskGroupTest {
                     () -> TaskExecutionContext.current().batchContext().deadlineNanos(),
                     MultiTaskOptions.of("member").inheritTimeout().build());
 
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(group.future(member).get(2, TimeUnit.SECONDS)).isEqualTo(result.deadlineNanos());
@@ -476,7 +472,7 @@ class ParallelTaskGroupTest {
                             .timeout(Duration.ofMillis(100))
                             .build());
 
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(group.future(member).get(2, TimeUnit.SECONDS)).isLessThan(result.deadlineNanos());
@@ -521,7 +517,7 @@ class ParallelTaskGroupTest {
                     },
                     MultiTaskOptions.of("member").inheritTimeout().build());
 
-            ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup group = TaskGroup.submit(global, spec.build());
             long[] deadlines = group.future(member).get(2, TimeUnit.SECONDS);
 
             assertThat(deadlines[1]).isEqualTo(deadlines[0]);
@@ -543,7 +539,7 @@ class ParallelTaskGroupTest {
                 .register("inner", inner)
                 .build();
         try {
-            assertThatThrownBy(() -> ParallelTaskGroup.submit(
+            assertThatThrownBy(() -> TaskGroup.submit(
                             global,
                             TaskGroupSpec.builder(MultiTaskOptions.of("orphan")
                                             .inheritTimeout()
@@ -570,7 +566,7 @@ class ParallelTaskGroupTest {
                                                 .inheritTimeout()
                                                 .build());
                                 try {
-                                    TaskGroupResult result = ParallelTaskGroup.submit(global, spec.build())
+                                    TaskGroupResult result = TaskGroup.submit(global, spec.build())
                                             .completionFuture()
                                             .get(2, TimeUnit.SECONDS);
                                     assertThat(result.deadlineNanos()).isEqualTo(outerDeadline);
@@ -612,7 +608,7 @@ class ParallelTaskGroupTest {
                                                 .batchContext()
                                                 .parent(),
                                         memberOptions("child"));
-                                ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+                                TaskGroup group = TaskGroup.submit(global, spec.build());
                                 try {
                                     assertThat(group.future(child).get(2, TimeUnit.SECONDS))
                                             .isSameAs(expectedParent);
@@ -638,7 +634,7 @@ class ParallelTaskGroupTest {
                 .register("outer", outer)
                 .register("inner", inner)
                 .build();
-        AtomicReference<ParallelTaskGroup> nestedGroup = new AtomicReference<>();
+        AtomicReference<TaskGroup> nestedGroup = new AtomicReference<>();
         try {
             AsyncBatchResult<Object> result = global.par("outer")
                     .map(
@@ -653,7 +649,7 @@ class ParallelTaskGroupTest {
                                             return 1;
                                         },
                                         memberOptions("child"));
-                                nestedGroup.set(ParallelTaskGroup.submit(global, spec.build()));
+                                nestedGroup.set(TaskGroup.submit(global, spec.build()));
                                 try {
                                     new CountDownLatch(1).await(10, TimeUnit.SECONDS);
                                 } catch (InterruptedException interrupted) {
@@ -685,7 +681,7 @@ class ParallelTaskGroupTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         GlobalPar global = GlobalPar.builder().register("worker", executor).build();
         try {
-            ParallelTaskGroup group = ParallelTaskGroup.submit(
+            TaskGroup group = TaskGroup.submit(
                     global, TaskGroupSpec.builder(groupOptions("named")).build());
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
 
@@ -705,7 +701,7 @@ class ParallelTaskGroupTest {
         GlobalPar global = GlobalPar.builder().register("worker", executor).build();
         CountDownLatch started = new CountDownLatch(1);
         try {
-            ParallelTaskGroup completed = ParallelTaskGroup.submit(
+            TaskGroup completed = TaskGroup.submit(
                     global, TaskGroupSpec.builder(groupOptions("done")).build());
             completed.completionFuture().get(2, TimeUnit.SECONDS);
             completed.close(); // must not disturb the recorded result
@@ -722,7 +718,7 @@ class ParallelTaskGroupTest {
                         return 1;
                     },
                     memberOptions("slow"));
-            ParallelTaskGroup unfinished = ParallelTaskGroup.submit(global, spec.build());
+            TaskGroup unfinished = TaskGroup.submit(global, spec.build());
             assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
             unfinished.close();
             TaskGroupResult result = unfinished.completionFuture().get(2, TimeUnit.SECONDS);
@@ -744,7 +740,7 @@ class ParallelTaskGroupTest {
                 .build();
         try {
             AtomicReference<CancellationToken> outerToken = new AtomicReference<>();
-            AtomicReference<ParallelTaskGroup> publishedGroup = new AtomicReference<>();
+            AtomicReference<TaskGroup> publishedGroup = new AtomicReference<>();
             AtomicReference<String> observedReason = new AtomicReference<>();
             CountDownLatch groupBuilt = new CountDownLatch(1);
             AsyncBatchResult<String> outerBatch = global.par("outer")
@@ -763,7 +759,7 @@ class ParallelTaskGroupTest {
                                             return 1;
                                         },
                                         memberOptions("slow"));
-                                ParallelTaskGroup group = ParallelTaskGroup.submit(global, spec.build());
+                                TaskGroup group = TaskGroup.submit(global, spec.build());
                                 publishedGroup.set(group);
                                 groupBuilt.countDown();
                                 // Stay inside the outer task until the group converges, so the
@@ -792,7 +788,7 @@ class ParallelTaskGroupTest {
                             groupOptions("outer"));
             assertThat(groupBuilt.await(2, TimeUnit.SECONDS)).isTrue();
             outerToken.get().cancel(true);
-            ParallelTaskGroup group = publishedGroup.get();
+            TaskGroup group = publishedGroup.get();
 
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);

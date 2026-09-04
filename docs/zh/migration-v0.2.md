@@ -35,17 +35,18 @@
 deadline 解析遵循统一规则：显式 timeout 取自身上限与外层硬 deadline 的较早者；继承时解析为
 外层 deadline——`Par.map` 批次或任务组继承所在 scoped task 的 deadline，组成员继承组的
 deadline。没有外层 deadline 可继承时，入口点直接拒绝：顶层 `Par.map` 与顶层
-`ParallelTaskGroup.submit` 都抛出 `IllegalArgumentException`，提示改用 `timeout(Duration)`。
+`TaskGroup.submit` 都抛出 `IllegalArgumentException`，提示改用 `timeout(Duration)`。
 
 任务组 API 现在以不可变、可复用的 spec 为中心。请把早期的 builder 流程——
 `GlobalPar.taskGroupBuilder(options)`、`ParallelTaskGroup.Builder.addTask(name, par, callable,
 options)`、一次性的 `buildAndSubmitAll()` 和 `ParallelTaskGroup.TaskHandle<T>`——替换为
 `TaskGroupSpec.builder(groupOptions)`、`TaskGroupSpec.Builder.task(memberName, executorName,
-callable, options)`、一次性的 `ParallelTaskGroup.submit(global, spec)` 和 `TaskRef<T>`。
+callable, options)`、一次性的 `TaskGroup.submit(global, spec)` 和 `TaskRef<T>`。
 成员按注册名而不是 `Par` 对象引用执行器。`task()` 返回的 `TaskRef<T>` 是不携带执行状态的类型化
 令牌；提交后通过 `group.future(ref)` 取回成员 future。spec 不捕获线程上下文，结构父任务与观测
-作用域在每次 `submit` 时按提交线程解析，因此同一个 spec 可以重复提交。早期 builder API 从未作为
-稳定契约发布，因此不提供兼容 shim。
+作用域在每次 `submit` 时按提交线程解析，因此同一个 spec 可以重复提交。组入口类本身也由
+`ParallelTaskGroup` 改名为 `TaskGroup`，归入 `TaskGroupSpec`/`TaskGroupResult`/`TaskGroupListener`
+家族。早期 builder API 从未作为稳定契约发布，因此不提供兼容 shim。
 
 早期快照还曾将这套检测命名为 `GlobalParLivelockPolicy` 和 `LivelockListener`。请分别改为 `GlobalParDeadlockPolicy` 和 `DeadlockDetectionListener`；当前检测针对依赖图中的潜在死锁结构，不证明运行时已经死锁，也不检测活锁。
 

@@ -85,7 +85,7 @@ public final class MultiTaskOptions {
         return rejectEnqueue;
     }
 
-    /** Group convergence listeners; only read by {@code ParallelTaskGroup}. */
+    /** Group convergence listeners; only read by {@code TaskGroup}. */
     public List<TaskGroupListener> listeners() {
         return listeners;
     }
