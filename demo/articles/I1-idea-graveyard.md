@@ -23,7 +23,7 @@
 **替代方案：** 在任务函数内部自己做重试，或者用 Resilience4j、Guava Retryer 等专业库：
 
 ```java
-Par.map("io-pool", urls, url -> {
+par.map(urls, url -> {
     return retryOn(IOException.class, maxRetries(3), () -> httpClient.fetch(url));
 }, options);
 ```
@@ -84,7 +84,7 @@ Futures.addCallback(lf, new FutureCallback<String>() {
 **替代方案：** 在任务函数内部 catch 异常，返回包装类型：
 
 ```java
-Par.map("io-pool", urls, url -> {
+par.map(urls, url -> {
     try {
         return Optional.of(httpClient.fetch(url));
     } catch (Exception e) {
@@ -105,7 +105,8 @@ Par.map("io-pool", urls, url -> {
 
 ```java
 int concurrency = adaptiveLimiter.currentLimit();
-BatchExecutionOptions opts = BatchExecutionOptions.of("fetch").taskType(TaskType.IO_BOUND).parallelism(concurrency).build();
+MultiTaskOptions opts = MultiTaskOptions.of("fetch").taskType(TaskType.IO_BOUND).parallelism(concurrency)
+        .timeout(java.time.Duration.ofMillis(5000)).build();
 ```
 
 ---

@@ -108,7 +108,8 @@ par.map( urls, url -> {
 
 ```java
 int concurrency = adaptiveLimiter.currentLimit();
-BatchExecutionOptions opts = BatchExecutionOptions.of("fetch").taskType(TaskType.IO_BOUND).parallelism(concurrency).build();
+MultiTaskOptions opts = MultiTaskOptions.of("fetch").taskType(TaskType.IO_BOUND).parallelism(concurrency)
+        .timeout(java.time.Duration.ofMillis(5000)).build();
 ```
 
 ---

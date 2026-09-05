@@ -49,7 +49,7 @@ Par par = config.defaultPar();
 MDC.put("traceId", "abc-123");
 
 // 配置并行选项
-BatchExecutionOptions opts = BatchExecutionOptions.of("process-orders")
+MultiTaskOptions opts = MultiTaskOptions.of("process-orders")
         .parallelism(4)
         .timeout(java.time.Duration.ofMillis(5000))
         .build();

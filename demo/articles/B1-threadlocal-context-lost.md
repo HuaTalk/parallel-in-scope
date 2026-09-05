@@ -37,7 +37,7 @@ for (int i = 0; i < 3; i++) {
 
 ```java
 import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 
@@ -52,7 +52,7 @@ Par par = config.defaultPar();
 MDC.put("traceId", "abc-123");
 
 // 配置并行选项
-BatchExecutionOptions opts = BatchExecutionOptions.of("process-orders")
+MultiTaskOptions opts = MultiTaskOptions.of("process-orders")
         .parallelism(4)
         .timeout(java.time.Duration.ofMillis(5000))
         .build();

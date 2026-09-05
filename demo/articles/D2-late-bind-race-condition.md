@@ -56,7 +56,7 @@ for (int i = 0; i < taskCount; i++) {
 
 ```java
 import io.github.huatalk.parallelinscope.scope.Par;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.TaskType;
@@ -69,7 +69,7 @@ GlobalPar config = GlobalPar.builder()
 Par par = config.defaultPar();
 
 // 100 个任务，并行度 10，统一超时 5 秒
-BatchExecutionOptions options = BatchExecutionOptions.of("data-task")
+MultiTaskOptions options = MultiTaskOptions.of("data-task")
         .parallelism(10)
         .timeout(java.time.Duration.ofMillis(5000))
         .taskType(TaskType.IO_BOUND)

@@ -48,7 +48,7 @@ GlobalPar config = GlobalPar.builder()
 Par par = config.defaultPar();
 
 // 外层配置：500ms 超时
-BatchExecutionOptions outerOptions = BatchExecutionOptions.of("outer")
+MultiTaskOptions outerOptions = MultiTaskOptions.of("outer")
         .timeout(java.time.Duration.ofMillis(500))
         .build();
 
@@ -56,7 +56,10 @@ List<String> orders = Arrays.asList("ORD-001", "ORD-002", "ORD-003");
 
 TaskBatchResult<String> result = par.map( orders, order -> {
     // 内层并行调用多个下游服务
-    BatchExecutionOptions innerOptions = BatchExecutionOptions.of("inner").build();
+    MultiTaskOptions innerOptions = MultiTaskOptions.of("inner")
+            .parallelism(3)
+            .inheritTimeout()  // 嵌套任务：继承外层 deadline
+            .build();
     List<String> services = Arrays.asList("inventory", "payment", "shipping");
 
     TaskBatchResult<String> innerResult =

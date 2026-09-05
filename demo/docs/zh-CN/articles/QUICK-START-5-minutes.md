@@ -28,14 +28,16 @@ GlobalPar config = GlobalPar.builder()
 Par par = config.defaultPar();
 
 // 2. 定义任务选项
-BatchExecutionOptions options = BatchExecutionOptions.of("square").build();
+MultiTaskOptions options = MultiTaskOptions.of("square")
+        .timeout(java.time.Duration.ofMillis(5000))  // 必须显式声明超时（或嵌套任务内用 inheritTimeout()）
+        .build();
 
 // 3. 并行执行
 List<Integer> numbers = Arrays.asList(1, 2, 3);
 TaskBatchResult<Integer> result = par.map( numbers, n -> n * n, options);
 
 // 4. 获取结果
-for (Future<Integer> future : result.getResults()) {
+for (Future<Integer> future : result.results()) {
     System.out.println(future.get()); // 1, 4, 9
 }
 ```
@@ -44,10 +46,10 @@ for (Future<Integer> future : result.getResults()) {
 
 ## 3. 设置超时
 
-生产环境必须设置超时，防止任务无限挂起。在 `BatchExecutionOptions` 中通过 `.timeout()` 指定毫秒数：
+生产环境必须设置超时，防止任务无限挂起。新 API 强制要求 `.timeout(Duration)` 与 `.inheritTimeout()` 二选一——根级调用必须显式给出 `.timeout()`，缺省 `.build()` 会直接抛异常：
 
 ```java
-BatchExecutionOptions options = BatchExecutionOptions.of("square")
+MultiTaskOptions options = MultiTaskOptions.of("square")
         .timeout(java.time.Duration.ofMillis(500))   // 500ms 超时
         .build();
 
@@ -65,7 +67,7 @@ TaskBatchResult<Integer> result = par.map( numbers, n -> {
 当任务数量很大或下游服务有速率限制时，通过 `.parallelism()` 控制同时执行的任务数：
 
 ```java
-BatchExecutionOptions options = BatchExecutionOptions.of("process")
+MultiTaskOptions options = MultiTaskOptions.of("process")
         .parallelism(2)   // 最多同时执行 2 个任务
         .timeout(java.time.Duration.ofMillis(5000))
         .build();
@@ -85,25 +87,25 @@ TaskBatchResult<Integer> result = par.map( numbers, n -> n * n, options);
 
 // 方式一：快速概览——一行代码看全貌
 String report = result.reportString();
-// 输出示例："SUCCESS:3" 或 "SUCCESS:2,FAILED:1 | firstException=xxx"
+// 输出示例："SUCCESS:3" 或 "SUCCESS:2,USER_FAILURE:1 | firstException=xxx"
 
 // 方式二：逐个获取结果值
-for (Future<Integer> future : result.getResults()) {
+for (Future<Integer> future : result.results()) {
     Integer value = future.get(); // 阻塞等待并获取返回值
     System.out.println(value);
 }
 
 // 方式三：结构化报告
 TaskBatchResult.BatchReport batchReport = result.report();
-Map<FutureState, Integer> counts = batchReport.getStateCounts(); // {SUCCESS=3}
-Throwable firstError = batchReport.getFirstException();          // null if all success
+Map<TaskOutcome, Integer> counts = batchReport.stateCounts(); // {SUCCESS=3}
+Throwable firstError = batchReport.firstException();          // null if all success
 ```
 
 ## 下一步
 
-- **TaskType**：通过 `BatchExecutionOptions.ioTask()` 或 `BatchExecutionOptions.cpuTask()` 区分 IO/CPU 任务，框架会自动选择最优调度策略
+- **TaskType**：通过 `MultiTaskOptions.of("name").taskType(TaskType.IO_BOUND)`（或 `TaskType.CPU_BOUND`）区分 IO/CPU 任务，框架会自动选择最优调度策略
 - **TaskListener**：注册 SPI 监听器，获取每个任务的执行时间、排队时间等指标
-- **Checkpoints**：在长任务中插入 `Checkpoints.checkpoint()`，实现细粒度的协作式取消
+- **Checkpoints**：在长任务中插入 `Checkpoints.checkpoint(taskName, true)`，实现细粒度的协作式取消
 - **嵌套并行**：`par.map()` 支持嵌套调用，`CancellationToken` 会自动从外层传播到内层
 
 更多用法请参考项目 README 和 `demo/` 目录下的示例代码。

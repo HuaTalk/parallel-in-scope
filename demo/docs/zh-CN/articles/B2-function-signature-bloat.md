@@ -51,7 +51,7 @@ GlobalPar config = GlobalPar.builder()
 Par par = config.defaultPar();
 
 // 并行选项：框架自动管理超时和取消
-BatchExecutionOptions opts = BatchExecutionOptions.of("fetch-data")
+MultiTaskOptions opts = MultiTaskOptions.of("fetch-data")
         .parallelism(5)
         .timeout(java.time.Duration.ofMillis(3000))
         .build();

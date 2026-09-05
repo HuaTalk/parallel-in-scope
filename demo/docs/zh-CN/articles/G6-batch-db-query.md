@@ -61,7 +61,7 @@ for (int i = 0; i < allIds.size(); i += shardSize) {
 }
 
 // 3. 并行查询，parallelism=5 表示最多同时 5 个分片在执行
-BatchExecutionOptions options = BatchExecutionOptions.of("db-batch-query").taskType(TaskType.IO_BOUND)
+MultiTaskOptions options = MultiTaskOptions.of("db-batch-query").taskType(TaskType.IO_BOUND)
         .parallelism(5)
         .timeout(java.time.Duration.ofMillis(30000))
         .build();
@@ -72,7 +72,7 @@ TaskBatchResult<List<User>> result = par.map( shards, shard -> {
 
 // 4. 收集所有分片的结果
 List<User> allUsers = new ArrayList<>();
-for (ListenableFuture<List<User>> future : result.getResults()) {
+for (ListenableFuture<List<User>> future : result.results()) {
     allUsers.addAll(future.get());
 }
 
