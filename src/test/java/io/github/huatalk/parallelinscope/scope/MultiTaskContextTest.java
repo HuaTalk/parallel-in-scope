@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 class MultiTaskContextTest {
     @Test
     void childDeadlineCannotOutliveParentDeadline() {
-        GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
         MultiTaskContext parent = MultiTaskContext.resolve(
                 MultiTaskOptions.of("outer").timeout(Duration.ofMillis(100)).build(), 1, null);
         MultiTaskContext child = MultiTaskContext.resolve(
@@ -22,7 +21,6 @@ class MultiTaskContextTest {
 
     @Test
     void resolvesParallelismAndRuntimeMetadata() {
-        GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
         MultiTaskOptions options = MultiTaskOptions.of("io")
                 .parallelism(99)
                 .taskType(TaskType.IO_BOUND)

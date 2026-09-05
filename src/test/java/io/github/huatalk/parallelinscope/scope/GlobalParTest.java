@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.alibaba.ttl.TransmittableThreadLocal;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.context.graph.TaskGraphData;
+import io.github.huatalk.parallelinscope.spi.TaskListener;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.util.Collections;
@@ -317,16 +318,11 @@ class GlobalParTest {
     void validatesPoliciesNamesAndStaticGlobalInstallation() {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
+            TaskListener listener = event -> {};
             GlobalPar.Builder builder =
-                    GlobalPar.builder().executionPolicy(policy).register("io", executor);
+                    GlobalPar.builder().taskListener(listener).register("io", executor);
             assertThatThrownBy(
-                            () -> builder.parPolicyOverride("missing", policy).build())
-                    .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> GlobalPar.builder()
-                            .register("io", executor)
-                            .parPolicyOverride("io", policy)
-                            .parPolicyOverride("io", policy))
+                            () -> builder.parTaskListener("missing", listener).build())
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> GlobalPar.builder().register("", executor))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -514,20 +510,20 @@ class GlobalParTest {
     void exposesImmutableTopologyAndConfiguredPolicies() {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
+            TaskListener listener = event -> {};
             GlobalParDeadlockPolicy deadlock =
                     GlobalParDeadlockPolicy.builder().enabled(true).build();
             GlobalParPurgePolicy purge =
                     GlobalParPurgePolicy.builder().enabled(true).build();
             GlobalPar global = GlobalPar.builder()
-                    .executionPolicy(policy)
+                    .taskListener(listener)
                     .deadlockPolicy(deadlock)
                     .purgePolicy(purge)
                     .register("one", executor)
                     .build();
 
-            assertThat(global.executionPolicy()).isSameAs(policy);
-            assertThat(global.executionPolicyFor("one")).isSameAs(policy);
+            assertThat(global.taskListeners()).containsExactly(listener);
+            assertThat(global.taskListenersFor("one")).containsExactly(listener);
             assertThat(global.deadlockPolicy()).isSameAs(deadlock);
             assertThat(global.purgePolicy()).isSameAs(purge);
             assertThat(global.find("one")).contains(global.par("one"));
@@ -566,15 +562,5 @@ class GlobalParTest {
             plain.shutdownNow();
             listening.shutdownNow();
         }
-    }
-
-    @Test
-    void exposesImmutableGlobalTaskListeners() {
-        io.github.huatalk.parallelinscope.spi.TaskListener listener = event -> {};
-        GlobalExecutionPolicy policy =
-                GlobalExecutionPolicy.builder().taskListener(listener).build();
-
-        assertThat(policy.taskListeners()).containsExactly(listener);
-        assertThatThrownBy(() -> policy.taskListeners().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 }

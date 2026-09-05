@@ -9,12 +9,8 @@
 在 composition root 创建 `GlobalPar`。每个逻辑入口在注册时绑定应使用的执行器，并将取得的 `Par` 注入需要它的组件。
 
 ```java
-GlobalExecutionPolicy defaults = GlobalExecutionPolicy.builder()
-        .taskListener(metricsListener)
-        .build();
-
 GlobalPar global = GlobalPar.builder()
-        .executionPolicy(defaults)
+        .taskListener(metricsListener)
         .register("database", databaseExecutor)
         .register("http", httpExecutor)
         .defaultPar("http")

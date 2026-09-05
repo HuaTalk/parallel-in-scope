@@ -13,12 +13,8 @@ a dynamically growing batch.
 Create `GlobalPar` at the composition root. Register every logical entry with the executor it must use and pass the resulting `Par` to components that need it.
 
 ```java
-GlobalExecutionPolicy defaults = GlobalExecutionPolicy.builder()
-        .taskListener(metricsListener)
-        .build();
-
 GlobalPar global = GlobalPar.builder()
-        .executionPolicy(defaults)
+        .taskListener(metricsListener)
         .register("database", databaseExecutor)
         .register("http", httpExecutor)
         .defaultPar("http")

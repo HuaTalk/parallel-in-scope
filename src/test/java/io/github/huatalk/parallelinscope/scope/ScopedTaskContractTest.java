@@ -352,9 +352,7 @@ class ScopedTaskContractTest {
 
     private static GlobalPar globalWithListener(ExecutorService executor, List<TaskListener.TaskEvent<?>> events) {
         return GlobalPar.builder()
-                .executionPolicy(GlobalExecutionPolicy.builder()
-                        .taskListener(events::add)
-                        .build())
+                .taskListener(events::add)
                 .register("worker", executor)
                 .build();
     }

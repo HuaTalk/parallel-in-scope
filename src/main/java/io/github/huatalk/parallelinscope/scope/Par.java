@@ -69,10 +69,7 @@ public final class Par {
     ExecutionPhaseHintFuture<Object> prepareGroupTask(
             Callable<Object> callable, MultiTaskContext batchContext, TaskExecutionContext taskContext) {
         return TaskSubmissions.prepare(
-                taskContext,
-                callable,
-                globalPar.executionPolicyFor(displayName).taskListeners(),
-                runtime.phaseObserver());
+                taskContext, callable, globalPar.taskListenersFor(displayName), runtime.phaseObserver());
     }
 
     ExecutorIdentity executorIdentity() {
@@ -146,7 +143,7 @@ public final class Par {
                 .mapToObj(index -> TaskSubmissions.prepare(
                         new TaskExecutionContext(batchContext, index, ticker.read()),
                         callableMapper.apply(list.get(index)),
-                        globalPar.executionPolicyFor(displayName).taskListeners(),
+                        globalPar.taskListenersFor(displayName),
                         runtime.phaseObserver()))
                 .collect(toImmutableList());
         AsyncBatchResult<R> result = new ConcurrentLimitExecutor<R>(
