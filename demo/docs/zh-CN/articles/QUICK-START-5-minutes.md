@@ -32,7 +32,7 @@ BatchExecutionOptions options = BatchExecutionOptions.of("square").build();
 
 // 3. 并行执行
 List<Integer> numbers = Arrays.asList(1, 2, 3);
-AsyncBatchResult<Integer> result = par.map( numbers, n -> n * n, options);
+TaskBatchResult<Integer> result = par.map( numbers, n -> n * n, options);
 
 // 4. 获取结果
 for (Future<Integer> future : result.getResults()) {
@@ -40,7 +40,7 @@ for (Future<Integer> future : result.getResults()) {
 }
 ```
 
-`par.map()` 会为列表中每个元素并行执行函数，返回 `AsyncBatchResult`，其中包含与输入顺序一一对应的 `ListenableFuture` 列表。
+`par.map()` 会为列表中每个元素并行执行函数，返回 `TaskBatchResult`，其中包含与输入顺序一一对应的 `ListenableFuture` 列表。
 
 ## 3. 设置超时
 
@@ -51,7 +51,7 @@ BatchExecutionOptions options = BatchExecutionOptions.of("square")
         .timeout(java.time.Duration.ofMillis(500))   // 500ms 超时
         .build();
 
-AsyncBatchResult<Integer> result = par.map( numbers, n -> {
+TaskBatchResult<Integer> result = par.map( numbers, n -> {
     // 模拟耗时操作
     Thread.sleep(100);
     return n * n;
@@ -71,17 +71,17 @@ BatchExecutionOptions options = BatchExecutionOptions.of("process")
         .build();
 
 List<Integer> bigList = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8);
-AsyncBatchResult<Integer> result = par.map( bigList, n -> n * 2, options);
+TaskBatchResult<Integer> result = par.map( bigList, n -> n * 2, options);
 ```
 
 框架采用滑动窗口策略：每完成一个任务才提交下一个，始终保持最多 `parallelism` 个任务在执行，避免线程池被打满。
 
 ## 5. 查看结果
 
-`AsyncBatchResult` 提供两种结果查看方式：
+`TaskBatchResult` 提供两种结果查看方式：
 
 ```java
-AsyncBatchResult<Integer> result = par.map( numbers, n -> n * n, options);
+TaskBatchResult<Integer> result = par.map( numbers, n -> n * n, options);
 
 // 方式一：快速概览——一行代码看全貌
 String report = result.reportString();
@@ -94,7 +94,7 @@ for (Future<Integer> future : result.getResults()) {
 }
 
 // 方式三：结构化报告
-AsyncBatchResult.BatchReport batchReport = result.report();
+TaskBatchResult.BatchReport batchReport = result.report();
 Map<FutureState, Integer> counts = batchReport.getStateCounts(); // {SUCCESS=3}
 Throwable firstError = batchReport.getFirstException();          // null if all success
 ```

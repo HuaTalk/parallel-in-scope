@@ -63,7 +63,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("api-call")
 
 // 并行执行，超时自动取消
 List<String> urls = Arrays.asList("url1", "url2");
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     // 模拟长时间 IO 操作（响应中断）
     Thread.sleep(5000);
     return fetchContent(url);

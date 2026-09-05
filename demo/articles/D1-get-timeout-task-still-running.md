@@ -47,7 +47,7 @@ pool.submit(() -> "new task"); // 这个任务必须等待前面的任务完成
 ```java
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 
@@ -68,7 +68,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("api-call")
 
 // 并行执行，超时自动取消
 List<String> urls = Arrays.asList("url1", "url2");
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     // 模拟长时间 IO 操作（响应中断）
     Thread.sleep(5000);
     return fetchContent(url);

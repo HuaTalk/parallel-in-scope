@@ -50,7 +50,7 @@ for (int i = 0; i < 1_000_000; i++) {
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 
 // 配置线程池和 Par 实例
@@ -67,7 +67,7 @@ BatchExecutionOptions ioOpts = BatchExecutionOptions.of("api-call").taskType(Tas
         .build();
 
 List<String> urls = Arrays.asList("url1", "url2", "url3");
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     Thread.sleep(5000);  // 响应中断，500ms 后被取消
     return fetchContent(url);
 }, ioOpts);

@@ -1,9 +1,9 @@
-# AsyncBatchResult 报告能力测试设计
+# TaskBatchResult 报告能力测试设计
 
 
 ## 1. 目标
 
-本测试集验证 `AsyncBatchResult.report()` 和 `reportString()` 对批次当前状态的真实表达能力，并验证 `Par.map()` fail-fast 后的报告仍满足公开契约。
+本测试集验证 `TaskBatchResult.report()` 和 `reportString()` 对批次当前状态的真实表达能力，并验证 `Par.map()` fail-fast 后的报告仍满足公开契约。
 
 测试不把线程调度产生的偶然状态数量当作产品契约。凡是断言精确数量的场景，都必须先通过已完成 Future 或显式同步原语建立确定状态。
 
@@ -74,7 +74,7 @@ sleep 只能提高某种执行顺序出现的概率，不能建立 happens-befor
 
 ### 为了得到 6/4 而吞掉任务异常
 
-把异常包装为业务返回值会阻止 fail-fast，但此时 Future 状态全部是 `SUCCESS`，测试的是业务结果建模，而不是 `AsyncBatchResult` 的失败报告能力。
+把异常包装为业务返回值会阻止 fail-fast，但此时 Future 状态全部是 `SUCCESS`，测试的是业务结果建模，而不是 `TaskBatchResult` 的失败报告能力。
 
 ## 5. 测试用例清单
 

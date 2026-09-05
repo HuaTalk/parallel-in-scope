@@ -68,7 +68,7 @@ Par par = config.defaultPar();
 
 // 业务代码无需任何监控逻辑
 BatchExecutionOptions opts = BatchExecutionOptions.of("order-query").parallelism(5).timeout(java.time.Duration.ofMillis(3000)).build();
-AsyncBatchResult<Order> result = par.map( orderIds, id -> {
+TaskBatchResult<Order> result = par.map( orderIds, id -> {
     return orderService.query(id);  // 纯业务逻辑，不碰监控
 }, opts);
 ```

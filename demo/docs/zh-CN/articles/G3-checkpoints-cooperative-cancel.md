@@ -63,7 +63,7 @@ BatchExecutionOptions ioOpts = BatchExecutionOptions.of("api-call").taskType(Tas
         .build();
 
 List<String> urls = Arrays.asList("url1", "url2", "url3");
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     Thread.sleep(5000);  // 响应中断，500ms 后被取消
     return fetchContent(url);
 }, ioOpts);

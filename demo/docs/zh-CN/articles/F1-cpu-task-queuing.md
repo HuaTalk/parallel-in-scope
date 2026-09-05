@@ -57,7 +57,7 @@ BatchExecutionOptions options = BatchExecutionOptions.of("heavy-computation").ta
         .build();
 
 List<Data> items = loadDataset();
-AsyncBatchResult<Result> result = par.map( items, item -> {
+TaskBatchResult<Result> result = par.map( items, item -> {
     // CPU 密集计算——不会在队列中白等
     return heavyComputation(item);
 }, options);

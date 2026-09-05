@@ -71,7 +71,7 @@ BatchExecutionOptions outerOpts = BatchExecutionOptions.of("outer-task")
         .build();
 
 List<Integer> items = Arrays.asList(1, 2, 3, 4);
-AsyncBatchResult<String> result = par.map( items, item -> {
+TaskBatchResult<String> result = par.map( items, item -> {
     // 内层任务使用同一个 CachedThreadPool，不会死锁
     BatchExecutionOptions innerOpts = BatchExecutionOptions.of("inner-task")
             .parallelism(2)
@@ -79,7 +79,7 @@ AsyncBatchResult<String> result = par.map( items, item -> {
             .build();
 
     List<String> subItems = Arrays.asList("a", "b");
-    AsyncBatchResult<String> innerResult = par.map( subItems, sub -> {
+    TaskBatchResult<String> innerResult = par.map( subItems, sub -> {
         return item + "-" + sub;
     }, innerOpts);
 

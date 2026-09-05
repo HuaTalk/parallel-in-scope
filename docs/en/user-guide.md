@@ -46,7 +46,7 @@ MultiTaskOptions options = MultiTaskOptions.of("fetch-account")
         .rejectEnqueue(false)
         .build();
 
-AsyncBatchResult<Account> result = httpPar.map(
+TaskBatchResult<Account> result = httpPar.map(
         accountIds,
         client::fetchAccount,
         options);
@@ -136,7 +136,7 @@ Nested `map` calls inherit the current `MultiTaskContext` when they run inside a
 
 ```java
 databasePar.map(ids, id -> {
-    AsyncBatchResult<Response> children = httpPar.map(
+    TaskBatchResult<Response> children = httpPar.map(
             endpoints(id), client::call, httpOptions);
     return collect(children);
 }, databaseOptions);

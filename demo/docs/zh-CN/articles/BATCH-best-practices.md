@@ -27,7 +27,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("batch-http").taskType(Tas
         .timeout(java.time.Duration.ofMillis(3000))         // 3 秒超时
         .build();
 
-AsyncBatchResult<String> result = par.map( services, svc -> {
+TaskBatchResult<String> result = par.map( services, svc -> {
     return callDownstream(svc);  // 你的 HTTP 调用逻辑
 }, opts);
 
@@ -65,7 +65,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("db-batch-query").taskType
         .timeout(java.time.Duration.ofMillis(30000))        // 查询可能慢，30 秒超时
         .build();
 
-AsyncBatchResult<List<User>> result = par.map( shards, shard -> {
+TaskBatchResult<List<User>> result = par.map( shards, shard -> {
     return userMapper.selectByIds(shard);  // 你的 DAO 调用
 }, opts);
 
@@ -94,7 +94,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("mixed-io").taskType(TaskT
         .timeout(java.time.Duration.ofMillis(5000))         // 统一 5 秒超时
         .build();
 
-AsyncBatchResult<Object> result = par.map( tasks, task -> {
+TaskBatchResult<Object> result = par.map( tasks, task -> {
     if (task instanceof HttpRequest) {
         return httpClient.execute((HttpRequest) task);   // HTTP 调用
     } else if (task instanceof DbQuery) {

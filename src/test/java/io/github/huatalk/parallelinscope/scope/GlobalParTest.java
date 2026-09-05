@@ -29,7 +29,7 @@ class GlobalParTest {
             executor.submit(() -> {}).get(2, TimeUnit.SECONDS);
             context.set("request-42");
 
-            AsyncBatchResult<String> result = global.par("worker")
+            TaskBatchResult<String> result = global.par("worker")
                     .map(
                             java.util.Arrays.asList(1, 2),
                             ignored -> context.get(),
@@ -95,7 +95,7 @@ class GlobalParTest {
         try {
             GlobalPar global = GlobalPar.builder().register("io", executor).build();
 
-            AsyncBatchResult<Integer> result = global.par("io")
+            TaskBatchResult<Integer> result = global.par("io")
                     .map(
                             Collections.singletonList(2),
                             value -> value + 1,
@@ -172,11 +172,11 @@ class GlobalParTest {
                 .build();
         try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
             TaskGraphData expectedGraph = TaskGraphObservationContext.data();
-            AsyncBatchResult<Integer> outer = global.par("outer")
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
@@ -216,12 +216,12 @@ class GlobalParTest {
             TaskGraphData expectedGraph = TaskGraphObservationContext.data();
             java.util.concurrent.atomic.AtomicReference<TaskGraphData> graphOnOuterWorker =
                     new java.util.concurrent.atomic.AtomicReference<>();
-            AsyncBatchResult<Integer> outer = global.par("outer")
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
                                 graphOnOuterWorker.set(TaskGraphObservationContext.data());
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
@@ -257,11 +257,11 @@ class GlobalParTest {
                 .register("inner", innerExecutor)
                 .build();
         try {
-            AsyncBatchResult<Integer> outer = global.par("outer")
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             java.util.Arrays.asList(1, 99),
                             ignored -> {
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 java.util.Arrays.asList(1, 2),
                                                 value -> value + 1,
@@ -294,7 +294,7 @@ class GlobalParTest {
         rejectedExecutor.shutdown();
         GlobalPar global = GlobalPar.builder().register("cpu", rejectedExecutor).build();
         try {
-            AsyncBatchResult<Integer> result = global.par("cpu")
+            TaskBatchResult<Integer> result = global.par("cpu")
                     .map(
                             Collections.singletonList(1),
                             value -> {
@@ -442,7 +442,7 @@ class GlobalParTest {
         CountDownLatch firstTaskStarted = new CountDownLatch(1);
         CountDownLatch releaseFirstTask = new CountDownLatch(1);
         try {
-            AsyncBatchResult<Integer> result = global.par("io")
+            TaskBatchResult<Integer> result = global.par("io")
                     .map(
                             java.util.Arrays.asList(1, 2, 3),
                             value -> {

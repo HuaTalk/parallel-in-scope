@@ -72,7 +72,7 @@ Task outcome classification is unified into a single enum, `TaskOutcome`, replac
 former member-reason values so it serves both batch reports and group member results. Mapping from
 the removed enums: `FutureState.FAILED` → `TaskOutcome.USER_FAILURE`, `FutureState.CANCELLED` →
 `TaskOutcome.MEMBER_CANCELED`, and `TaskGroupMemberReason.X` → `TaskOutcome.X` (same names).
-Consequently `AsyncBatchResult.BatchReport.stateCounts()` is now keyed by `TaskOutcome`, and
+Consequently `TaskBatchResult.BatchReport.stateCounts()` is now keyed by `TaskOutcome`, and
 `TaskGroupMemberResult` exposes its member outcome as `outcome()` returning `TaskOutcome` (renamed
 from the earlier `completionReason()`).
 
@@ -83,8 +83,8 @@ internals. Earlier `0.2.0-SNAPSHOT` builds used bean-style names; rename call si
 |---|---|
 | `Par.getGlobalPar()` | `Par.globalPar()` |
 | `Par.getDisplayName()` | `Par.displayName()` |
-| `AsyncBatchResult.getSubmitCanceller()` | `AsyncBatchResult.submitCanceller()` |
-| `AsyncBatchResult.getResults()` | `AsyncBatchResult.results()` |
+| `AsyncBatchResult.getSubmitCanceller()` | `TaskBatchResult.submitCanceller()` |
+| `AsyncBatchResult.getResults()` | `TaskBatchResult.results()` |
 | `AsyncBatchResult.BatchReport.getStateCounts()` | `BatchReport.stateCounts()` |
 | `AsyncBatchResult.BatchReport.getFirstException()` | `BatchReport.firstException()` |
 | `GlobalPar.isClosed()/isShutdown()/isTerminated()` | `GlobalPar.closed()/shutdown()/terminated()` |
@@ -158,3 +158,8 @@ per-Par override `parPolicyOverride(name, policy)` becomes one `parTaskListener(
 listener — repeated calls for the same name append instead of failing, and the override still
 replaces the default list for that entry. The `GlobalPar.executionPolicy()` /
 `executionPolicyFor(name)` accessors are replaced by `taskListeners()` / `taskListenersFor(name)`.
+
+`AsyncBatchResult` is renamed to `TaskBatchResult` (its nested `BatchReport` keeps its name): the
+result of a batch of tasks, not an async-specific construct. The internal
+`ConcurrentLimitExecutor` is renamed to `SlidingWindowSubmitter`, matching what it actually does —
+submitting a sliding window of prepared tasks.

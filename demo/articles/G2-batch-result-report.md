@@ -44,7 +44,7 @@ for (int i = 0; i < 10; i++) {
 
 ## 解决方法
 
-`AsyncBatchResult` 封装了所有任务的 `ListenableFuture`，一行调用 `reportString()` 即可拿到人类可读的状态概览。报告反映的是调用时每个 Future 的真实终态，包括 `SUCCESS`、`FAILED` 和 `CANCELLED`。
+`TaskBatchResult` 封装了所有任务的 `ListenableFuture`，一行调用 `reportString()` 即可拿到人类可读的状态概览。报告反映的是调用时每个 Future 的真实终态，包括 `SUCCESS`、`FAILED` 和 `CANCELLED`。
 
 ```
 SUCCESS:6
@@ -62,7 +62,7 @@ SUCCESS:6
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 
 ExecutorService pool = Executors.newFixedThreadPool(4);
 GlobalPar config = GlobalPar.builder()
@@ -76,7 +76,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("batch-task")
         .build();
 
 List<Integer> items = Arrays.asList(1, 2, 3, 4, 5, 6);
-AsyncBatchResult<Integer> result = par.map( items, x -> {
+TaskBatchResult<Integer> result = par.map( items, x -> {
     return x * 2;
 }, opts);
 
@@ -85,7 +85,7 @@ System.out.println(result.reportString());
 // 输出示例: SUCCESS:6
 
 // 结构化访问
-AsyncBatchResult.BatchReport report = result.report();
+TaskBatchResult.BatchReport report = result.report();
 System.out.println("状态统计: " + report.getStateCounts());
 System.out.println("首个异常: " + report.getFirstException());
 ```
@@ -97,7 +97,7 @@ System.out.println("首个异常: " + report.getFirstException());
 这类场景应验证稳定不变量，而不是固定状态数量：
 
 ```java
-AsyncBatchResult.BatchReport report = result.report();
+TaskBatchResult.BatchReport report = result.report();
 int total = report.getStateCounts().values().stream()
         .mapToInt(Integer::intValue)
         .sum();
@@ -110,7 +110,7 @@ assert report.getFirstException() != null;
 
 对比两种方式：
 
-| 维度 | 原生 Future 手动统计 | AsyncBatchResult.reportString() |
+| 维度 | 原生 Future 手动统计 | TaskBatchResult.reportString() |
 |------|---------------------|--------------------------------|
 | 代码量 | 20+ 行 | 1 行 |
 | 异常提取 | 手动 getCause() | 自动取第一个失败异常 |

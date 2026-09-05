@@ -18,7 +18,7 @@ Normal cancellation is a control-flow event, so `LeanCancellationException` avoi
 
 ## Sliding-window scheduling
 
-Submitting every item at once can flood a queue and make nested calls deadlock. `ConcurrentLimitExecutor` keeps only a bounded window of work in flight. CPU and I/O task types can use different scheduling policies, but both remain inside the same structured scope.
+Submitting every item at once can flood a queue and make nested calls deadlock. `SlidingWindowSubmitter` keeps only a bounded window of work in flight. CPU and I/O task types can use different scheduling policies, but both remain inside the same structured scope.
 
 ## Explicit execution context and deadlock visibility
 

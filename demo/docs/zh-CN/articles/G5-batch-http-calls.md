@@ -37,7 +37,7 @@ try {
 - `timeout(3000)` — 本次批量调用最多执行 3 秒，超时后取消所有未完成任务
 - fail-fast — 首个任务失败即取消剩余未完成任务
 
-结果通过 `AsyncBatchResult` 聚合，`reportString()` 一行查看状态分布。
+结果通过 `TaskBatchResult` 聚合，`reportString()` 一行查看状态分布。
 
 ## 代码
 
@@ -53,7 +53,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("batch-http")
         .taskType(TaskType.IO_BOUND)
         .build();
 
-AsyncBatchResult<String> result = par.map( services, svc -> {
+TaskBatchResult<String> result = par.map( services, svc -> {
     return callService(svc);  // 纯业务逻辑
 }, opts);
 

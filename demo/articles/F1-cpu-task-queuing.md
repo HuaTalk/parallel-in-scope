@@ -45,7 +45,7 @@ for (int i = 0; i < 20; i++) {
 ```java
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
 
 ExecutorService pool = Executors.newFixedThreadPool(4);
@@ -61,7 +61,7 @@ BatchExecutionOptions options = BatchExecutionOptions.of("heavy-computation").ta
         .build();
 
 List<Data> items = loadDataset();
-AsyncBatchResult<Result> result = par.map( items, item -> {
+TaskBatchResult<Result> result = par.map( items, item -> {
     // CPU 密集计算——不会在队列中白等
     return heavyComputation(item);
 }, options);

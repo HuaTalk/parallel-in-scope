@@ -6,12 +6,7 @@ import com.google.common.graph.EndpointPair;
 import com.google.common.graph.ValueGraph;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.ExecutorIdentity;
-import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.GlobalParDeadlockPolicy;
-import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
-import io.github.huatalk.parallelinscope.scope.TaskType;
+import io.github.huatalk.parallelinscope.scope.*;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -185,11 +180,11 @@ class TaskGraphExportTest {
                 .build();
         TaskGraphData captured;
         try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
-            AsyncBatchResult<Integer> outer = global.par("outer")
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
@@ -244,11 +239,11 @@ class TaskGraphExportTest {
                 .register("inner", innerExecutor)
                 .build();
         try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
-            AsyncBatchResult<Integer> outer = global.par("outer")
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
@@ -291,7 +286,7 @@ class TaskGraphExportTest {
         ExecutorService direct = MoreExecutors.newDirectExecutorService();
         GlobalPar global = GlobalPar.builder().register("direct", direct).build();
         try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
-            AsyncBatchResult<Integer> batch = global.par("direct")
+            TaskBatchResult<Integer> batch = global.par("direct")
                     .map(
                             Collections.singletonList(1),
                             value -> value + 1,

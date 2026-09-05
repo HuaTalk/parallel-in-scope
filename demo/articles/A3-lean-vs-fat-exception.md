@@ -37,7 +37,7 @@ System.out.println("10000 exceptions: " + elapsed / 1_000_000 + " ms");
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);
@@ -54,7 +54,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("fast-task")
 
 // 提交 100 个任务，大部分会超时被取消
 List<Integer> items = IntStream.rangeClosed(1, 100).boxed().collect(Collectors.toList());
-AsyncBatchResult<String> result = par.map( items, id -> {
+TaskBatchResult<String> result = par.map( items, id -> {
     // 模拟慢操作，超过 200ms 超时
     Thread.sleep(5000);
     return "done-" + id;

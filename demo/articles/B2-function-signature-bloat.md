@@ -44,7 +44,7 @@ List<String> results = urls.parallelStream()
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 
 // 配置线程池和 Par 实例
 ExecutorService pool = Executors.newFixedThreadPool(4);
@@ -61,11 +61,11 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("fetch-data")
 
 // 函数签名只保留业务参数，零基础设施噪音
 List<String> urls = Arrays.asList("url1", "url2", "url3", "url4", "url5");
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     // 框架已自动处理：
     //   - CancellationToken 取消检查（ScopedCallable 内部）
     //   - 超时控制（CancellationToken.lateBind）
-    //   - 并发限制（ConcurrentLimitExecutor 滑动窗口）
+    //   - 并发限制（SlidingWindowSubmitter 滑动窗口）
     //   - SPI 回调（TaskListener）
     // 只需关注业务逻辑
     return doFetch(url);

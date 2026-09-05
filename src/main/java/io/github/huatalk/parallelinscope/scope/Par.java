@@ -6,8 +6,8 @@ import com.google.common.collect.ImmutableList;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
 import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
-import io.github.huatalk.parallelinscope.internal.ConcurrentLimitExecutor;
 import io.github.huatalk.parallelinscope.internal.ExecutionPhaseHintFuture;
+import io.github.huatalk.parallelinscope.internal.SlidingWindowSubmitter;
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
 import io.github.huatalk.parallelinscope.internal.TaskSubmissions;
 import java.util.List;
@@ -28,7 +28,7 @@ import javax.annotation.Nullable;
  * <ul>
  *   <li>Resolution of {@link MultiTaskOptions} into a batch context
  *   <li>Scoped task preparation via {@link io.github.huatalk.parallelinscope.internal.TaskSubmissions}
- *   <li>Concurrency-limited submission via {@link ConcurrentLimitExecutor}
+ *   <li>Concurrency-limited submission via {@link SlidingWindowSubmitter}
  *   <li>Parent-child {@link CancellationToken} chaining
  *   <li>Late binding for timeout and fail-fast cancellation
  *   <li>Heuristic cleanup of canceled queued tasks
@@ -97,13 +97,13 @@ public final class Par {
      *     task encloses this call
      * @throws IllegalStateException if the owning GlobalPar has begun shutdown
      */
-    public <T, R> AsyncBatchResult<R> map(
+    public <T, R> TaskBatchResult<R> map(
             @Nullable List<T> list, Function<? super T, ? extends R> function, MultiTaskOptions options) {
         Objects.requireNonNull(options, "options cannot be null");
         return globalPar.whileOpen(() -> mapWhileOpen(list, function, options));
     }
 
-    private <T, R> AsyncBatchResult<R> mapWhileOpen(
+    private <T, R> TaskBatchResult<R> mapWhileOpen(
             @Nullable List<T> list, Function<? super T, ? extends R> function, MultiTaskOptions options) {
         int taskCount = list == null ? 0 : list.size();
         TaskExecutionContext currentTask = TaskExecutionContext.current();
@@ -124,7 +124,7 @@ public final class Par {
         return executeGlobal(list, item -> () -> function.apply(item), batchContext);
     }
 
-    private <T, R> AsyncBatchResult<R> executeGlobal(
+    private <T, R> TaskBatchResult<R> executeGlobal(
             @Nullable List<T> list, Function<T, Callable<R>> callableMapper, MultiTaskContext batchContext) {
         if (list == null || list.isEmpty()) return emptyBatchResult();
         TaskEdge edge = new TaskEdge(
@@ -146,7 +146,7 @@ public final class Par {
                         globalPar.taskListenersFor(displayName),
                         runtime.phaseObserver()))
                 .collect(toImmutableList());
-        AsyncBatchResult<R> result = new ConcurrentLimitExecutor<R>(
+        TaskBatchResult<R> result = new SlidingWindowSubmitter<R>(
                         runtime.submissionExecutor(), batchContext, globalPar.submitterPool())
                 .submitAll(tasks);
         batchContext.cancellationToken().bind(result.results(), result.submitCanceller(), globalPar.timeoutScheduler());
@@ -168,7 +168,7 @@ public final class Par {
                 edge);
     }
 
-    private static <T> AsyncBatchResult<T> emptyBatchResult() {
-        return AsyncBatchResult.of(ImmutableList.of());
+    private static <T> TaskBatchResult<T> emptyBatchResult() {
+        return TaskBatchResult.of(ImmutableList.of());
     }
 }

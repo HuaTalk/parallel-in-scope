@@ -48,7 +48,7 @@ Future<String> future = pool.submit(() -> {
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
 
 // 注册监控监听器
@@ -73,7 +73,7 @@ Par par = config.defaultPar();
 
 // 业务代码无需任何监控逻辑
 BatchExecutionOptions opts = BatchExecutionOptions.of("order-query").parallelism(5).timeout(java.time.Duration.ofMillis(3000)).build();
-AsyncBatchResult<Order> result = par.map( orderIds, id -> {
+TaskBatchResult<Order> result = par.map( orderIds, id -> {
     return orderService.query(id);  // 纯业务逻辑，不碰监控
 }, opts);
 ```

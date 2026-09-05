@@ -42,7 +42,7 @@ MultiTaskOptions options = MultiTaskOptions.of("fetch-account")
         .rejectEnqueue(false)
         .build();
 
-AsyncBatchResult<Account> result = httpPar.map(
+TaskBatchResult<Account> result = httpPar.map(
         accountIds,
         client::fetchAccount,
         options);
@@ -72,7 +72,7 @@ httpPar.map(accountIds, id -> {
 
 ```java
 databasePar.map(ids, id -> {
-    AsyncBatchResult<Response> children = httpPar.map(
+    TaskBatchResult<Response> children = httpPar.map(
             endpoints(id), client::call, httpOptions);
     return collect(children);
 }, databaseOptions);

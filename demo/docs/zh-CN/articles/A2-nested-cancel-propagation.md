@@ -54,12 +54,12 @@ BatchExecutionOptions outerOptions = BatchExecutionOptions.of("outer")
 
 List<String> orders = Arrays.asList("ORD-001", "ORD-002", "ORD-003");
 
-AsyncBatchResult<String> result = par.map( orders, order -> {
+TaskBatchResult<String> result = par.map( orders, order -> {
     // 内层并行调用多个下游服务
     BatchExecutionOptions innerOptions = BatchExecutionOptions.of("inner").build();
     List<String> services = Arrays.asList("inventory", "payment", "shipping");
 
-    AsyncBatchResult<String> innerResult =
+    TaskBatchResult<String> innerResult =
             par.map( services, svc -> callDownstream(svc, order), innerOptions);
 
     // 等待内层结果

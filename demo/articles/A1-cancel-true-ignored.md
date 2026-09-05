@@ -38,7 +38,7 @@ futures.forEach(f -> f.cancel(true));
 import io.github.huatalk.parallelinscope.scope.Par;
 import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 
 // 配置线程池和 Par 实例
@@ -57,7 +57,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("http-call")
 
 // 并行执行，超时自动取消
 List<String> urls = Arrays.asList("url1", "url2", "url3");
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     // 模拟 IO 操作（Checkpoints.sleep 响应框架取消信号）
     Thread.sleep(5000);
     return fetchContent(url);

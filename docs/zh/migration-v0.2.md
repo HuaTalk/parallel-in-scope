@@ -63,7 +63,7 @@ null，因此不要用 result 是否为 null 判断成败。监听器回调不�
 之上补充了 `RUNNING`，因此可同时服务批量报告与组成员结果。映射关系：`FutureState.FAILED` →
 `TaskOutcome.USER_FAILURE`，`FutureState.CANCELLED` → `TaskOutcome.MEMBER_CANCELED`，
 `TaskGroupMemberReason.X` → `TaskOutcome.X`（同名）。相应地，
-`AsyncBatchResult.BatchReport.stateCounts()` 现在以 `TaskOutcome` 为键，
+`TaskBatchResult.BatchReport.stateCounts()` 现在以 `TaskOutcome` 为键，
 `TaskGroupMemberResult` 的成员终态由 `outcome()` 暴露并返回 `TaskOutcome`（由早期的
 `completionReason()` 改名而来）。
 
@@ -91,5 +91,9 @@ null，因此不要用 result 是否为 null 判断成败。监听器回调不�
 重复调用是追加而不是报错，覆盖列表对该 Par 仍然整体替换默认列表。`GlobalPar` 的
 `executionPolicy()`/`executionPolicyFor(name)` 访问器相应改为
 `taskListeners()`/`taskListenersFor(name)`。
+
+`AsyncBatchResult` 改名为 `TaskBatchResult`（嵌套类型 `BatchReport` 名称不变）：它是"一批任务
+的结果"，并非 async 专属概念。内部的 `ConcurrentLimitExecutor` 改名为
+`SlidingWindowSubmitter`，与实际职责一致——按滑动窗口提交已准备的 tasks。
 
 旧的 `ParConfig`、`ParOptions`、`ExecutorResolver`、`GlobalParConfig` 及旧版 `Par` 入口都不是兼容别名。迁移时请同时更新 import、构建方式和调用方式。注册的执行器仍由应用拥有并负责关闭。

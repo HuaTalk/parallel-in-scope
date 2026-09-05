@@ -38,7 +38,7 @@ Two invariants to respect:
 - `CancellationToken.bind()` wires deadline, fail-fast, and parent
   propagation only after all futures are submitted; the deadline itself lives
   in the token (min of the requested deadline and the parent's).
-- `ConcurrentLimitExecutor.submitAll()` returns the exact queued
+- `SlidingWindowSubmitter.submitAll()` returns the exact queued
   `FutureRunnable` object.
 
 ## Key Conventions

@@ -82,7 +82,7 @@ BatchExecutionOptions opts = BatchExecutionOptions.of("batch-api")
         .taskType(TaskType.IO_BOUND)
         .build();
 
-AsyncBatchResult<String> result = par.map( urls, url -> {
+TaskBatchResult<String> result = par.map( urls, url -> {
     MDC.put("traceId", traceId); // TTL 自动传播到子线程
     return fetch(url);
 }, opts);
