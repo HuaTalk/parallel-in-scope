@@ -375,19 +375,12 @@ public final class TaskGroup implements AutoCloseable {
                         ? currentObservation
                         : null;
         long start = System.nanoTime();
-        long groupDeadline;
         Optional<Duration> groupTimeout = options.timeout();
-        if (groupTimeout.isPresent()) {
-            groupDeadline = deadline(start, groupTimeout.get());
-            if (structuralParent != null) {
-                groupDeadline = Math.min(groupDeadline, structuralParent.deadlineNanos());
-            }
-        } else {
-            if (structuralParent == null) {
-                throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
-            }
-            groupDeadline = structuralParent.deadlineNanos();
+        if (!groupTimeout.isPresent() && structuralParent == null) {
+            throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
         }
+        long groupDeadline = MultiTaskContext.resolveDeadlineNanos(
+                groupTimeout, structuralParent == null ? Long.MAX_VALUE : structuralParent.deadlineNanos(), start);
         CancellationToken groupToken = new CancellationToken(
                 structuralParent == null ? null : structuralParent.cancellationToken(), groupDeadline);
         Map<String, MemberState> states = new LinkedHashMap<>();
@@ -477,16 +470,6 @@ public final class TaskGroup implements AutoCloseable {
     @SuppressWarnings("unchecked")
     private static Callable<Object> castCallable(Callable<?> callable) {
         return (Callable<Object>) callable;
-    }
-
-    private static long deadline(long start, Duration timeout) {
-        long nanos;
-        try {
-            nanos = timeout.toNanos();
-        } catch (ArithmeticException overflow) {
-            nanos = Long.MAX_VALUE;
-        }
-        return nanos > Long.MAX_VALUE - start ? Long.MAX_VALUE : start + nanos;
     }
 
     private static void logForking(MultiTaskContext context, BlockingRisk blockingRisk) {
