@@ -9,7 +9,7 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 
 /**
- * Immutable resolved state for one multi-task scope — a {@code Par.map} batch or one task-group
+ * Immutable resolved state for one multi-task unit — a {@code Par.map} batch or one task-group
  * member; never cached by a {@code Par} or {@code GlobalPar}.
  *
  * <p>Resolution is the only place where user options become executable values: requested
@@ -19,41 +19,41 @@ import javax.annotation.Nullable;
  * without making child failure cancel its parent.
  */
 public final class MultiTaskContext {
-    private final String batchId;
-    private final String taskName;
+    private final String unitId;
+    private final String name;
     private final int taskCount;
     private final int effectiveParallelism;
     private final long deadlineNanos;
     private final CancellationToken cancellationToken;
-    private final @Nullable MultiTaskContext parent;
+    private final @Nullable MultiTaskContext structuralParent;
     private final @Nullable TaskGraphObservationScope taskGraphObservationScope;
     private final @Nullable ExecutorIdentity executorIdentity;
-    private final @Nullable String parLabel;
+    private final @Nullable String executorLabel;
     private final TaskType taskType;
     private final boolean rejectEnqueue;
 
     private MultiTaskContext(
-            String taskName,
+            String name,
             int taskCount,
             int effectiveParallelism,
             long deadlineNanos,
             CancellationToken cancellationToken,
-            @Nullable MultiTaskContext parent,
+            @Nullable MultiTaskContext structuralParent,
             @Nullable TaskGraphObservationScope taskGraphObservationScope,
             @Nullable ExecutorIdentity executorIdentity,
-            @Nullable String parLabel,
+            @Nullable String executorLabel,
             TaskType taskType,
             boolean rejectEnqueue) {
-        this.batchId = UUID.randomUUID().toString();
-        this.taskName = taskName;
+        this.unitId = UUID.randomUUID().toString();
+        this.name = name;
         this.taskCount = taskCount;
         this.effectiveParallelism = effectiveParallelism;
         this.deadlineNanos = deadlineNanos;
         this.cancellationToken = cancellationToken;
-        this.parent = parent;
+        this.structuralParent = structuralParent;
         this.taskGraphObservationScope = taskGraphObservationScope;
         this.executorIdentity = executorIdentity;
-        this.parLabel = parLabel;
+        this.executorLabel = executorLabel;
         this.taskType = taskType;
         this.rejectEnqueue = rejectEnqueue;
     }
@@ -154,18 +154,18 @@ public final class MultiTaskContext {
         } catch (ArithmeticException overflow) {
             timeoutNanos = Long.MAX_VALUE;
         }
-        long requestedDeadline =
-                timeoutNanos > Long.MAX_VALUE - nowNanos ? Long.MAX_VALUE : nowNanos + timeoutNanos;
+        long requestedDeadline = timeoutNanos > Long.MAX_VALUE - nowNanos ? Long.MAX_VALUE : nowNanos + timeoutNanos;
         return Math.min(requestedDeadline, ceilingNanos);
     }
 
-    public String taskName() {
-        return taskName;
+    /** The unit name, copied from the options: a batch name or a task-group member name. */
+    public String name() {
+        return name;
     }
 
-    /** Stable identity for this one batch instance; never use taskName as graph identity. */
-    public String batchId() {
-        return batchId;
+    /** Stable identity for this one unit instance; never use name as graph identity. */
+    public String unitId() {
+        return unitId;
     }
 
     public int taskCount() {
@@ -190,20 +190,26 @@ public final class MultiTaskContext {
         return cancellationToken;
     }
 
-    public MultiTaskContext parent() {
-        return parent;
+    /**
+     * The structural parent used for nesting and graph edges. Cancellation parentage may differ:
+     * a task-group member's cancellation parent is the group token, carried inside {@link
+     * #cancellationToken()}, not by this field.
+     */
+    public @Nullable MultiTaskContext structuralParent() {
+        return structuralParent;
     }
 
-    public TaskGraphObservationScope taskGraphObservationScope() {
+    public @Nullable TaskGraphObservationScope taskGraphObservationScope() {
         return taskGraphObservationScope;
     }
 
-    public ExecutorIdentity executorIdentity() {
+    public @Nullable ExecutorIdentity executorIdentity() {
         return executorIdentity;
     }
 
-    public String parLabel() {
-        return parLabel;
+    /** Diagnostic label of the owning executor, or null when resolved without one. */
+    public @Nullable String executorLabel() {
+        return executorLabel;
     }
 
     public TaskType taskType() {

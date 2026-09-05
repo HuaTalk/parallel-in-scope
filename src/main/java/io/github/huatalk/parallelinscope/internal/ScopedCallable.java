@@ -92,7 +92,7 @@ public class ScopedCallable<V> implements Callable<V> {
      * @return the task cancellation token
      */
     public CancellationToken cancellationToken() {
-        return taskContext.batchContext().cancellationToken();
+        return taskContext.multiTaskContext().cancellationToken();
     }
 
     /**
@@ -101,8 +101,8 @@ public class ScopedCallable<V> implements Callable<V> {
      * @return the executor name
      */
     public String executorName() {
-        String parLabel = taskContext.batchContext().parLabel();
-        return parLabel == null ? "NA" : parLabel;
+        String executorLabel = taskContext.multiTaskContext().executorLabel();
+        return executorLabel == null ? "NA" : executorLabel;
     }
 
     @Override
@@ -110,8 +110,8 @@ public class ScopedCallable<V> implements Callable<V> {
         // ==================== prepareContext ====================
         TaskExecutionContext previousTask = TaskExecutionContext.install(taskContext);
 
-        MultiTaskContext batchContext = taskContext.batchContext();
-        String taskName = batchContext.taskName();
+        MultiTaskContext unit = taskContext.multiTaskContext();
+        String taskName = unit.name();
         // TaskGraphObservationScope is a TransmittableThreadLocal captured by the TtlCallable
         // wrapper created at the Par.map boundary.
 
@@ -167,7 +167,7 @@ public class ScopedCallable<V> implements Callable<V> {
     public String toString() {
         return "ScopedCallable{"
                 + "taskName='"
-                + taskContext.batchContext().taskName()
+                + taskContext.multiTaskContext().name()
                 + '\''
                 + ", delegate="
                 + delegate

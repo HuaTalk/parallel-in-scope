@@ -12,7 +12,7 @@
 - 成功结果、用户异常；
 - submit/start/end timing；
 - queue wait 分类；
-- `TaskContext` 和 Batch taskName。
+- `TaskContext` 和 `TaskEvent.taskName()`（取自所属 `MultiTaskContext.name`）。
 
 执行前取消或提交失败的成员没有真实 start/end，不得伪造 TaskEvent。它们必须在 `TaskGroupResult` 和 Group listener 中可见。
 

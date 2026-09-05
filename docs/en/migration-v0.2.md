@@ -18,7 +18,7 @@ The new split is intentional: `MultiTaskOptions` is caller input, while `MultiTa
 
 Earlier `0.2.x` snapshots named this type `ExecutionOptions` and then `BatchExecutionOptions`. Rename imports, variable declarations, and `Par.map` arguments to `MultiTaskOptions`; no compatibility alias is retained during the `0.x` phase.
 
-The per-invocation runtime context was renamed for the same reason: the former `BatchExecutionContext` is now `MultiTaskContext`, because it backs both `Par.map` batches and task-group members. Update imports and `resolve(...)` call sites; accessors such as `batchId()` and `batchContext()` keep their names.
+The per-invocation runtime context was renamed for the same reason: the former `BatchExecutionContext` is now `MultiTaskContext`, because it backs both `Par.map` batches and task-group members. Update imports and `resolve(...)` call sites. Its batch-biased accessors were then neutralized for the same dual role: `batchId()` → `unitId()`, `taskName()` → `name()`, `parLabel()` → `executorLabel()`, and `parent()` → `structuralParent()` (a group member's cancellation parent is the group token carried inside `cancellationToken()`, not this field). `TaskContext.batchContext()` becomes `multiTaskContext()`, and `SubmissionScope.currentBatch()` becomes `current()`.
 
 Batch and task-group option types are unified into the single `MultiTaskOptions`; the earlier
 `BatchExecutionOptions` and `TaskGroupOptions` types are removed. The `taskName()`/`groupName()`
@@ -103,6 +103,8 @@ internals. Earlier `0.2.0-SNAPSHOT` builds used bean-style names; rename call si
 | `DeadlockDetectionListener.getTaskEdges()/getExecutorEdges()` | `taskEdges()` / `executorEdges()` |
 | `TaskGraphObservationScope.isClosed()` | `closed()` |
 | `MultiTaskContext.taskGraphObservationContext()` | `MultiTaskContext.taskGraphObservationScope()` |
+| `MultiTaskContext.batchId()/taskName()/parLabel()/parent()` | `unitId()` / `name()` / `executorLabel()` / `structuralParent()` |
+| `TaskContext.batchContext()` / `SubmissionScope.currentBatch()` | `TaskContext.multiTaskContext()` / `SubmissionScope.current()` |
 | `DrainingBlockingQueue.isShutdown()/isDraining()/isDrained()` | `shutdown()` / `draining()` / `drained()` |
 | `SmartBlockingQueue.getCapacity()` / `VariableLinkedBlockingQueue.getCapacity()` | `capacity()` |
 | `ActionGate.isDue()` | `due()` |

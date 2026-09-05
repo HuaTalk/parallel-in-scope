@@ -53,7 +53,7 @@ class TaskListenerTest {
                 MultiTaskOptions.of("task").timeout(Duration.ofSeconds(30)).build(), 1, null);
         return new TaskContext() {
             @Override
-            public MultiTaskContext batchContext() {
+            public MultiTaskContext multiTaskContext() {
                 return batch;
             }
 

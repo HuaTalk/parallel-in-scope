@@ -157,7 +157,7 @@ public final class TaskGroup implements AutoCloseable {
         // skipped member token never binds, so it stays RUNNING forever (it never observes SUCCESS);
         // attribution reads the group token instead (see classifyCancelled).
         for (MemberState member : memberStates.values()) {
-            CancellationToken memberToken = member.context.batchContext().cancellationToken();
+            CancellationToken memberToken = member.context.multiTaskContext().cancellationToken();
             if (memberToken.deadlineNanos() >= groupToken.deadlineNanos()) {
                 continue;
             }
@@ -221,7 +221,7 @@ public final class TaskGroup implements AutoCloseable {
             groupToken.cancel();
             for (MemberState other : memberStates.values()) {
                 if (!other.future.isDone()) {
-                    other.context.batchContext().cancellationToken().cancel();
+                    other.context.multiTaskContext().cancellationToken().cancel();
                 }
             }
         }
@@ -237,7 +237,7 @@ public final class TaskGroup implements AutoCloseable {
      * still reported as {@link TaskOutcome#TIMEOUT}.
      */
     private TaskOutcome classifyCancelled(MemberState member) {
-        if (member.context.batchContext().cancellationToken().state() == CancellationToken.State.TIMEOUT) {
+        if (member.context.multiTaskContext().cancellationToken().state() == CancellationToken.State.TIMEOUT) {
             return TaskOutcome.TIMEOUT;
         }
         switch (groupToken.state()) {
@@ -365,7 +365,7 @@ public final class TaskGroup implements AutoCloseable {
     private static TaskGroup buildWhileOpen(GlobalPar env, TaskGroupSpec spec) {
         MultiTaskOptions options = spec.groupOptions();
         TaskExecutionContext currentTask = TaskExecutionContext.current();
-        MultiTaskContext structuralParent = currentTask == null ? null : currentTask.batchContext();
+        MultiTaskContext structuralParent = currentTask == null ? null : currentTask.multiTaskContext();
         TaskGraphObservationScope currentObservation = TaskGraphObservationScope.current();
         TaskGraphObservationScope observation = structuralParent != null
                         && structuralParent.taskGraphObservationScope() != null
@@ -395,7 +395,7 @@ public final class TaskGroup implements AutoCloseable {
             for (TaskGroupSpec.MemberSpec<?> member : spec.members()) {
                 Par par = env.par(member.executorName());
                 memberPars.add(par);
-                MultiTaskContext batch = MultiTaskContext.resolve(
+                MultiTaskContext unit = MultiTaskContext.resolve(
                         member.options(),
                         1,
                         structuralParent,
@@ -405,9 +405,9 @@ public final class TaskGroup implements AutoCloseable {
                         observation,
                         par.executorIdentity(),
                         par.displayName());
-                TaskExecutionContext taskContext = new TaskExecutionContext(batch, 0, start);
+                TaskExecutionContext taskContext = new TaskExecutionContext(unit, 0, start);
                 ExecutionPhaseHintFuture<Object> future =
-                        par.prepareGroupTask(castCallable(member.callable()), batch, taskContext);
+                        par.prepareGroupTask(castCallable(member.callable()), unit, taskContext);
                 states.put(
                         member.memberName(),
                         new MemberState(
@@ -415,13 +415,13 @@ public final class TaskGroup implements AutoCloseable {
                                 taskContext,
                                 future,
                                 par.submissionExecutor(),
-                                batch.taskType() == TaskType.CPU_BOUND,
+                                unit.taskType() == TaskType.CPU_BOUND,
                                 member.ref().resultType()));
             }
             int index = 0;
             for (MemberState state : states.values()) {
                 logForking(
-                        state.context.batchContext(),
+                        state.context.multiTaskContext(),
                         memberPars.get(index++).runtime().blockingRisk());
             }
         } catch (Throwable failure) {
@@ -463,7 +463,7 @@ public final class TaskGroup implements AutoCloseable {
 
         /** Submits once with the member's batch scope installed; CPU-bound work runs inline on rejection. */
         private void submit() {
-            TaskSubmissions.submitScoped(future, context.batchContext(), executor, cpuBound);
+            TaskSubmissions.submitScoped(future, context.multiTaskContext(), executor, cpuBound);
         }
     }
 
@@ -473,19 +473,18 @@ public final class TaskGroup implements AutoCloseable {
     }
 
     private static void logForking(MultiTaskContext context, BlockingRisk blockingRisk) {
-        MultiTaskContext parent = context.parent();
+        MultiTaskContext parent = context.structuralParent();
         if (parent == null) return;
         TaskEdge edge = new TaskEdge(
                 1,
                 context.taskType(),
                 context.executorIdentity(),
                 parent.executorIdentity(),
-                context.parLabel(),
-                parent.parLabel(),
+                context.executorLabel(),
+                parent.executorLabel(),
                 1,
                 context.remaining().toMillis(),
                 blockingRisk == BlockingRisk.BOUNDED_PLATFORM_POOL);
-        TaskGraphObservationScope.logTaskPair(
-                parent.batchId(), parent.taskName(), context.batchId(), context.taskName(), edge);
+        TaskGraphObservationScope.logTaskPair(parent.unitId(), parent.name(), context.unitId(), context.name(), edge);
     }
 }

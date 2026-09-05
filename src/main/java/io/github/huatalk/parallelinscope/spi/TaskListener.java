@@ -69,7 +69,7 @@ public interface TaskListener {
          * @return the logical task name
          */
         public String taskName() {
-            return taskContext.batchContext().taskName();
+            return taskContext.multiTaskContext().name();
         }
 
         /**

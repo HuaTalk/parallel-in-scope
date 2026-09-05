@@ -39,13 +39,13 @@ public class SlidingWindowSubmitter<V> {
 
     private final ListenableCompletionService<V> cs;
     private final BlockingQueue<ListenableFuture<V>> blockingQueue = new LinkedBlockingQueue<>();
-    private final MultiTaskContext batchContext;
+    private final MultiTaskContext unit;
     private final ListeningExecutorService submitterPool;
 
-    /** Creates a submitter for the new immutable batch runtime context. */
+    /** Creates a submitter for the new immutable multi-task unit. */
     public SlidingWindowSubmitter(
-            ListeningExecutorService pool, MultiTaskContext batchContext, ListeningExecutorService submitterPool) {
-        this.batchContext = Objects.requireNonNull(batchContext, "batchContext cannot be null");
+            ListeningExecutorService pool, MultiTaskContext unit, ListeningExecutorService submitterPool) {
+        this.unit = Objects.requireNonNull(unit, "unit cannot be null");
         this.submitterPool = Objects.requireNonNull(submitterPool, "submitterPool cannot be null");
         this.cs = new ListenableCompletionService<>(pool, blockingQueue);
     }
@@ -116,7 +116,7 @@ public class SlidingWindowSubmitter<V> {
 
     private ListenableFuture<V> fallbackSubmit(List<? extends ExecutionPhaseHintFuture<V>> tasks, int i) {
         ExecutionPhaseHintFuture<V> task = tasks.get(i);
-        MultiTaskContext previous = SubmissionScope.install(batchContext);
+        MultiTaskContext previous = SubmissionScope.install(unit);
         try {
             return TaskType.CPU_BOUND == taskType() ? cs.submitOrRunInline(task) : cs.submit(task);
         } finally {
@@ -125,11 +125,11 @@ public class SlidingWindowSubmitter<V> {
     }
 
     private int parallelism() {
-        return batchContext.effectiveParallelism();
+        return unit.effectiveParallelism();
     }
 
     private TaskType taskType() {
-        return batchContext.taskType();
+        return unit.taskType();
     }
 
     private int submitRemaining(

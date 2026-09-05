@@ -18,7 +18,7 @@
 
 早期 `0.2.x` 快照曾将该类型命名为 `ExecutionOptions`，随后改为 `BatchExecutionOptions`。请将 import、变量声明和 `Par.map` 参数统一改为 `MultiTaskOptions`；在 `0.x` 阶段不保留兼容别名。
 
-单次调用的运行时上下文也因同样理由改名：原 `BatchExecutionContext` 现为 `MultiTaskContext`，因为它同时支撑 `Par.map` 批次与任务组成员。请更新 import 与 `resolve(...)` 调用点；`batchId()`、`batchContext()` 等访问器名称不变。
+单次调用的运行时上下文也因同样理由改名：原 `BatchExecutionContext` 现为 `MultiTaskContext`，因为它同时支撑 `Par.map` 批次与任务组成员。请更新 import 与 `resolve(...)` 调用点。原先偏向批次语义的访问器随后也按同一双重职责中性化：`batchId()` → `unitId()`、`taskName()` → `name()`、`parLabel()` → `executorLabel()`、`parent()` → `structuralParent()`（组成员的取消父级是 `cancellationToken()` 内部的组 token，而非此字段）。`TaskContext.batchContext()` 改名为 `multiTaskContext()`，`SubmissionScope.currentBatch()` 改名为 `current()`。
 
 批次与任务组的选项类型已统一为单一的 `MultiTaskOptions`；原先的 `BatchExecutionOptions`
 和 `TaskGroupOptions` 已删除。`taskName()`/`groupName()` 访问器及对应的 builder 方法统一为
