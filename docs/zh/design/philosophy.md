@@ -179,7 +179,7 @@ cancellationToken.bind(
 
 > 注：以上省略了泛型和周边配置。实际实现通过内部 `ListenableCompletionService` + `SettableFuture` 占位 + 独立的 `submitterPool` 阻塞循环完成滑动窗口调度；`submitCanceller` 用于在取消时终止后续任务提交。
 
-父级取消传播在 token 构造期挂接（parent 完成时子 token 转为 `PROPAGATING_CANCELED`）；`bind()` 再绑定两条链路：
+父级取消传播在 token 构造期挂接（parent 完成时子 token 转为 `PROPAGATED_CANCELED`）；`bind()` 再绑定两条链路：
 
 1. **Fail-fast** — `Futures.allAsList(futures)` 将所有子 Future 绑定在一起，任一失败立即触发取消
 2. **超时** — `FluentFuture.withTimeout()` 在全局定时器上按 token 内 deadline 设置超时
@@ -223,10 +223,10 @@ Checkpoints.checkpoint("process-item", false); // 抛出 CancellationException
 | 状态 | Code | 含义 |
 |---|---|---|
 | `RUNNING` | 0 | 正常执行 |
-| `FAIL_FAST_CANCELED` | -1 | 某个子任务失败，触发 fail-fast |
-| `TIMEOUT_CANCELED` | -2 | 批次超时 |
-| `MUTUAL_CANCELED` | -3 | 被显式 `cancel()` |
-| `PROPAGATING_CANCELED` | -4 | 父任务取消，级联传播 |
+| `FAIL_FAST` | -1 | 某个子任务失败，触发 fail-fast |
+| `TIMEOUT` | -2 | 批次超时 |
+| `CANCELED` | -3 | 被显式 `cancel()` |
+| `PROPAGATED_CANCELED` | -4 | 父任务取消，级联传播 |
 
 `shouldInterruptCurrentThread()` 方法简单判断 `code < 0`——如果是负数，说明被取消了，检查点立即抛出异常。
 

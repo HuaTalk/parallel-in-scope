@@ -138,7 +138,7 @@ queue.awaitDrained();   // 可选：等待排空
 Job job = queue.take(); // 排空前返回真实元素；排空后返回 poison
 ```
 
-关闭后消费端仍能取到关闭前已入队的元素，无需恢复通道；`drainTo` 在任何状态下都可用，用于主动放弃剩余存量。用 `isShutdown()` 判断"生产端已关"，用 `isDrained()` 判断"已排空"。完整契约见 [排干式关闭契约](design/draining-blocking-queue-contract.md)。
+关闭后消费端仍能取到关闭前已入队的元素，无需恢复通道；`drainTo` 在任何状态下都可用，用于主动放弃剩余存量。用 `isShutdown()` 判断"生产端已关"，用 `isDrained()` 判断"已排空"。完整契约见 [排干式关闭契约](../../design/draining-queue-contract.md)。
 
 ## 运行规则
 

@@ -62,7 +62,7 @@ public final class TaskGroup implements AutoCloseable {
     private final CancellationToken groupToken;
 
     private int terminalCount;
-    private @Nullable TaskGroupCompletionReason completionReason;
+    private @Nullable TaskOutcome outcome;
     private @Nullable String failedMemberName;
     private boolean closed;
 
@@ -152,7 +152,7 @@ public final class TaskGroup implements AutoCloseable {
         // the group converges on TIMEOUT, not FAILED. A member that inherits the group deadline
         // resolves to exactly the same deadlineNanos and skips this step: downward propagation is
         // wired by the CancellationToken constructor listener (group token -> member token
-        // PROPAGATING_CANCELED), and member future cancellation is covered by the group bind above,
+        // PROPAGATED_CANCELED), and member future cancellation is covered by the group bind above,
         // so a member bind would only arm a redundant timer for the same instant. Note that a
         // skipped member token never binds, so it stays RUNNING forever (it never observes SUCCESS);
         // attribution reads the group token instead (see classifyCancelled).
@@ -162,7 +162,7 @@ public final class TaskGroup implements AutoCloseable {
                 continue;
             }
             memberToken.addStateListener(state -> {
-                if (state == CancellationToken.State.TIMEOUT_CANCELED) {
+                if (state == CancellationToken.State.TIMEOUT) {
                     groupToken.timeoutCancel();
                 }
             });
@@ -237,21 +237,21 @@ public final class TaskGroup implements AutoCloseable {
      * still reported as {@link TaskOutcome#TIMEOUT}.
      */
     private TaskOutcome classifyCancelled(MemberState member) {
-        if (member.context.batchContext().cancellationToken().state() == CancellationToken.State.TIMEOUT_CANCELED) {
+        if (member.context.batchContext().cancellationToken().state() == CancellationToken.State.TIMEOUT) {
             return TaskOutcome.TIMEOUT;
         }
         switch (groupToken.state()) {
-            case TIMEOUT_CANCELED:
+            case TIMEOUT:
                 return TaskOutcome.TIMEOUT;
-            case FAIL_FAST_CANCELED:
+            case FAIL_FAST:
                 return TaskOutcome.FAIL_FAST;
-            case PROPAGATING_CANCELED:
+            case PROPAGATED_CANCELED:
                 // An ancestor timeout stays a timeout; any other propagated cause is a plain
                 // group cancellation from this group's viewpoint.
-                return groupToken.originState() == CancellationToken.State.TIMEOUT_CANCELED
+                return groupToken.originState() == CancellationToken.State.TIMEOUT
                         ? TaskOutcome.TIMEOUT
                         : TaskOutcome.GROUP_CANCELED;
-            case MUTUAL_CANCELED:
+            case CANCELED:
                 return TaskOutcome.GROUP_CANCELED;
             case SUCCESS:
             case RUNNING:
@@ -264,8 +264,8 @@ public final class TaskGroup implements AutoCloseable {
         TaskGroupResult result;
         synchronized (this) {
             if (closed || terminalCount != memberStates.size()) return;
-            if (completionReason == null) {
-                completionReason = deriveCompletionReason();
+            if (outcome == null) {
+                outcome = deriveOutcome();
             }
             closed = true;
             result = snapshot();
@@ -275,34 +275,37 @@ public final class TaskGroup implements AutoCloseable {
     }
 
     /**
-     * Derives the group reason from the group token state. A canceled group token with no failed
-     * member means the trigger was a direct member cancellation, which is a plain cancel.
+     * Derives the group outcome from the group token state. On fail-fast, the group reports the
+     * failed member's own outcome; a fail-fast with no failed member means the trigger was a
+     * direct member cancellation, so the group reports {@link TaskOutcome#MEMBER_CANCELED}.
      */
-    private TaskGroupCompletionReason deriveCompletionReason() {
+    private TaskOutcome deriveOutcome() {
         switch (groupToken.state()) {
-            case TIMEOUT_CANCELED:
-                return TaskGroupCompletionReason.TIMEOUT;
-            case FAIL_FAST_CANCELED:
-                return failedMemberName != null ? TaskGroupCompletionReason.FAILED : TaskGroupCompletionReason.CANCELED;
-            case PROPAGATING_CANCELED:
-                return groupToken.originState() == CancellationToken.State.TIMEOUT_CANCELED
-                        ? TaskGroupCompletionReason.TIMEOUT
-                        : TaskGroupCompletionReason.CANCELED;
-            case MUTUAL_CANCELED:
-                return TaskGroupCompletionReason.CANCELED;
+            case TIMEOUT:
+                return TaskOutcome.TIMEOUT;
+            case FAIL_FAST:
+                return failedMemberName != null
+                        ? memberStates.get(failedMemberName).reason
+                        : TaskOutcome.MEMBER_CANCELED;
+            case PROPAGATED_CANCELED:
+                return groupToken.originState() == CancellationToken.State.TIMEOUT
+                        ? TaskOutcome.TIMEOUT
+                        : TaskOutcome.GROUP_CANCELED;
+            case CANCELED:
+                return TaskOutcome.GROUP_CANCELED;
             case SUCCESS:
             case RUNNING:
             default:
                 boolean allSuccess =
                         memberStates.values().stream().allMatch(member -> member.reason == TaskOutcome.SUCCESS);
-                return allSuccess ? TaskGroupCompletionReason.SUCCESS : TaskGroupCompletionReason.CANCELED;
+                return allSuccess ? TaskOutcome.SUCCESS : TaskOutcome.MEMBER_CANCELED;
         }
     }
 
     private void completeEmpty() {
         TaskGroupResult result;
         synchronized (this) {
-            completionReason = TaskGroupCompletionReason.SUCCESS;
+            outcome = TaskOutcome.SUCCESS;
             closed = true;
             result = snapshot();
         }
@@ -322,7 +325,7 @@ public final class TaskGroup implements AutoCloseable {
                 startTimeNanos,
                 System.nanoTime(),
                 deadlineNanos,
-                completionReason,
+                outcome,
                 failedMemberName,
                 snapshots);
     }

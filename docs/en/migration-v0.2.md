@@ -74,8 +74,7 @@ the removed enums: `FutureState.FAILED` → `TaskOutcome.USER_FAILURE`, `FutureS
 `TaskOutcome.MEMBER_CANCELED`, and `TaskGroupMemberReason.X` → `TaskOutcome.X` (same names).
 Consequently `AsyncBatchResult.BatchReport.stateCounts()` is now keyed by `TaskOutcome`, and
 `TaskGroupMemberResult` exposes its member outcome as `outcome()` returning `TaskOutcome` (renamed
-from the earlier `completionReason()`, which collided in name but not in type with
-`TaskGroupResult.completionReason()`).
+from the earlier `completionReason()`).
 
 Accessors converge on the bare `x()` style; no `getX()`/`isX()` forms remain in the public API or
 internals. Earlier `0.2.0-SNAPSHOT` builds used bean-style names; rename call sites mechanically:
@@ -132,4 +131,22 @@ uses, so batch reports keep distinguishing the cancelled element via `TaskOutcom
 Task groups changed semantics accordingly: cancelling one member (its future or its token) now
 cascades to the whole group, matching batch fail-fast behavior. The directly cancelled member
 reports `MEMBER_CANCELED`, unfinished siblings report `GROUP_CANCELED`, and the group converges
-on `CANCELED`.
+on `GROUP_CANCELED`.
+
+## Terminal vocabulary unification
+
+`TaskGroupCompletionReason` is removed; the group-level result reuses `TaskOutcome`.
+`TaskGroupResult.completionReason()` is renamed to `outcome()` and now returns `TaskOutcome`.
+Mapping from the removed enum: `SUCCESS` → `TaskOutcome.SUCCESS`; `TIMEOUT` → `TaskOutcome.TIMEOUT`;
+`FAILED` → the failed member's own outcome (`USER_FAILURE` or `SUBMISSION_FAILURE`, see
+`failedMemberName()`); `CANCELED` → `GROUP_CANCELED` when the group was canceled as a whole or the
+cancellation propagated from an enclosing scope, and `MEMBER_CANCELED` when the cancellation
+originated from a member.
+
+`CancellationToken.State` values are renamed onto the same vocabulary: `FAIL_FAST_CANCELED` →
+`FAIL_FAST`, `TIMEOUT_CANCELED` → `TIMEOUT`, `MUTUAL_CANCELED` → `CANCELED`, and
+`PROPAGATING_CANCELED` → `PROPAGATED_CANCELED`. `RUNNING` and `SUCCESS` are unchanged, and the
+`code()` values and `shouldInterruptCurrentThread()` semantics are unchanged.
+
+`ExecutionPhase.CANCELLED_BEFORE_RUN` is respelled `CANCELED_BEFORE_RUN` to match the single-L
+`CANCELED` spelling used across the library.

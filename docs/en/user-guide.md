@@ -105,9 +105,9 @@ A `TaskRef` is a type-safe token created as an anonymous subclass so the member'
 captured at runtime; it is registered while configuring the spec, and after submission
 `group.future(ref)` resolves the member's future, rejecting a ref whose raw result type does not
 cover the registered one. Group completion always returns a
-`TaskGroupResult`; `FAILED`, `TIMEOUT`, and `CANCELED` are result reasons rather than failures of
-the completion future. Individual member futures retain normal Guava success, failure, and
-cancellation behavior.
+`TaskGroupResult`; the group outcome (`result.outcome()`, a `TaskOutcome`) is result data rather
+than a failure of the completion future. Individual member futures retain normal Guava success,
+failure, and cancellation behavior.
 
 Group cancellation is fully structured, matching batch semantics: the first member failure, a
 direct cancellation of any member future or member token, the group deadline, or any single member
@@ -119,7 +119,7 @@ member deadlines start at the submission boundary, and member deadlines are capp
 deadline. A group submitted inside a scoped task inherits outer cancellation and its deadline
 ceiling; cancellation propagated from an ancestor keeps its originating reason
 (`CancellationToken.originState()`), so an ancestor deadline expiring still converges the group as
-`TIMEOUT` rather than a plain `CANCELED`. Each member remains a real child task, while membership
+`TIMEOUT` rather than a plain `GROUP_CANCELED`. Each member remains a real child task, while membership
 itself does not add dependency edges between siblings.
 
 ## Cancellation and nested batches
@@ -203,7 +203,7 @@ queue.awaitDrained();   // optional: wait until drained
 Job job = queue.take(); // real element before drained; poison after drained
 ```
 
-Consumers can still take elements that were queued before `close()`; no recovery channel is needed, and `drainTo` stays available in every state for discarding remaining work. Use `shutdown()` for "production is closed" and `drained()` for "the queue is empty and terminal". Full contract: [draining-close contract](../../zh/design/draining-blocking-queue-contract.md).
+Consumers can still take elements that were queued before `close()`; no recovery channel is needed, and `drainTo` stays available in every state for discarding remaining work. Use `shutdown()` for "production is closed" and `drained()` for "the queue is empty and terminal". Full contract: [draining-close contract](../../design/draining-queue-contract.md).
 
 ## Operational rules
 

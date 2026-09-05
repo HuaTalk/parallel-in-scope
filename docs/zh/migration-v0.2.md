@@ -65,6 +65,23 @@ null，因此不要用 result 是否为 null 判断成败。监听器回调不�
 `TaskGroupMemberReason.X` → `TaskOutcome.X`（同名）。相应地，
 `AsyncBatchResult.BatchReport.stateCounts()` 现在以 `TaskOutcome` 为键，
 `TaskGroupMemberResult` 的成员终态由 `outcome()` 暴露并返回 `TaskOutcome`（由早期的
-`completionReason()` 改名而来，后者与 `TaskGroupResult.completionReason()` 同名但返回类型不同）。
+`completionReason()` 改名而来）。
+
+## 终态词汇统一
+
+`TaskGroupCompletionReason` 已删除，组级结果复用 `TaskOutcome`：
+`TaskGroupResult.completionReason()` 改名为 `outcome()`，返回 `TaskOutcome`。映射关系：
+`SUCCESS` → `TaskOutcome.SUCCESS`；`TIMEOUT` → `TaskOutcome.TIMEOUT`；`FAILED` → 失败组员
+自己的 outcome（`USER_FAILURE` 或 `SUBMISSION_FAILURE`，见 `failedMemberName()`）；
+`CANCELED` → 组被整体取消或取消自上传播时为 `GROUP_CANCELED`，取消源自组员时为
+`MEMBER_CANCELED`。
+
+`CancellationToken.State` 值名对齐同一词汇：`FAIL_FAST_CANCELED` → `FAIL_FAST`，
+`TIMEOUT_CANCELED` → `TIMEOUT`，`MUTUAL_CANCELED` → `CANCELED`，`PROPAGATING_CANCELED` →
+`PROPAGATED_CANCELED`。`RUNNING`、`SUCCESS` 不变，`code()` 值与
+`shouldInterruptCurrentThread()` 语义不变。
+
+`ExecutionPhase.CANCELLED_BEFORE_RUN` 拼写修正为 `CANCELED_BEFORE_RUN`，与库内统一的
+单 L `CANCELED` 拼写一致。
 
 旧的 `ParConfig`、`ParOptions`、`ExecutorResolver`、`GlobalParConfig` 及旧版 `Par` 入口都不是兼容别名。迁移时请同时更新 import、构建方式和调用方式。注册的执行器仍由应用拥有并负责关闭。
