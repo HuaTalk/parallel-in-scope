@@ -85,7 +85,7 @@ databasePar.map(ids, id -> {
 任务图观测显式绑定到一个 `GlobalPar`。作用域负责清理任务图，并在请求结束时（已启用时）调用潜在死锁检测 listener。检测到循环只表示结构风险，不证明线程当前已经死锁。
 
 ```java
-try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
+try (TaskGraphObservationScope observation = global.openTaskGraphObservation()) {
     // 这里及其嵌套调用使用 global 中的多个 Par 时，写入同一张任务图。
     service.handleRequest();
 }

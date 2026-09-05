@@ -149,7 +149,7 @@ Use an [observation scope](#observe-nested-work) when the request needs graph di
 Task-graph observation is explicitly scoped to one `GlobalPar`. The scope owns graph cleanup and, when enabled, invokes potential-deadlock listeners at the end of the request. A cycle is a structural risk signal, not proof that threads are currently deadlocked.
 
 ```java
-try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
+try (TaskGraphObservationScope observation = global.openTaskGraphObservation()) {
     // Calls made below this scope, including nested calls on other Pars in global,
     // are recorded in the same graph.
     service.handleRequest();

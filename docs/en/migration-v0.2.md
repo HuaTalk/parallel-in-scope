@@ -101,7 +101,8 @@ internals. Earlier `0.2.0-SNAPSHOT` builds used bean-style names; rename call si
 | `TaskEdge.getExecutorIdentity()/getSourceExecutorIdentity()` | `executorIdentity()` / `sourceExecutorIdentity()` |
 | `TaskEdge.isExecutorDeadlockProne()` | `executorDeadlockProne()` |
 | `DeadlockDetectionListener.getTaskEdges()/getExecutorEdges()` | `taskEdges()` / `executorEdges()` |
-| `TaskGraphObservationContext.isClosed()` | `closed()` |
+| `TaskGraphObservationScope.isClosed()` | `closed()` |
+| `MultiTaskContext.taskGraphObservationContext()` | `MultiTaskContext.taskGraphObservationScope()` |
 | `DrainingBlockingQueue.isShutdown()/isDraining()/isDrained()` | `shutdown()` / `draining()` / `drained()` |
 | `SmartBlockingQueue.getCapacity()` / `VariableLinkedBlockingQueue.getCapacity()` | `capacity()` |
 | `ActionGate.isDue()` | `due()` |
@@ -162,4 +163,7 @@ replaces the default list for that entry. The `GlobalPar.executionPolicy()` /
 `AsyncBatchResult` is renamed to `TaskBatchResult` (its nested `BatchReport` keeps its name): the
 result of a batch of tasks, not an async-specific construct. The internal
 `ConcurrentLimitExecutor` is renamed to `SlidingWindowSubmitter`, matching what it actually does —
-submitting a sliding window of prepared tasks.
+submitting a sliding window of prepared tasks. `TaskGraphObservationContext` is renamed to
+`TaskGraphObservationScope`: it is a closeable observation scope, and the naming rule is now that
+`Scope` marks lifecycle scopes while `Context` marks data carriers. The
+`GlobalPar.openTaskGraphObservation()` entry point keeps its name.

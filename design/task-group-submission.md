@@ -91,7 +91,7 @@ TaskSubmissions.submitScoped(prepared, batchContext, executor, cpuBound); // exe
 | `CancellationToken` | outer→group→member 取消传播和中断 |
 | `HeuristicPurger` | 取消排队任务后的有界队列清理 |
 | `TtlCallable` | 已配置 TTL 的提交时快照与恢复 |
-| `TaskGraphObservationContext` | 请求级观测归属 |
+| `TaskGraphObservationScope` | 请求级观测归属 |
 
 ### 9.2 不得复用
 

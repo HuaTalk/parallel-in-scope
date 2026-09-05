@@ -95,5 +95,9 @@ null，因此不要用 result 是否为 null 判断成败。监听器回调不�
 `AsyncBatchResult` 改名为 `TaskBatchResult`（嵌套类型 `BatchReport` 名称不变）：它是"一批任务
 的结果"，并非 async 专属概念。内部的 `ConcurrentLimitExecutor` 改名为
 `SlidingWindowSubmitter`，与实际职责一致——按滑动窗口提交已准备的 tasks。
+`TaskGraphObservationContext` 改名为 `TaskGraphObservationScope`：它是可关闭的观察作用域，
+命名规则统一为 `Scope` 表示有生命周期的可关闭作用域、`Context` 表示数据载体。入口方法
+`GlobalPar.openTaskGraphObservation()` 名称不变；`MultiTaskContext` 的访问器相应由
+`taskGraphObservationContext()` 改名为 `taskGraphObservationScope()`。
 
 旧的 `ParConfig`、`ParOptions`、`ExecutorResolver`、`GlobalParConfig` 及旧版 `Par` 入口都不是兼容别名。迁移时请同时更新 import、构建方式和调用方式。注册的执行器仍由应用拥有并负责关闭。

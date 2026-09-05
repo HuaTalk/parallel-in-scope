@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.alibaba.ttl.TransmittableThreadLocal;
-import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
+import io.github.huatalk.parallelinscope.context.TaskGraphObservationScope;
 import io.github.huatalk.parallelinscope.context.graph.TaskGraphData;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
 import java.lang.reflect.Modifier;
@@ -170,8 +170,8 @@ class GlobalParTest {
                 .register("outer", outerExecutor)
                 .register("inner", innerExecutor)
                 .build();
-        try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
-            TaskGraphData expectedGraph = TaskGraphObservationContext.data();
+        try (TaskGraphObservationScope ignored = global.openTaskGraphObservation()) {
+            TaskGraphData expectedGraph = TaskGraphObservationScope.data();
             TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
@@ -194,7 +194,7 @@ class GlobalParTest {
                                     .build());
 
             assertThat(outer.results().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(3);
-            assertThat(TaskGraphObservationContext.data()).isSameAs(expectedGraph);
+            assertThat(TaskGraphObservationScope.data()).isSameAs(expectedGraph);
             assertThat(expectedGraph.graph().edges()).isNotEmpty();
         } finally {
             global.close();
@@ -212,15 +212,15 @@ class GlobalParTest {
                 .register("outer", outerExecutor)
                 .register("inner", innerExecutor)
                 .build();
-        try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
-            TaskGraphData expectedGraph = TaskGraphObservationContext.data();
+        try (TaskGraphObservationScope ignored = global.openTaskGraphObservation()) {
+            TaskGraphData expectedGraph = TaskGraphObservationScope.data();
             java.util.concurrent.atomic.AtomicReference<TaskGraphData> graphOnOuterWorker =
                     new java.util.concurrent.atomic.AtomicReference<>();
             TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
-                                graphOnOuterWorker.set(TaskGraphObservationContext.data());
+                                graphOnOuterWorker.set(TaskGraphObservationScope.data());
                                 TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
@@ -352,15 +352,15 @@ class GlobalParTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         GlobalPar global = GlobalPar.builder().register("io", executor).build();
         try {
-            io.github.huatalk.parallelinscope.context.TaskGraphObservationContext observation =
+            io.github.huatalk.parallelinscope.context.TaskGraphObservationScope observation =
                     global.openTaskGraphObservation();
             assertThat(observation.owner()).isSameAs(global);
             assertThat(observation.closed()).isFalse();
-            assertThat(TaskGraphObservationContext.current()).isSameAs(observation);
+            assertThat(TaskGraphObservationScope.current()).isSameAs(observation);
             observation.close();
             observation.close();
             assertThat(observation.closed()).isTrue();
-            assertThat(TaskGraphObservationContext.current()).isNull();
+            assertThat(TaskGraphObservationScope.current()).isNull();
         } finally {
             global.close();
             executor.shutdownNow();

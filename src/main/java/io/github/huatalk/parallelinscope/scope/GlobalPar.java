@@ -6,7 +6,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.github.huatalk.parallelinscope.cancel.HeuristicPurger;
-import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
+import io.github.huatalk.parallelinscope.context.TaskGraphObservationScope;
 import io.github.huatalk.parallelinscope.spi.ExecutionPhase;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
 import java.util.ArrayList;
@@ -201,13 +201,13 @@ public final class GlobalPar implements AutoCloseable {
     /**
      * Opens a request-scoped task-graph observation owned by this topology.
      *
-     * <p>The caller must close the returned context. Only nested batches belonging to this same
+     * <p>The caller must close the returned scope. Only nested batches belonging to this same
      * {@code GlobalPar} join it; crossing to another topology deliberately starts no shared graph.
      *
      * @throws IllegalStateException if this GlobalPar has begun shutdown
      */
-    public TaskGraphObservationContext openTaskGraphObservation() {
-        return whileOpen(() -> new TaskGraphObservationContext(this));
+    public TaskGraphObservationScope openTaskGraphObservation() {
+        return whileOpen(() -> new TaskGraphObservationScope(this));
     }
 
     /**

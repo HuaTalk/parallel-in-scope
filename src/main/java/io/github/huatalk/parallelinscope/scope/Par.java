@@ -4,7 +4,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 
 import com.google.common.collect.ImmutableList;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
-import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
+import io.github.huatalk.parallelinscope.context.TaskGraphObservationScope;
 import io.github.huatalk.parallelinscope.context.graph.TaskEdge;
 import io.github.huatalk.parallelinscope.internal.ExecutionPhaseHintFuture;
 import io.github.huatalk.parallelinscope.internal.SlidingWindowSubmitter;
@@ -111,11 +111,11 @@ public final class Par {
             throw new IllegalArgumentException("no enclosing deadline to inherit; call timeout(Duration)");
         }
         MultiTaskContext parent = currentTask == null ? null : currentTask.batchContext();
-        TaskGraphObservationContext currentObservation = TaskGraphObservationContext.current();
-        TaskGraphObservationContext observation = parent != null
-                        && parent.taskGraphObservationContext() != null
-                        && parent.taskGraphObservationContext().owner() == globalPar
-                ? parent.taskGraphObservationContext()
+        TaskGraphObservationScope currentObservation = TaskGraphObservationScope.current();
+        TaskGraphObservationScope observation = parent != null
+                        && parent.taskGraphObservationScope() != null
+                        && parent.taskGraphObservationScope().owner() == globalPar
+                ? parent.taskGraphObservationScope()
                 : parent == null && currentObservation != null && currentObservation.owner() == globalPar
                         ? currentObservation
                         : null;
@@ -160,7 +160,7 @@ public final class Par {
      */
     private static void logForking(MultiTaskContext context, TaskEdge edge) {
         MultiTaskContext parent = context.parent();
-        TaskGraphObservationContext.logTaskPair(
+        TaskGraphObservationScope.logTaskPair(
                 parent == null ? null : parent.batchId(),
                 parent == null ? null : parent.taskName(),
                 context.batchId(),

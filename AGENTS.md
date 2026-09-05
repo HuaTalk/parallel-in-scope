@@ -53,6 +53,9 @@ Two invariants to respect:
   public API/SPI, `org.checkerframework.checker.nullness.qual.Nullable` for
   internal code (both provided scope).
 - Logging goes through JUL (`java.util.logging.Logger`).
+- The `Scope` suffix marks a closeable lifecycle scope (`SubmissionScope`,
+  `TaskGraphObservationScope`); the `Context` suffix marks a data carrier
+  (a view or resolved parameters).
 - Pre-stable API: public APIs and SPI may change between `0.x` releases without
   compatibility shims. During the `0.x` phase, a breaking change is acceptable
   when it provides a meaningful improvement and has a sufficiently documented
