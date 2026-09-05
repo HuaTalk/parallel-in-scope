@@ -169,13 +169,19 @@ class TaskGraphBatchIdentityTest {
                 "executor",
                 "parent",
                 1,
-                0,
+                Duration.ZERO,
                 false);
     }
 
     private static TaskEdge legacyEdge(String source, String target, boolean deadlockProne) {
         return new TaskEdge(
-                1, io.github.huatalk.parallelinscope.scope.TaskType.CPU_BOUND, target, source, 1, 0, deadlockProne);
+                1,
+                io.github.huatalk.parallelinscope.scope.TaskType.CPU_BOUND,
+                target,
+                source,
+                1,
+                Duration.ZERO,
+                deadlockProne);
     }
 
     private static TaskEdge identityEdge(ExecutorIdentity source, ExecutorIdentity target) {
@@ -187,7 +193,7 @@ class TaskGraphBatchIdentityTest {
                 "target",
                 "source",
                 1,
-                0,
+                Duration.ZERO,
                 true);
     }
 }

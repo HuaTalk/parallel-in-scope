@@ -483,7 +483,7 @@ public final class TaskGroup implements AutoCloseable {
                 context.executorLabel(),
                 parent.executorLabel(),
                 1,
-                context.remaining().toMillis(),
+                context.remaining(),
                 blockingRisk == BlockingRisk.BOUNDED_PLATFORM_POOL);
         TaskGraphObservationScope.logTaskPair(parent.unitId(), parent.name(), context.unitId(), context.name(), edge);
     }

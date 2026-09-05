@@ -135,7 +135,7 @@ public final class Par {
                 unit.executorLabel(),
                 unit.structuralParent() == null ? "NA" : unit.structuralParent().executorLabel(),
                 list.size(),
-                unit.remaining().toMillis(),
+                unit.remaining(),
                 runtime.blockingRisk() == BlockingRisk.BOUNDED_PLATFORM_POOL);
         logForking(unit, edge);
         com.google.common.base.Ticker ticker = com.google.common.base.Ticker.systemTicker();
