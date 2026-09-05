@@ -40,10 +40,12 @@ deadline。没有外层 deadline 可继承时，入口点直接拒绝：顶层 `
 任务组 API 现在以不可变、可复用的 spec 为中心。请把早期的 builder 流程——
 `GlobalPar.taskGroupBuilder(options)`、`ParallelTaskGroup.Builder.addTask(name, par, callable,
 options)`、一次性的 `buildAndSubmitAll()` 和 `ParallelTaskGroup.TaskHandle<T>`——替换为
-`TaskGroupSpec.builder(groupOptions)`、`TaskGroupSpec.Builder.task(memberName, executorName,
+`TaskGroupSpec.builder(groupOptions)`、`TaskGroupSpec.Builder.task(ref, executorName,
 callable, options)`、一次性的 `TaskGroup.submit(global, spec)` 和 `TaskRef<T>`。
-成员按注册名而不是 `Par` 对象引用执行器。`task()` 返回的 `TaskRef<T>` 是不携带执行状态的类型化
-令牌；提交后通过 `group.future(ref)` 取回成员 future。spec 不捕获线程上下文，结构父任务与观测
+成员按注册名而不是 `Par` 对象引用执行器。`TaskRef<T>` 由调用方以匿名子类形式创建——
+`new TaskRef<List<Order>>("orders") {}`——因此令牌同时携带成员名并在运行时捕获结果类型；
+将它传给 `task()`，提交后通过 `group.future(ref)` 取回成员 future，若令牌的 raw 结果类型
+不能覆盖注册类型则会被拒绝。spec 不捕获线程上下文，结构父任务与观测
 作用域在每次 `submit` 时按提交线程解析，因此同一个 spec 可以重复提交。组入口类本身也由
 `ParallelTaskGroup` 改名为 `TaskGroup`，归入 `TaskGroupSpec`/`TaskGroupResult`/`TaskGroupListener`
 家族。早期 builder API 从未作为稳定契约发布，因此不提供兼容 shim。

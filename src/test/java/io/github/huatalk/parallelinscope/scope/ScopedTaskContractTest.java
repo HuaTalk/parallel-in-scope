@@ -221,14 +221,14 @@ class ScopedTaskContractTest {
                         .timeout(Duration.ofSeconds(30))
                         .build());
                 spec.task(
-                        "blocker",
+                        new TaskRef<>("blocker") {},
                         "worker",
                         () -> runUnlessQueued("blocker", release, queuedRuns),
                         MultiTaskOptions.of("blocker")
                                 .timeout(Duration.ofSeconds(30))
                                 .build());
                 TaskRef<Object> queued = spec.task(
-                        "queued",
+                        new TaskRef<>("queued") {},
                         "worker",
                         () -> runUnlessQueued("queued", release, queuedRuns),
                         MultiTaskOptions.of("queued")
@@ -316,7 +316,7 @@ class ScopedTaskContractTest {
         }
         TaskGroupSpec.Builder spec = TaskGroupSpec.builder(
                 MultiTaskOptions.of("contract").timeout(Duration.ofSeconds(30)).build());
-        TaskRef<Object> ref = spec.task(name, "worker", task, options);
+        TaskRef<Object> ref = spec.task(new TaskRef<>(name) {}, "worker", task, options);
         TaskGroup group = TaskGroup.submit(global, spec.build());
         LAST_GROUP.set(group);
         return group.future(ref);

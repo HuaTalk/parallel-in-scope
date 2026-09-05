@@ -2,6 +2,7 @@ package io.github.huatalk.parallelinscope.scope;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
+import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -37,7 +38,7 @@ import javax.annotation.Nullable;
  * <p>A group is described by a reusable {@link TaskGroupSpec} and submitted via {@link
  * #submit(GlobalPar, TaskGroupSpec)}, which builds, starts, and submits all members in one call.
  * Member futures are looked up by name ({@link #members()}, {@link #findMember(String)}) or through
- * the typed {@link TaskRef} tokens handed out while configuring the spec ({@link #future(TaskRef)}).
+ * the typed {@link TaskRef} tokens registered while configuring the spec ({@link #future(TaskRef)}).
  *
  * <p>Cancellation is fully structured: a member failure, a direct member cancellation, the group
  * deadline, or any single member deadline cancels every unfinished member. All outcomes are
@@ -103,15 +104,25 @@ public final class TaskGroup implements AutoCloseable {
         return members;
     }
 
-    /** Resolves the future of the member the token was created for in this group. */
+    /**
+     * Resolves the future of the member the token was created for in this group.
+     *
+     * @throws IllegalArgumentException if no member carries the token's name, or if the token's
+     *     raw result type is not assignable from the type the member was registered with (a token
+     *     claiming a supertype of the registered type is accepted)
+     */
     @SuppressWarnings("unchecked")
     public <T> ListenableFuture<T> future(TaskRef<T> ref) {
         Objects.requireNonNull(ref, "ref cannot be null");
-        ListenableFuture<?> future = members.get(ref.memberName());
-        if (future == null) {
+        MemberState member = memberStates.get(ref.memberName());
+        if (member == null) {
             throw new IllegalArgumentException("No member named '" + ref.memberName() + "'");
         }
-        return (ListenableFuture<T>) future;
+        if (!ref.resultType().getRawType().isAssignableFrom(member.resultType.getRawType())) {
+            throw new IllegalArgumentException("Member '" + ref.memberName() + "' was registered with result type "
+                    + member.resultType + " but the ref claims " + ref.resultType());
+        }
+        return (ListenableFuture<T>) member.future;
     }
 
     /** Cancels every unfinished member without blocking for user code to stop. */
@@ -408,7 +419,8 @@ public final class TaskGroup implements AutoCloseable {
                                 taskContext,
                                 future,
                                 par.submissionExecutor(),
-                                batch.taskType() == TaskType.CPU_BOUND));
+                                batch.taskType() == TaskType.CPU_BOUND,
+                                member.ref().resultType()));
             }
             int index = 0;
             for (MemberState state : states.values()) {
@@ -433,6 +445,7 @@ public final class TaskGroup implements AutoCloseable {
         private final ExecutionPhaseHintFuture<Object> future;
         private final Executor executor;
         private final boolean cpuBound;
+        private final TypeToken<?> resultType;
         private @Nullable TaskOutcome reason;
         private @Nullable Throwable failure;
         private boolean counted;
@@ -442,12 +455,14 @@ public final class TaskGroup implements AutoCloseable {
                 TaskExecutionContext context,
                 ExecutionPhaseHintFuture<Object> future,
                 Executor executor,
-                boolean cpuBound) {
+                boolean cpuBound,
+                TypeToken<?> resultType) {
             this.name = name;
             this.context = context;
             this.future = future;
             this.executor = executor;
             this.cpuBound = cpuBound;
+            this.resultType = resultType;
         }
 
         /** Submits once with the member's batch scope installed; CPU-bound work runs inline on rejection. */

@@ -86,10 +86,12 @@ TaskGroupSpec.Builder spec = TaskGroupSpec.builder(
                 .build());
 
 TaskRef<User> user = spec.task(
-        "user", "database", userRepository::load,
+        new TaskRef<User>("user") {},
+        "database", userRepository::load,
         MultiTaskOptions.of("load-user").inheritTimeout().build());
 TaskRef<List<Order>> orders = spec.task(
-        "orders", "http", orderClient::load,
+        new TaskRef<List<Order>>("orders") {},
+        "http", orderClient::load,
         MultiTaskOptions.of("load-orders").taskType(TaskType.IO_BOUND).inheritTimeout().build());
 
 try (TaskGroup group = TaskGroup.submit(global, spec.build())) {
@@ -99,8 +101,10 @@ try (TaskGroup group = TaskGroup.submit(global, spec.build())) {
 }
 ```
 
-A `TaskRef` is a type-safe token handed out while configuring the spec; after submission,
-`group.future(ref)` resolves the member's future. Group completion always returns a
+A `TaskRef` is a type-safe token created as an anonymous subclass so the member's result type is
+captured at runtime; it is registered while configuring the spec, and after submission
+`group.future(ref)` resolves the member's future, rejecting a ref whose raw result type does not
+cover the registered one. Group completion always returns a
 `TaskGroupResult`; `FAILED`, `TIMEOUT`, and `CANCELED` are result reasons rather than failures of
 the completion future. Individual member futures retain normal Guava success, failure, and
 cancellation behavior.

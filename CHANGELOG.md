@@ -8,6 +8,7 @@
 - Rename `ExecutionOptions` to `BatchExecutionOptions` to make its per-`Par.map` scope explicit.
 - Replace the abrupt-close `ClosableBlockingQueue` (recovery lists, `remainingList()`) with `DrainingBlockingQueue`: `close()` rejects producers while consumers keep draining queued elements until the `DRAINED` terminal state. No custom shutdown exception types are introduced: write rejections throw `IllegalStateException`, drained reads throw `NoSuchElementException`.
 - Merge `TaskGraph` into `TaskGraphObservationContext`: the observation scope is now a request-level `TransmittableThreadLocal` global (identity-propagated to worker threads), owns the graph lifecycle (`install`/`restore`/`data`/`logTaskPair`/`hasXxx` statics), and runs deadlock detection in `close()`. The former `TaskGraph.Data` is now the top-level `TaskGraphData`; `previousData()` and `complete()` are removed.
+- Make `TaskRef` an abstract class whose anonymous subclass captures the member result type at runtime (Guava `TypeToken` style: `new TaskRef<List<Order>>("orders") {}`). `TaskGroupSpec.Builder.task` now takes the ref as its first argument and no longer takes `memberName`; `TaskGroup.future(ref)` rejects a ref whose raw result type does not cover the type the member was registered with.
 
 ## [0.2.0] - 2026-07-22
 

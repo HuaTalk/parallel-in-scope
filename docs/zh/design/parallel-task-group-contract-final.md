@@ -65,13 +65,16 @@ TaskGroupSpec.Builder spec = TaskGroupSpec.builder(
                 .build());
 
 TaskRef<User> user = spec.task(
-            "get-user", "user", userService::getUser,
+            new TaskRef<User>("get-user") {},
+            "user", userService::getUser,
             MultiTaskOptions.of("get-user").inheritTimeout().build());
 TaskRef<List<Order>> orders = spec.task(
-            "get-orders", "order", orderService::getOrders,
+            new TaskRef<List<Order>>("get-orders") {},
+            "order", orderService::getOrders,
             MultiTaskOptions.of("get-orders").inheritTimeout().build());
 TaskRef<Inventory> inventory = spec.task(
-            "get-inventory", "inventory", inventoryService::getInventory,
+            new TaskRef<Inventory>("get-inventory") {},
+            "inventory", inventoryService::getInventory,
             MultiTaskOptions.of("get-inventory").inheritTimeout().build());
 
 try (TaskGroup group = TaskGroup.submit(global, spec.build())) {
@@ -90,7 +93,7 @@ public final class TaskGroupSpec {
 
     public static final class Builder {
         public <T> TaskRef<T> task(
-                String memberName,
+                TaskRef<T> ref,
                 String executorName,
                 Callable<T> callable,
                 MultiTaskOptions options);
@@ -98,8 +101,10 @@ public final class TaskGroupSpec {
     }
 }
 
-public final class TaskRef<T> {
-    public String memberName();
+public abstract class TaskRef<T> {
+    protected TaskRef(String memberName);
+    public final String memberName();
+    public final TypeToken<T> resultType();
 }
 
 public final class TaskGroup implements AutoCloseable {
@@ -121,22 +126,24 @@ public final class TaskGroup implements AutoCloseable {
 
 语义：
 
-- `TaskGroupSpec.Builder.task()` 只校验并保存不可变任务定义（memberName 为空或重复、参数为
-  null 立即拒绝）；不得提交 executor、启动 timer、创建
-  `MultiTaskContext`/`TaskExecutionContext` 或占用运行期资源；
+- `TaskGroupSpec.Builder.task()` 只校验并保存不可变任务定义（ref 为 null、memberName 重复、参数为
+  null 立即拒绝；memberName 的 null/空白校验由 `TaskRef` 构造器完成）；不得提交 executor、启动
+  timer、创建 `MultiTaskContext`/`TaskExecutionContext` 或占用运行期资源；
 - `TaskGroup.submit()` 是唯一的冻结与提交入口；它按提交线程解析结构父任务与
   observation、创建并注册全部成员后才允许任何成员进入 executor；spec 本身可重复提交；
-- `TaskRef<T>` 是配置期发放的类型化令牌，不携带执行状态；`group.future(ref)` 在组内解析成员
-  future，引用不属于该组的 memberName 时抛 `IllegalArgumentException`；
+- `TaskRef<T>` 由调用方以匿名子类创建（`new TaskRef<List<Order>>("orders") {}`），在运行时
+  捕获结果类型，不携带执行状态；`group.future(ref)` 在组内解析成员
+  future，引用不属于该组的 memberName、或 ref 的 raw 结果类型不能覆盖注册类型时抛
+  `IllegalArgumentException`；
 - `cancel()` 幂等、非阻塞，固定 `CANCELED`（若尚未固定）并取消未完成成员；
 - `close()` 是异常安全清理：若仍有未完成成员，语义等同 `cancel()`；若所有成员已经终态或空组则无副作用；
 - `completionFuture()` 在全部冻结成员的公开 future 终态后完成，不存在另行封口条件；
 - `members()` 返回按定义顺序排列、不可修改的完整集合；
 - `findMember()`/`members()` 在 Group 返回给调用方时即可看见全部冻结成员。
 
-`TaskRef<T>` 是配置期发放的类型化令牌，不携带执行状态：异构任务的 future 在统一 submit 时
-创建，调用方用配置期拿到的令牌在提交后取回类型安全的 future。spec 不捕获线程上下文，因此
-结构归属始终由提交现场决定。
+`TaskRef<T>` 是调用方创建的类型化令牌，通过匿名子类在运行时捕获结果类型，不携带执行状态：
+异构任务的 future 在统一 submit 时创建，调用方用配置期注册的令牌在提交后取回类型安全的
+future。spec 不捕获线程上下文，因此结构归属始终由提交现场决定。
 
 ### 3.2 组级与成员级选项
 
@@ -805,7 +812,7 @@ fake-group-batch -> A/B/C
 1. 三个异构成员分别返回不同类型且各执行一次；
 2. 成员使用不同 `Par`/executor 时并行运行；
 3. 同一 `Par` 上多个成员均独立提交，不经过滑动窗口；
-4. 重复 memberName、空名称、null 参数在 `task()` 配置期拒绝；未知 executorName 在 submit 时拒绝且没有 callable 执行；
+4. 重复 memberName 与 null 参数在 `task()` 配置期拒绝，空白/null 名称在 `TaskRef` 构造期拒绝；未知 executorName 在 submit 时拒绝且没有 callable 执行；`future(ref)` 拒绝 raw 结果类型不覆盖注册类型的令牌；
 5. `task()` 不创建执行上下文、不启动 timer、不提交或执行 callable；
 6. 空 spec submit 返回立即 SUCCESS 的 Group，未创建 timer；`TaskRef` 在 submit 后即可经 `group.future(ref)` 稳定解析。
 
