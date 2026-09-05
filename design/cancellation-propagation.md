@@ -18,7 +18,7 @@ public <T> void bind(
 
     failFastFuture.addCallback(new FutureCallback<>() {
         onSuccess: transitionTo(SUCCESS);
-        onFailure: transitionTo(TIMEOUT_CANCELED 或 FAIL_FAST_CANCELED); allFutures.cancel(true);
+        onFailure: transitionTo(TIMEOUT 或 FAIL_FAST); allFutures.cancel(true);
     }, directExecutor());
     futureToken.setFuture(failFastFuture);
 }
