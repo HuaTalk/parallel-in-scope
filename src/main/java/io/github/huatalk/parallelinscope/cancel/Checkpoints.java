@@ -1,7 +1,7 @@
 package io.github.huatalk.parallelinscope.cancel;
 
 import io.github.huatalk.parallelinscope.internal.TaskExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
@@ -47,9 +47,9 @@ public final class Checkpoints {
      * @throws CancellationException if the matching task is canceled and {@code lean} is false
      */
     public static void checkpoint(String taskName, boolean lean) {
-        BatchExecutionContext batch = currentBatchContext();
-        if (batch != null) {
-            if (taskName == null || !taskName.equals(batch.taskName())) return;
+        MultiTaskContext unit = currentContext();
+        if (unit != null) {
+            if (taskName == null || !taskName.equals(unit.name())) return;
             checkCancellationToken(lean);
             return;
         }
@@ -494,9 +494,9 @@ public final class Checkpoints {
     }
 
     private static void checkCancellationToken(boolean lean) {
-        BatchExecutionContext batch = currentBatchContext();
-        CancellationToken cancelToken = batch == null ? null : batch.cancellationToken();
-        if (cancelToken != null && cancelToken.getState().shouldInterruptCurrentThread()) {
+        MultiTaskContext unit = currentContext();
+        CancellationToken cancelToken = unit == null ? null : unit.cancellationToken();
+        if (cancelToken != null && cancelToken.state().shouldInterruptCurrentThread()) {
             throw lean
                     ? new LeanCancellationException("Cancel during running")
                     : new CancellationException("Cancel during running");
@@ -510,9 +510,9 @@ public final class Checkpoints {
         return cancellation;
     }
 
-    private static BatchExecutionContext currentBatchContext() {
+    private static MultiTaskContext currentContext() {
         TaskExecutionContext currentTask = TaskExecutionContext.current();
-        return currentTask == null ? null : currentTask.batchContext();
+        return currentTask == null ? null : currentTask.multiTaskContext();
     }
 
     private static LeanCancellationException cancellation(String message) {

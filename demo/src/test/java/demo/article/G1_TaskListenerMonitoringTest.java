@@ -2,11 +2,10 @@ package demo.article;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
-import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.Par;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
 import java.util.ArrayList;
@@ -100,23 +99,21 @@ public class G1_TaskListenerMonitoringTest {
 
         GlobalPar config = GlobalPar.builder()
                 .register("test-pool", pool)
-                .executionPolicy(GlobalExecutionPolicy.builder()
-                        .taskListener(events::add)
-                        .build())
+                .taskListener(events::add)
                 .defaultPar("test-pool")
                 .build();
         Par par = config.defaultPar();
 
         List<Integer> input = Arrays.asList(1, 2, 3, 4, 5);
         // parallelism=5 确保所有任务同时启动，避免被取消
-        BatchExecutionOptions opts = BatchExecutionOptions.of("monitor-demo")
+        MultiTaskOptions opts = MultiTaskOptions.of("monitor-demo")
                 .parallelism(5)
                 .timeout(java.time.Duration.ofMillis(5000))
                 .taskType(TaskType.IO_BOUND)
                 .build();
 
         // 业务代码：纯逻辑，不碰监控
-        AsyncBatchResult<String> result = par.map(
+        TaskBatchResult<String> result = par.map(
                 input,
                 x -> {
                     // 模拟 50ms 业务计算（忙等待，不响应中断）
@@ -136,27 +133,27 @@ public class G1_TaskListenerMonitoringTest {
 
         // 验证：每个事件都有正确的 taskName
         for (TaskListener.TaskEvent event : events) {
-            assertThat(event.getTaskName()).isEqualTo("monitor-demo");
+            assertThat(event.taskName()).isEqualTo("monitor-demo");
         }
 
         // 验证：执行耗时 >= 40ms（因为我们忙等了 50ms）
         for (TaskListener.TaskEvent event : events) {
             assertThat(event.executionTime().toMillis())
-                    .as("Task %s execution time", event.getTaskName())
+                    .as("Task %s execution time", event.taskName())
                     .isGreaterThanOrEqualTo(40);
         }
 
         // 验证：总耗时 >= 执行耗时（total = wait + execution）
         for (TaskListener.TaskEvent event : events) {
             assertThat(event.totalTime().toNanos())
-                    .as("Task %s total time >= execution time", event.getTaskName())
+                    .as("Task %s total time >= execution time", event.taskName())
                     .isGreaterThanOrEqualTo(event.executionTime().toNanos());
         }
 
         // 验证：所有任务成功，没有异常
         for (TaskListener.TaskEvent event : events) {
-            assertThat(event.getException())
-                    .as("Task %s should not have exception", event.getTaskName())
+            assertThat(event.exception())
+                    .as("Task %s should not have exception", event.taskName())
                     .isNull();
         }
 
@@ -168,7 +165,7 @@ public class G1_TaskListenerMonitoringTest {
     /**
      * TaskListener 同样能捕获失败任务的异常信息。
      *
-     * <p>当任务抛出异常时，TaskEvent.getException() 返回对应的 Throwable， 无需在业务代码中手动 try-catch。
+     * <p>当任务抛出异常时，TaskEvent.exception() 返回对应的 Throwable， 无需在业务代码中手动 try-catch。
      */
     @Test
     void parMap_withTaskListener_capturesFailedTaskException() throws Exception {
@@ -176,22 +173,20 @@ public class G1_TaskListenerMonitoringTest {
 
         GlobalPar config = GlobalPar.builder()
                 .register("test-pool", pool)
-                .executionPolicy(GlobalExecutionPolicy.builder()
-                        .taskListener(events::add)
-                        .build())
+                .taskListener(events::add)
                 .defaultPar("test-pool")
                 .build();
         Par par = config.defaultPar();
 
         // 只有 2 个任务，parallelism=2 确保同时启动
         List<Integer> input = Arrays.asList(1, 2);
-        BatchExecutionOptions opts = BatchExecutionOptions.of("fail-demo")
+        MultiTaskOptions opts = MultiTaskOptions.of("fail-demo")
                 .parallelism(2)
                 .timeout(java.time.Duration.ofMillis(5000))
                 .taskType(TaskType.IO_BOUND)
                 .build();
 
-        AsyncBatchResult<String> result = par.map(
+        TaskBatchResult<String> result = par.map(
                 input,
                 x -> {
                     long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(50);
@@ -212,22 +207,21 @@ public class G1_TaskListenerMonitoringTest {
 
         // 验证：捕获到了失败任务的异常
         TaskListener.TaskEvent failedEvent = events.stream()
-                .filter(e -> e.getException() != null)
+                .filter(e -> e.exception() != null)
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("No failed event found"));
-        assertThat(failedEvent.getException().getMessage()).contains("item 2 failed");
+        assertThat(failedEvent.exception().getMessage()).contains("item 2 failed");
 
         // 验证：失败事件也有 taskName
-        assertThat(failedEvent.getTaskName()).isEqualTo("fail-demo");
+        assertThat(failedEvent.taskName()).isEqualTo("fail-demo");
 
         // 验证：成功任务没有异常
-        long successCount =
-                events.stream().filter(e -> e.getException() == null).count();
+        long successCount = events.stream().filter(e -> e.exception() == null).count();
         assertThat(successCount).isEqualTo(1);
 
         // 验证：report 确认结果
         String report = result.reportString();
         assertThat(report).contains("SUCCESS:1");
-        assertThat(report).contains("FAILED:1");
+        assertThat(report).contains("USER_FAILURE:1");
     }
 }

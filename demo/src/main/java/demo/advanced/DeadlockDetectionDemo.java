@@ -1,10 +1,10 @@
 package demo.advanced;
 
 import com.google.common.util.concurrent.Futures;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.Par;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.util.Arrays;
 import java.util.List;
@@ -54,7 +54,7 @@ public class DeadlockDetectionDemo {
             System.out.println("每个 task-A 子任务内部调用 task-B，需要同一个池分配线程");
             System.out.println("→ 循环等待，死锁！\n");
 
-            BatchExecutionOptions optionsA = BatchExecutionOptions.of("task-A")
+            MultiTaskOptions optionsA = MultiTaskOptions.of("task-A")
                     .parallelism(4)
                     .timeout(java.time.Duration.ofSeconds(5))
                     .taskType(TaskType.IO_BOUND)
@@ -63,7 +63,7 @@ public class DeadlockDetectionDemo {
             long start = System.currentTimeMillis();
 
             // task-A: 占满 4 个线程，每个子任务内部调用 task-B
-            AsyncBatchResult<Void> result = par.map(
+            TaskBatchResult<Void> result = par.map(
                     Arrays.asList(1, 2, 3, 4),
                     item -> {
                         System.out.println("[task-A-" + item + "] 启动于 "
@@ -75,7 +75,7 @@ public class DeadlockDetectionDemo {
 
             // 等待完成 — 由于死锁，会超时
             try {
-                Futures.allAsList(result.getResults()).get(6, TimeUnit.SECONDS);
+                Futures.allAsList(result.results()).get(6, TimeUnit.SECONDS);
                 System.out.println("[main] 所有任务完成（意外！）");
             } catch (TimeoutException e) {
                 long elapsed = System.currentTimeMillis() - start;
@@ -102,14 +102,14 @@ public class DeadlockDetectionDemo {
 
     /** task-B：从 task-A 内部调用，向同一个线程池提交任务 → 死锁 */
     private static void callTaskB(Par par, int parentItem) {
-        BatchExecutionOptions optionsB = BatchExecutionOptions.of("task-B")
+        MultiTaskOptions optionsB = MultiTaskOptions.of("task-B")
                 .parallelism(2)
                 .timeout(java.time.Duration.ofSeconds(5))
                 .taskType(TaskType.IO_BOUND)
                 .build();
 
         List<String> items = Arrays.asList("x", "y");
-        AsyncBatchResult<String> resultB = par.map(
+        TaskBatchResult<String> resultB = par.map(
                 items,
                 sub -> {
                     System.out.println("  [task-B-"
@@ -123,7 +123,7 @@ public class DeadlockDetectionDemo {
                 optionsB);
 
         try {
-            Futures.allAsList(resultB.getResults()).get(5, TimeUnit.SECONDS);
+            Futures.allAsList(resultB.results()).get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             System.out.println(
                     "  [task-B-" + parentItem + "] 失败: " + e.getClass().getSimpleName());

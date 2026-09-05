@@ -2,7 +2,7 @@ package io.github.huatalk.parallelinscope.internal;
 
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
 import io.github.huatalk.parallelinscope.cancel.Checkpoints;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
 import io.github.huatalk.parallelinscope.spi.TaskListener;
 import io.github.huatalk.parallelinscope.spi.TaskListener.TaskEvent;
 import java.util.List;
@@ -80,7 +80,7 @@ public class ScopedCallable<V> implements Callable<V> {
     }
 
     /** Returns the per-task execution context owned by this wrapper. */
-    public TaskExecutionContext getTaskExecutionContext() {
+    public TaskExecutionContext taskExecutionContext() {
         return taskContext;
     }
 
@@ -91,8 +91,8 @@ public class ScopedCallable<V> implements Callable<V> {
      *
      * @return the task cancellation token
      */
-    public CancellationToken getCancellationToken() {
-        return taskContext.batchContext().cancellationToken();
+    public CancellationToken cancellationToken() {
+        return taskContext.multiTaskContext().cancellationToken();
     }
 
     /**
@@ -100,9 +100,9 @@ public class ScopedCallable<V> implements Callable<V> {
      *
      * @return the executor name
      */
-    public String getExecutorName() {
-        String parLabel = taskContext.batchContext().parLabel();
-        return parLabel == null ? "NA" : parLabel;
+    public String executorName() {
+        String executorLabel = taskContext.multiTaskContext().executorLabel();
+        return executorLabel == null ? "NA" : executorLabel;
     }
 
     @Override
@@ -110,9 +110,9 @@ public class ScopedCallable<V> implements Callable<V> {
         // ==================== prepareContext ====================
         TaskExecutionContext previousTask = TaskExecutionContext.install(taskContext);
 
-        BatchExecutionContext batchContext = taskContext.batchContext();
-        String taskName = batchContext.taskName();
-        // TaskGraphObservationContext is a TransmittableThreadLocal captured by the TtlCallable
+        MultiTaskContext unit = taskContext.multiTaskContext();
+        String taskName = unit.name();
+        // TaskGraphObservationScope is a TransmittableThreadLocal captured by the TtlCallable
         // wrapper created at the Par.map boundary.
 
         V result = null;
@@ -167,7 +167,7 @@ public class ScopedCallable<V> implements Callable<V> {
     public String toString() {
         return "ScopedCallable{"
                 + "taskName='"
-                + taskContext.batchContext().taskName()
+                + taskContext.multiTaskContext().name()
                 + '\''
                 + ", delegate="
                 + delegate

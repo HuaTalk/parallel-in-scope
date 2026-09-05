@@ -3,28 +3,25 @@ package io.github.huatalk.parallelinscope.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
-import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 class TaskExecutionContextTest {
 
     @Test
     void siblingTasksShareBatchButKeepIndependentIdentityAndTiming() {
-        BatchExecutionContext batch = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("batch").build(),
-                3,
-                null);
+        MultiTaskContext batch = MultiTaskContext.resolve(
+                MultiTaskOptions.of("batch").timeout(Duration.ofSeconds(30)).build(), 3, null);
         TaskExecutionContext first = new TaskExecutionContext(batch, 0, 10L);
         TaskExecutionContext second = new TaskExecutionContext(batch, 1, 20L);
 
         first.markStarted(30L);
         first.markEnded(40L);
 
-        assertThat(first.batchContext()).isSameAs(batch);
-        assertThat(second.batchContext()).isSameAs(batch);
+        assertThat(first.multiTaskContext()).isSameAs(batch);
+        assertThat(second.multiTaskContext()).isSameAs(batch);
         assertThat(first.taskIndex()).isEqualTo(0);
         assertThat(second.taskIndex()).isEqualTo(1);
         assertThat(first.submitTimeNanos()).isEqualTo(10L);
@@ -39,22 +36,16 @@ class TaskExecutionContextTest {
 
     @Test
     void rejectsNegativeTaskIndex() {
-        BatchExecutionContext batch = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("batch").build(),
-                1,
-                null);
+        MultiTaskContext batch = MultiTaskContext.resolve(
+                MultiTaskOptions.of("batch").timeout(Duration.ofSeconds(30)).build(), 1, null);
 
         assertThatIllegalArgumentException().isThrownBy(() -> new TaskExecutionContext(batch, -1, 0L));
     }
 
     @Test
     void installAndRestorePreserveNestedCurrentTask() {
-        BatchExecutionContext batch = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("batch").build(),
-                2,
-                null);
+        MultiTaskContext batch = MultiTaskContext.resolve(
+                MultiTaskOptions.of("batch").timeout(Duration.ofSeconds(30)).build(), 2, null);
         TaskExecutionContext outer = new TaskExecutionContext(batch, 0, 0L);
         TaskExecutionContext inner = new TaskExecutionContext(batch, 1, 0L);
 

@@ -2,10 +2,10 @@ package io.github.huatalk.parallelinscope.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.huatalk.parallelinscope.scope.BatchExecutionContext;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
-import io.github.huatalk.parallelinscope.scope.GlobalExecutionPolicy;
+import io.github.huatalk.parallelinscope.scope.MultiTaskContext;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.spi.TaskListener.TaskEvent;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class ScopedCallableContextRestoreTest {
     @Test
     void listenerReceivesSuccessfulTaskTimingAndMetadata() throws Exception {
-        BatchExecutionContext context = context("listener");
+        MultiTaskContext context = context("listener");
         AtomicReference<TaskEvent> captured = new AtomicReference<>();
         TaskExecutionContext taskContext = task(context, 0);
         ScopedCallable<String> callable =
@@ -25,23 +25,23 @@ class ScopedCallableContextRestoreTest {
         assertThat(callable.call()).isEqualTo("value");
         TaskEvent event = captured.get();
         assertThat(event).isNotNull();
-        assertThat(event.getTaskContext()).isSameAs(taskContext);
-        assertThat(event.isSuccessful()).isTrue();
-        assertThat(event.getResult()).isEqualTo("value");
-        assertThat(event.getTaskName()).isEqualTo("listener");
-        assertThat(event.getException()).isNull();
-        assertThat(event.getEndTimeNanos()).isGreaterThanOrEqualTo(event.getStartTimeNanos());
+        assertThat(event.taskContext()).isSameAs(taskContext);
+        assertThat(event.successful()).isTrue();
+        assertThat(event.result()).isEqualTo("value");
+        assertThat(event.taskName()).isEqualTo("listener");
+        assertThat(event.exception()).isNull();
+        assertThat(event.endTimeNanos()).isGreaterThanOrEqualTo(event.startTimeNanos());
         assertThat(callable.executionTime()).isGreaterThanOrEqualTo(0L);
         assertThat(callable.waitTime()).isGreaterThanOrEqualTo(0L);
         assertThat(callable.totalTime()).isGreaterThanOrEqualTo(callable.executionTime());
-        assertThat(callable.getCancellationToken()).isSameAs(context.cancellationToken());
-        assertThat(callable.getExecutorName()).isEqualTo("NA");
+        assertThat(callable.cancellationToken()).isSameAs(context.cancellationToken());
+        assertThat(callable.executorName()).isEqualTo("NA");
         assertThat(callable.toString()).contains("listener", "submitTime", "startTime", "endTime");
     }
 
     @Test
     void listenerReceivesFailureWhileOriginalFailureEscapes() {
-        BatchExecutionContext context = context("failed");
+        MultiTaskContext context = context("failed");
         AtomicReference<TaskEvent> captured = new AtomicReference<>();
         IllegalStateException failure = new IllegalStateException("boom");
         ScopedCallable<String> callable = new ScopedCallable<>(
@@ -55,19 +55,16 @@ class ScopedCallableContextRestoreTest {
                 }));
 
         org.assertj.core.api.Assertions.assertThatThrownBy(callable::call).isSameAs(failure);
-        assertThat(captured.get().getException()).isSameAs(failure);
-        assertThat(captured.get().isSuccessful()).isFalse();
-        assertThat(captured.get().getResult()).isNull();
+        assertThat(captured.get().exception()).isSameAs(failure);
+        assertThat(captured.get().successful()).isFalse();
+        assertThat(captured.get().result()).isNull();
     }
 
     @Test
     void nestedCallRestoresOuterCurrentTask() throws Exception {
-        BatchExecutionContext outer = context("same-name");
-        BatchExecutionContext inner = BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of("same-name").build(),
-                1,
-                outer);
+        MultiTaskContext outer = context("same-name");
+        MultiTaskContext inner = MultiTaskContext.resolve(
+                MultiTaskOptions.of("same-name").timeout(Duration.ofSeconds(30)).build(), 1, outer);
         TaskExecutionContext outerTask = task(outer, 0);
         ScopedCallable<String> outerCallable = new ScopedCallable<>(
                 outerTask,
@@ -93,15 +90,12 @@ class ScopedCallableContextRestoreTest {
         assertThat(TaskExecutionContext.current()).isNull();
     }
 
-    private static BatchExecutionContext context(String name) {
-        return BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(),
-                BatchExecutionOptions.of(name).build(),
-                1,
-                null);
+    private static MultiTaskContext context(String name) {
+        return MultiTaskContext.resolve(
+                MultiTaskOptions.of(name).timeout(Duration.ofSeconds(30)).build(), 1, null);
     }
 
-    private static TaskExecutionContext task(BatchExecutionContext context, int index) {
+    private static TaskExecutionContext task(MultiTaskContext context, int index) {
         return new TaskExecutionContext(
                 context, index, com.google.common.base.Ticker.systemTicker().read());
     }

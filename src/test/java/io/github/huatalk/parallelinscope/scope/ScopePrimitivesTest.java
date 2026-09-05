@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Behavior pins for small scope primitives: {@link ExecutorIdentity} identity semantics,
- * {@link GlobalExecutionPolicy} defaults, {@link BatchExecutionContext#resolve} boundary matrix,
+ * {@link GlobalPar} task-listener defaults, {@link MultiTaskContext#resolve} boundary matrix,
  * {@link GlobalPar} topology shutdown states with its scheduler adapter, and {@link ScopedCallable}
  * timing bookkeeping.
  */
@@ -48,60 +48,71 @@ class ScopePrimitivesTest {
         }
     }
 
-    // ==================== GlobalExecutionPolicy ====================
+    // ==================== GlobalPar task listeners ====================
 
     @Test
-    void executionPolicyDefaultsTimeoutAndSnapshotSemantics() {
-        GlobalExecutionPolicy policy = GlobalExecutionPolicy.builder().build();
-        assertThat(policy.defaultTimeoutMillis()).isEqualTo(60_000L);
-        assertThat(policy.taskListeners()).isEmpty();
+    void taskListenersExposeImmutableSnapshotSemantics() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        GlobalPar empty = GlobalPar.builder().register("worker", executor).build();
+        try {
+            assertThat(empty.taskListeners()).isEmpty();
+            assertThat(empty.taskListenersFor("worker")).isEmpty();
+        } finally {
+            empty.close();
+            executor.shutdownNow();
+        }
 
-        GlobalExecutionPolicy custom =
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(250L).build();
-        assertThat(custom.defaultTimeoutMillis()).isEqualTo(250L);
-
-        GlobalExecutionPolicy.Builder builder = GlobalExecutionPolicy.builder();
-        assertThatThrownBy(() -> builder.defaultTimeoutMillis(0)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> builder.defaultTimeoutMillis(-1)).isInstanceOf(IllegalArgumentException.class);
+        GlobalPar.Builder builder = GlobalPar.builder();
         assertThatThrownBy(() -> builder.taskListener(null)).isInstanceOf(NullPointerException.class);
 
         TaskListener listener = event -> {};
-        GlobalExecutionPolicy snapshotted =
-                GlobalExecutionPolicy.builder().taskListener(listener).build();
-        assertThat(snapshotted.taskListeners()).containsExactly(listener);
-        assertThatThrownBy(() -> snapshotted.taskListeners().add(listener))
-                .isInstanceOf(UnsupportedOperationException.class);
+        ExecutorService snapshottedExecutor = Executors.newSingleThreadExecutor();
+        GlobalPar snapshotted = GlobalPar.builder()
+                .taskListener(listener)
+                .register("worker", snapshottedExecutor)
+                .build();
+        try {
+            assertThat(snapshotted.taskListeners()).containsExactly(listener);
+            assertThat(snapshotted.taskListenersFor("worker")).containsExactly(listener);
+            assertThatThrownBy(() -> snapshotted.taskListeners().add(listener))
+                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThatThrownBy(() -> snapshotted.taskListenersFor("worker").add(listener))
+                    .isInstanceOf(UnsupportedOperationException.class);
+        } finally {
+            snapshotted.close();
+            snapshottedExecutor.shutdownNow();
+        }
     }
 
-    // ==================== BatchExecutionContext.resolve ====================
+    // ==================== MultiTaskContext.resolve ====================
 
-    private static BatchExecutionContext resolve(
-            int parallelism, Duration timeout, int taskCount, BatchExecutionContext parent) {
-        BatchExecutionOptions.Builder options = BatchExecutionOptions.of("batch");
+    private static MultiTaskContext resolve(int parallelism, Duration timeout, int taskCount, MultiTaskContext parent) {
+        MultiTaskOptions.Builder options = MultiTaskOptions.of("batch").timeout(timeout);
         if (parallelism > 0) {
             options.parallelism(parallelism);
         }
-        if (timeout != null) {
-            options.timeout(timeout);
-        }
-        return BatchExecutionContext.resolve(
-                GlobalExecutionPolicy.builder().build(), options.build(), taskCount, parent);
+        return MultiTaskContext.resolve(options.build(), taskCount, parent);
     }
 
     @Test
     void resolveNormalizesParallelismAgainstTaskCount() {
-        assertThat(resolve(0, null, 4, null).effectiveParallelism()).isEqualTo(4);
-        assertThat(resolve(-1, null, 3, null).effectiveParallelism()).isEqualTo(3);
-        assertThat(resolve(9, null, 3, null).effectiveParallelism()).isEqualTo(3);
-        assertThat(resolve(2, null, 5, null).effectiveParallelism()).isEqualTo(2);
-        assertThat(resolve(2, null, 5, null).taskCount()).isEqualTo(5);
-        assertThatThrownBy(() -> resolve(1, null, -1, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(resolve(0, Duration.ofSeconds(30), 4, null).effectiveParallelism())
+                .isEqualTo(4);
+        assertThat(resolve(-1, Duration.ofSeconds(30), 3, null).effectiveParallelism())
+                .isEqualTo(3);
+        assertThat(resolve(9, Duration.ofSeconds(30), 3, null).effectiveParallelism())
+                .isEqualTo(3);
+        assertThat(resolve(2, Duration.ofSeconds(30), 5, null).effectiveParallelism())
+                .isEqualTo(2);
+        assertThat(resolve(2, Duration.ofSeconds(30), 5, null).taskCount()).isEqualTo(5);
+        assertThatThrownBy(() -> resolve(1, Duration.ofSeconds(30), -1, null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void resolveAppliesExplicitTimeoutAndOverflowGuard() {
         long before = System.nanoTime();
-        BatchExecutionContext timed = resolve(0, Duration.ofMillis(150), 1, null);
+        MultiTaskContext timed = resolve(0, Duration.ofMillis(150), 1, null);
         long deadline = timed.deadlineNanos();
         long expectedLow = before + TimeUnit.MILLISECONDS.toNanos(140);
         long expectedHigh = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(160);
@@ -109,34 +120,29 @@ class ScopePrimitivesTest {
         assertThat(timed.remaining().toMillis()).isLessThanOrEqualTo(160);
         assertThat(timed.remaining()).isGreaterThanOrEqualTo(Duration.ZERO);
 
-        BatchExecutionContext overflow = resolve(0, Duration.ofNanos(Long.MAX_VALUE), 1, null);
+        MultiTaskContext overflow = resolve(0, Duration.ofNanos(Long.MAX_VALUE), 1, null);
         assertThat(overflow.deadlineNanos()).isEqualTo(Long.MAX_VALUE);
     }
 
     @Test
     void childDeadlineNeverExceedsParentDeadline() {
-        BatchExecutionContext parent = resolve(0, Duration.ofMillis(50), 1, null);
-        BatchExecutionContext child = resolve(0, Duration.ofHours(10), 1, parent);
+        MultiTaskContext parent = resolve(0, Duration.ofMillis(50), 1, null);
+        MultiTaskContext child = resolve(0, Duration.ofHours(10), 1, parent);
         assertThat(child.deadlineNanos()).isLessThanOrEqualTo(parent.deadlineNanos());
-        assertThat(child.parent()).isSameAs(parent);
+        assertThat(child.structuralParent()).isSameAs(parent);
         assertThat(child.cancellationToken()).isNotSameAs(parent.cancellationToken());
     }
 
     @Test
-    void resolveRejectsNullPolicyAndOptions() {
-        BatchExecutionOptions options = BatchExecutionOptions.of("x").build();
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(null, options, 1, null))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(
-                        GlobalExecutionPolicy.builder().build(), null, 1, null))
-                .isInstanceOf(NullPointerException.class);
+    void resolveRejectsNullOptions() {
+        assertThatThrownBy(() -> MultiTaskContext.resolve(null, 1, null)).isInstanceOf(NullPointerException.class);
     }
 
     // ==================== ScopedCallable timing ====================
 
     @Test
     void scopedCallableRecordsPositiveWaitAndExecutionDurations() throws Exception {
-        BatchExecutionContext context = resolve(0, Duration.ofSeconds(30), 1, null);
+        MultiTaskContext context = resolve(0, Duration.ofSeconds(30), 1, null);
         ScopedCallable<Integer> callable = new ScopedCallable<>(
                 task(context, 0),
                 () -> {
@@ -150,11 +156,11 @@ class ScopePrimitivesTest {
         assertThat(callable.waitTime()).isGreaterThanOrEqualTo(TimeUnit.MILLISECONDS.toNanos(4));
         assertThat(callable.executionTime()).isGreaterThan(0L);
         assertThat(callable.totalTime()).isEqualTo(callable.waitTime() + callable.executionTime());
-        assertThat(callable.getCancellationToken()).isNotNull();
+        assertThat(callable.cancellationToken()).isNotNull();
 
         ScopedCallable<Integer> unlabelled = new ScopedCallable<>(task(context, 0), () -> 1, null);
         unlabelled.call();
-        assertThat(unlabelled.getExecutorName()).isNotEmpty();
+        assertThat(unlabelled.executorName()).isNotEmpty();
     }
 
     @Test
@@ -162,9 +168,8 @@ class ScopePrimitivesTest {
         ExecutorService supplied = Executors.newSingleThreadExecutor();
         try {
             ExecutorIdentity identity = new ExecutorIdentity(supplied);
-            BatchExecutionContext labelled = BatchExecutionContext.resolve(
-                    GlobalExecutionPolicy.builder().build(),
-                    BatchExecutionOptions.of("n").build(),
+            MultiTaskContext labelled = MultiTaskContext.resolve(
+                    MultiTaskOptions.of("n").timeout(Duration.ofSeconds(30)).build(),
                     1,
                     null,
                     null,
@@ -172,19 +177,13 @@ class ScopePrimitivesTest {
                     "par-label");
             ScopedCallable<String> labelledCall =
                     new ScopedCallable<>(task(labelled, 0), () -> "ok", java.util.Collections.emptyList());
-            assertThat(labelledCall.getExecutorName()).isEqualTo("par-label");
+            assertThat(labelledCall.executorName()).isEqualTo("par-label");
 
-            BatchExecutionContext anonymous = BatchExecutionContext.resolve(
-                    GlobalExecutionPolicy.builder().build(),
-                    BatchExecutionOptions.of("n").build(),
-                    1,
-                    null,
-                    null,
-                    identity,
-                    null);
+            MultiTaskContext anonymous = MultiTaskContext.resolve(
+                    MultiTaskOptions.of("n").timeout(Duration.ofSeconds(30)).build(), 1, null, null, identity, null);
             ScopedCallable<String> anonymousCall =
                     new ScopedCallable<>(task(anonymous, 0), () -> "ok", java.util.Collections.emptyList());
-            assertThat(anonymousCall.getExecutorName()).isEqualTo("NA");
+            assertThat(anonymousCall.executorName()).isEqualTo("NA");
 
             assertThatThrownBy(() -> new ScopedCallable<>(null, () -> "ok", java.util.Collections.emptyList()))
                     .isInstanceOf(NullPointerException.class);
@@ -197,7 +196,7 @@ class ScopePrimitivesTest {
         }
     }
 
-    private static TaskExecutionContext task(BatchExecutionContext context, int index) {
+    private static TaskExecutionContext task(MultiTaskContext context, int index) {
         return new TaskExecutionContext(
                 context, index, com.google.common.base.Ticker.systemTicker().read());
     }
@@ -211,8 +210,8 @@ class ScopePrimitivesTest {
         GlobalPar global =
                 GlobalPar.builder().register("a", poolA).register("b", poolB).build();
         try {
-            ExecutorRuntime runtimeA = global.par("a").getRuntimeForTest();
-            ExecutorRuntime runtimeB = global.par("b").getRuntimeForTest();
+            ExecutorRuntime runtimeA = global.par("a").runtime();
+            ExecutorRuntime runtimeB = global.par("b").runtime();
             assertThat(runtimeA).isNotNull();
             assertThat(runtimeB).isNotNull();
             assertThat(runtimeA).isNotSameAs(runtimeB);
@@ -230,11 +229,11 @@ class ScopePrimitivesTest {
     @Test
     void globalParReportsClosedOnlyAfterCloseAndIsIdempotent() throws Exception {
         GlobalPar global = GlobalPar.builder().build();
-        assertThat(global.isClosed()).isFalse();
+        assertThat(global.closed()).isFalse();
         global.close();
-        assertThat(global.isClosed()).isTrue();
+        assertThat(global.closed()).isTrue();
         global.close(); // idempotent
-        assertThat(global.isClosed()).isTrue();
+        assertThat(global.closed()).isTrue();
         assertThatThrownBy(global::openTaskGraphObservation).isInstanceOf(IllegalStateException.class);
     }
 

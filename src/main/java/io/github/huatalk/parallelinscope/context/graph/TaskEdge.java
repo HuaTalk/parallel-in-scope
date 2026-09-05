@@ -2,6 +2,7 @@ package io.github.huatalk.parallelinscope.context.graph;
 
 import io.github.huatalk.parallelinscope.scope.ExecutorIdentity;
 import io.github.huatalk.parallelinscope.scope.TaskType;
+import java.time.Duration;
 
 /**
  * Value object representing metadata associated with a task dependency edge in the {@link
@@ -19,7 +20,7 @@ public final class TaskEdge {
     private final String executorName;
     private final String sourceExecutorName;
     private final int taskCount;
-    private final long timeoutMillis;
+    private final Duration timeout;
     private final boolean executorDeadlockProne;
     private final ExecutorIdentity executorIdentity;
     private final ExecutorIdentity sourceExecutorIdentity;
@@ -32,7 +33,7 @@ public final class TaskEdge {
      * @param executorName the child executor name
      * @param sourceExecutorName the parent executor name
      * @param taskCount the number of child tasks
-     * @param timeoutMillis the child timeout in milliseconds
+     * @param timeout the child remaining timeout at submission
      */
     public TaskEdge(
             int parallelism,
@@ -40,8 +41,8 @@ public final class TaskEdge {
             String executorName,
             String sourceExecutorName,
             int taskCount,
-            long timeoutMillis) {
-        this(parallelism, taskType, executorName, sourceExecutorName, taskCount, timeoutMillis, true);
+            Duration timeout) {
+        this(parallelism, taskType, executorName, sourceExecutorName, taskCount, timeout, true);
     }
 
     /**
@@ -52,7 +53,7 @@ public final class TaskEdge {
      * @param executorName the child executor name
      * @param sourceExecutorName the parent executor name
      * @param taskCount the number of child tasks
-     * @param timeoutMillis the child timeout in milliseconds
+     * @param timeout the child remaining timeout at submission
      * @param executorDeadlockProne whether the child executor can conservatively deadlock
      */
     public TaskEdge(
@@ -61,14 +62,14 @@ public final class TaskEdge {
             String executorName,
             String sourceExecutorName,
             int taskCount,
-            long timeoutMillis,
+            Duration timeout,
             boolean executorDeadlockProne) {
         this.parallelism = parallelism;
         this.taskType = taskType;
         this.executorName = executorName;
         this.sourceExecutorName = sourceExecutorName;
         this.taskCount = taskCount;
-        this.timeoutMillis = timeoutMillis;
+        this.timeout = timeout;
         this.executorDeadlockProne = executorDeadlockProne;
         this.executorIdentity = null;
         this.sourceExecutorIdentity = null;
@@ -83,14 +84,14 @@ public final class TaskEdge {
             String executorName,
             String sourceExecutorName,
             int taskCount,
-            long timeoutMillis,
+            Duration timeout,
             boolean executorDeadlockProne) {
         this.parallelism = parallelism;
         this.taskType = taskType;
         this.executorName = executorName;
         this.sourceExecutorName = sourceExecutorName;
         this.taskCount = taskCount;
-        this.timeoutMillis = timeoutMillis;
+        this.timeout = timeout;
         this.executorDeadlockProne = executorDeadlockProne;
         this.executorIdentity = executorIdentity;
         this.sourceExecutorIdentity = sourceExecutorIdentity;
@@ -101,7 +102,7 @@ public final class TaskEdge {
      *
      * @return the parallelism
      */
-    public int getParallelism() {
+    public int parallelism() {
         return parallelism;
     }
 
@@ -110,7 +111,7 @@ public final class TaskEdge {
      *
      * @return the task type
      */
-    public TaskType getTaskType() {
+    public TaskType taskType() {
         return taskType;
     }
 
@@ -119,7 +120,7 @@ public final class TaskEdge {
      *
      * @return the executor name
      */
-    public String getExecutorName() {
+    public String executorName() {
         return executorName;
     }
 
@@ -128,7 +129,7 @@ public final class TaskEdge {
      *
      * @return the source executor name
      */
-    public String getSourceExecutorName() {
+    public String sourceExecutorName() {
         return sourceExecutorName;
     }
 
@@ -137,17 +138,17 @@ public final class TaskEdge {
      *
      * @return the task count
      */
-    public int getTaskCount() {
+    public int taskCount() {
         return taskCount;
     }
 
     /**
      * Returns the child timeout.
      *
-     * @return the timeout in milliseconds
+     * @return the remaining timeout captured at submission
      */
-    public long getTimeoutMillis() {
-        return timeoutMillis;
+    public Duration timeout() {
+        return timeout;
     }
 
     /**
@@ -155,24 +156,24 @@ public final class TaskEdge {
      *
      * @return {@code true} when nested blocking work can conservatively deadlock
      */
-    public boolean isExecutorDeadlockProne() {
+    public boolean executorDeadlockProne() {
         return executorDeadlockProne;
     }
 
     /** Returns the child supplied-executor identity, or null for legacy edges. */
-    public ExecutorIdentity getExecutorIdentity() {
+    public ExecutorIdentity executorIdentity() {
         return executorIdentity;
     }
 
     /** Returns the parent supplied-executor identity, or null for legacy edges. */
-    public ExecutorIdentity getSourceExecutorIdentity() {
+    public ExecutorIdentity sourceExecutorIdentity() {
         return sourceExecutorIdentity;
     }
 
     @Override
     public String toString() {
         return String.format(
-                "{p=%d, type=%s, src=%s, exec=%s, count=%d, timeout=%dms}",
-                parallelism, taskType, sourceExecutorName, executorName, taskCount, timeoutMillis);
+                "{p=%d, type=%s, src=%s, exec=%s, count=%d, timeout=%s}",
+                parallelism, taskType, sourceExecutorName, executorName, taskCount, timeout);
     }
 }

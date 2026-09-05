@@ -2,10 +2,10 @@ package demo.article;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.Par;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.util.Arrays;
 import java.util.List;
@@ -113,12 +113,12 @@ class G4_NamedExecutorPoolTest {
             List<String> items = Arrays.asList("a", "b", "c", "d", "e");
 
             // IO 任务：按名引用 io-pool
-            BatchExecutionOptions ioOpts = BatchExecutionOptions.of("fetch-data")
+            MultiTaskOptions ioOpts = MultiTaskOptions.of("fetch-data")
                     .taskType(TaskType.IO_BOUND)
                     .parallelism(4)
                     .timeout(java.time.Duration.ofMillis(5000))
                     .build();
-            AsyncBatchResult<String> ioResult = par.map(
+            TaskBatchResult<String> ioResult = par.map(
                     items,
                     item -> {
                         return "io:" + Thread.currentThread().getName() + ":" + item;
@@ -126,12 +126,12 @@ class G4_NamedExecutorPoolTest {
                     ioOpts);
 
             // CPU 任务：按名引用 cpu-pool
-            BatchExecutionOptions cpuOpts = BatchExecutionOptions.of("compute")
+            MultiTaskOptions cpuOpts = MultiTaskOptions.of("compute")
                     .taskType(TaskType.CPU_BOUND)
                     .parallelism(4)
                     .timeout(java.time.Duration.ofMillis(5000))
                     .build();
-            AsyncBatchResult<String> cpuResult = cpuPar.map(
+            TaskBatchResult<String> cpuResult = cpuPar.map(
                     items,
                     item -> {
                         return "cpu:" + Thread.currentThread().getName() + ":" + item;
@@ -139,14 +139,14 @@ class G4_NamedExecutorPoolTest {
                     cpuOpts);
 
             // 验证：IO 任务确实跑在 io-pool 上
-            for (int i = 0; i < ioResult.getResults().size(); i++) {
-                String result = ioResult.getResults().get(i).get(5, TimeUnit.SECONDS);
+            for (int i = 0; i < ioResult.results().size(); i++) {
+                String result = ioResult.results().get(i).get(5, TimeUnit.SECONDS);
                 assertThat(result).as("IO 任务应跑在 io-pool 上").contains("io-pool");
             }
 
             // 验证：CPU 任务确实跑在 cpu-pool 上
-            for (int i = 0; i < cpuResult.getResults().size(); i++) {
-                String result = cpuResult.getResults().get(i).get(5, TimeUnit.SECONDS);
+            for (int i = 0; i < cpuResult.results().size(); i++) {
+                String result = cpuResult.results().get(i).get(5, TimeUnit.SECONDS);
                 assertThat(result).as("CPU 任务应跑在 cpu-pool 上").contains("cpu-pool");
             }
 

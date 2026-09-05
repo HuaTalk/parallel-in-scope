@@ -3,29 +3,17 @@ package io.github.huatalk.parallelinscope.scope;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
+import io.github.huatalk.parallelinscope.context.TaskGraphObservationScope;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
-class BatchExecutionContextTest {
+class MultiTaskContextTest {
     @Test
     void childDeadlineCannotOutliveParentDeadline() {
-        GlobalExecutionPolicy policy =
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(5_000).build();
-        BatchExecutionContext parent = BatchExecutionContext.resolve(
-                policy,
-                BatchExecutionOptions.of("outer")
-                        .timeout(Duration.ofMillis(100))
-                        .build(),
-                1,
-                null);
-        BatchExecutionContext child = BatchExecutionContext.resolve(
-                policy,
-                BatchExecutionOptions.of("inner")
-                        .timeout(Duration.ofSeconds(10))
-                        .build(),
-                1,
-                parent);
+        MultiTaskContext parent = MultiTaskContext.resolve(
+                MultiTaskOptions.of("outer").timeout(Duration.ofMillis(100)).build(), 1, null);
+        MultiTaskContext child = MultiTaskContext.resolve(
+                MultiTaskOptions.of("inner").timeout(Duration.ofSeconds(10)).build(), 1, parent);
 
         assertThat(child.deadlineNanos()).isLessThanOrEqualTo(parent.deadlineNanos());
         assertThat(child.cancellationToken()).isNotNull();
@@ -33,20 +21,19 @@ class BatchExecutionContextTest {
 
     @Test
     void resolvesParallelismAndRuntimeMetadata() {
-        GlobalExecutionPolicy policy =
-                GlobalExecutionPolicy.builder().defaultTimeoutMillis(1000).build();
-        BatchExecutionOptions options = BatchExecutionOptions.of("io")
+        MultiTaskOptions options = MultiTaskOptions.of("io")
                 .parallelism(99)
                 .taskType(TaskType.IO_BOUND)
                 .rejectEnqueue(false)
+                .timeout(Duration.ofSeconds(30))
                 .build();
         ExecutorServiceStub executor = new ExecutorServiceStub();
         ExecutorIdentity identity = new ExecutorIdentity(executor);
-        BatchExecutionContext context = BatchExecutionContext.resolve(policy, options, 3, null, null, identity, "http");
+        MultiTaskContext context = MultiTaskContext.resolve(options, 3, null, null, identity, "http");
 
         assertThat(context.effectiveParallelism()).isEqualTo(3);
         assertThat(context.executorIdentity()).isSameAs(identity);
-        assertThat(context.parLabel()).isEqualTo("http");
+        assertThat(context.executorLabel()).isEqualTo("http");
         assertThat(context.taskType()).isEqualTo(TaskType.IO_BOUND);
         assertThat(context.rejectEnqueue()).isFalse();
         assertThat(context.remaining().isNegative()).isFalse();
@@ -54,34 +41,34 @@ class BatchExecutionContextTest {
 
     @Test
     void rejectsNegativeTaskCount() {
-        assertThatThrownBy(() -> BatchExecutionContext.resolve(
-                        GlobalExecutionPolicy.builder().build(),
-                        BatchExecutionOptions.of("x").build(),
-                        -1,
-                        null))
+        assertThatThrownBy(() -> MultiTaskContext.resolve(
+                        MultiTaskOptions.of("x").timeout(Duration.ofSeconds(30)).build(), -1, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void inheritsParentObservationAndCreatesLinkedCancellationToken() {
         GlobalPar global = GlobalPar.builder().build();
-        TaskGraphObservationContext observation = global.openTaskGraphObservation();
+        TaskGraphObservationScope observation = global.openTaskGraphObservation();
         try {
-            GlobalExecutionPolicy policy =
-                    GlobalExecutionPolicy.builder().defaultTimeoutMillis(1_000).build();
-            BatchExecutionContext parent = BatchExecutionContext.resolve(
-                    policy, BatchExecutionOptions.of("parent").build(), 2, null, observation);
-            BatchExecutionContext child = BatchExecutionContext.resolve(
-                    policy, BatchExecutionOptions.of("child").build(), 1, parent);
+            MultiTaskContext parent = MultiTaskContext.resolve(
+                    MultiTaskOptions.of("parent")
+                            .timeout(Duration.ofSeconds(30))
+                            .build(),
+                    2,
+                    null,
+                    observation);
+            MultiTaskContext child = MultiTaskContext.resolve(
+                    MultiTaskOptions.of("child").timeout(Duration.ofSeconds(30)).build(), 1, parent);
 
-            assertThat(parent.taskName()).isEqualTo("parent");
+            assertThat(parent.name()).isEqualTo("parent");
             assertThat(parent.taskCount()).isEqualTo(2);
-            assertThat(parent.parent()).isNull();
-            assertThat(child.parent()).isSameAs(parent);
-            assertThat(child.taskGraphObservationContext()).isSameAs(observation);
+            assertThat(parent.structuralParent()).isNull();
+            assertThat(child.structuralParent()).isSameAs(parent);
+            assertThat(child.taskGraphObservationScope()).isSameAs(observation);
             assertThat(child.cancellationToken()).isNotSameAs(parent.cancellationToken());
             assertThat(child.executorIdentity()).isNull();
-            assertThat(child.parLabel()).isNull();
+            assertThat(child.executorLabel()).isNull();
         } finally {
             observation.close();
             global.close();

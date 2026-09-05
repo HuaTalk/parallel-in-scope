@@ -10,7 +10,7 @@ Java `Thread.interrupt()` only interrupts blocking operations such as `sleep`, `
 |---|---|---|
 | Before task execution | `ScopedCallable` runs `Checkpoints.checkpoint()` | None |
 | During blocking I/O | `futureToken.cancel(true)` interrupts the blocking operation | None |
-| Sliding-window submission | `ConcurrentLimitExecutor` stops submitting after cancellation | None |
+| Sliding-window submission | `SlidingWindowSubmitter` stops submitting after cancellation | None |
 
 ### Sliding-window placeholders
 
@@ -26,7 +26,7 @@ Tasks that have not started are skipped, blocked I/O tasks are interrupted, and 
 ## Add checkpoints to CPU-bound work
 
 ```java
-BatchExecutionOptions options = BatchExecutionOptions.of("my-task")
+MultiTaskOptions options = MultiTaskOptions.of("my-task")
         .parallelism(4)
         .timeout(Duration.ofSeconds(5))
         .build();
@@ -42,7 +42,7 @@ global.par("myExecutor").map(dataList, item -> {
 }, options);
 ```
 
-The checkpoint task name must match `BatchExecutionOptions.of(taskName)`. The `lean` flag selects `LeanCancellationException` without a stack trace for production paths or the standard `CancellationException` with a stack trace for diagnostics.
+The checkpoint task name must match `MultiTaskOptions.of(taskName)`. The `lean` flag selects `LeanCancellationException` without a stack trace for production paths or the standard `CancellationException` with a stack trace for diagnostics.
 
 ## Checkpoints API
 
@@ -75,10 +75,10 @@ global.par("myExecutor").map(items, item -> {
 
 | Source | Token state | Meaning |
 |---|---|---|
-| Sibling failure | `FAIL_FAST_CANCELED` | One task failed and the rest of the batch was cancelled |
-| Timeout | `TIMEOUT_CANCELED` | The configured timeout elapsed |
-| Manual cancellation | `MUTUAL_CANCELED` | Application code called `CancellationToken.cancel()` |
-| Parent cancellation | `PROPAGATING_CANCELED` | An outer scope cancelled a nested scope |
+| Sibling failure | `FAIL_FAST` | One task failed and the rest of the batch was cancelled |
+| Timeout | `TIMEOUT` | The configured timeout elapsed |
+| Manual cancellation | `CANCELED` | Application code called `CancellationToken.cancel()` |
+| Parent cancellation | `PROPAGATED_CANCELED` | An outer scope cancelled a nested scope |
 
 All sources are observed through the same token state check. Nested `Par.map` calls inherit a parent token, so cancellation propagates to child tasks at their next checkpoint or blocking operation.
 

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -17,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests that verify the actual interaction between {@link CancellationToken#cancel(boolean)} and
- * {@link CancellationToken#lateBind}.
+ * {@link CancellationToken#bind}.
  *
  * <p>The original analysis claimed that calling {@code cancel()} before {@code lateBind()} causes
  * {@code IllegalStateException} because {@code SettableFuture.setFuture} would throw on an already
@@ -44,10 +43,10 @@ class CancellationTokenLateBindRaceTest {
     /**
      * When cancel() wins before lateBind(), {@code futureToken.setFuture(failFastFuture)} returns
      * false. Guava cancels the supplied {@code failFastFuture}, which propagates cancellation to
-     * the actual task futures. The token remains in MUTUAL_CANCELED.
+     * the actual task futures. The token remains in CANCELED.
      */
     @Test
-    void cancelBeforeLateBind_stillCancelsTasks() {
+    void cancelBeforeBind_stillCancelsTasks() {
         CancellationToken token = CancellationToken.create();
         token.cancel(false);
 
@@ -55,10 +54,10 @@ class CancellationTokenLateBindRaceTest {
         List<ListenableFuture<String>> futures = Collections.singletonList(task);
 
         // Does not throw.
-        token.lateBind(futures, Duration.ofHours(1), Futures.immediateVoidFuture(), timer);
+        token.bind(futures, Futures.immediateVoidFuture(), timer);
 
         assertThat(task).isCancelled();
-        assertThat(token.getState()).isEqualTo(CancellationToken.State.MUTUAL_CANCELED);
+        assertThat(token.state()).isEqualTo(CancellationToken.State.CANCELED);
     }
 
     /**
@@ -67,25 +66,23 @@ class CancellationTokenLateBindRaceTest {
      * tied to the first binding.
      */
     @Test
-    void lateBindCalledTwice_secondBindingIsIgnored() throws InterruptedException {
+    void bindCalledTwice_secondBindingIsIgnored() throws InterruptedException {
         CancellationToken token = CancellationToken.create();
 
         SettableFuture<String> firstTask = SettableFuture.create();
         SettableFuture<String> secondTask = SettableFuture.create();
 
-        token.lateBind(
-                Collections.singletonList(firstTask), Duration.ofSeconds(5), Futures.immediateVoidFuture(), timer);
+        token.bind(Collections.singletonList(firstTask), Futures.immediateVoidFuture(), timer);
         firstTask.set("ok");
         Thread.sleep(50);
-        assertThat(token.getState()).isEqualTo(CancellationToken.State.SUCCESS);
+        assertThat(token.state()).isEqualTo(CancellationToken.State.SUCCESS);
 
-        token.lateBind(
-                Collections.singletonList(secondTask), Duration.ofSeconds(5), Futures.immediateVoidFuture(), timer);
+        token.bind(Collections.singletonList(secondTask), Futures.immediateVoidFuture(), timer);
 
         // The second futures are not tracked; the token stays SUCCESS and the second task is not
         // cancelled by the framework.
         assertThat(secondTask).isNotCancelled();
-        assertThat(token.getState()).isEqualTo(CancellationToken.State.SUCCESS);
+        assertThat(token.state()).isEqualTo(CancellationToken.State.SUCCESS);
     }
 
     /**
@@ -93,7 +90,7 @@ class CancellationTokenLateBindRaceTest {
      * cancels failFastFuture later). In both cases the submitted task should end up cancelled.
      */
     @Test
-    void concurrentCancelAndLateBind_cancelsTasksEitherWay() throws InterruptedException {
+    void concurrentCancelAndBind_cancelsTasksEitherWay() throws InterruptedException {
         int attempts = 1000;
         int notCancelled = 0;
 
@@ -110,7 +107,7 @@ class CancellationTokenLateBindRaceTest {
             });
             Thread binder = new Thread(() -> {
                 await(start);
-                token.lateBind(futures, Duration.ofSeconds(5), Futures.immediateVoidFuture(), timer);
+                token.bind(futures, Futures.immediateVoidFuture(), timer);
             });
 
             canceler.start();

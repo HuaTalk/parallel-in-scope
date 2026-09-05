@@ -2,10 +2,10 @@ package demo.article;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
 import io.github.huatalk.parallelinscope.scope.GlobalPar;
+import io.github.huatalk.parallelinscope.scope.MultiTaskOptions;
 import io.github.huatalk.parallelinscope.scope.Par;
+import io.github.huatalk.parallelinscope.scope.TaskBatchResult;
 import io.github.huatalk.parallelinscope.scope.TaskType;
 import java.util.ArrayList;
 import java.util.List;
@@ -121,7 +121,7 @@ class G6_BatchDbQueryTest {
         List<List<Long>> shards = partition(allIds, SHARD_SIZE);
         assertThat(shards).hasSize(SHARD_COUNT);
 
-        BatchExecutionOptions options = BatchExecutionOptions.of("db-batch-query")
+        MultiTaskOptions options = MultiTaskOptions.of("db-batch-query")
                 .taskType(TaskType.IO_BOUND)
                 .parallelism(parallelism)
                 .timeout(java.time.Duration.ofMillis(30000))
@@ -130,7 +130,7 @@ class G6_BatchDbQueryTest {
         long start = System.currentTimeMillis();
 
         // 并行查询：最多 parallelism 个分片同时执行
-        AsyncBatchResult<List<User>> result = par.map(
+        TaskBatchResult<List<User>> result = par.map(
                 shards,
                 shard -> {
                     return simulateDbQuery(shard);
@@ -139,8 +139,8 @@ class G6_BatchDbQueryTest {
 
         // 收集所有分片结果
         List<User> allUsers = new ArrayList<>();
-        for (int i = 0; i < result.getResults().size(); i++) {
-            allUsers.addAll(result.getResults().get(i).get(30, TimeUnit.SECONDS));
+        for (int i = 0; i < result.results().size(); i++) {
+            allUsers.addAll(result.results().get(i).get(30, TimeUnit.SECONDS));
         }
 
         long elapsed = System.currentTimeMillis() - start;
@@ -173,13 +173,13 @@ class G6_BatchDbQueryTest {
         AtomicInteger concurrency = new AtomicInteger(0);
         AtomicInteger maxConcurrency = new AtomicInteger(0);
 
-        BatchExecutionOptions options = BatchExecutionOptions.of("db-batch-query")
+        MultiTaskOptions options = MultiTaskOptions.of("db-batch-query")
                 .taskType(TaskType.IO_BOUND)
                 .parallelism(parallelism)
                 .timeout(java.time.Duration.ofMillis(30000))
                 .build();
 
-        AsyncBatchResult<List<User>> result = par.map(
+        TaskBatchResult<List<User>> result = par.map(
                 shards,
                 shard -> {
                     int cur = concurrency.incrementAndGet();
@@ -193,8 +193,8 @@ class G6_BatchDbQueryTest {
                 options);
 
         // 等待所有分片完成
-        for (int i = 0; i < result.getResults().size(); i++) {
-            result.getResults().get(i).get(30, TimeUnit.SECONDS);
+        for (int i = 0; i < result.results().size(); i++) {
+            result.results().get(i).get(30, TimeUnit.SECONDS);
         }
 
         // 并发峰值受控

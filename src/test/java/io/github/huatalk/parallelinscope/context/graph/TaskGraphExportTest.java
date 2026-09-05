@@ -5,13 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.ValueGraph;
 import com.google.common.util.concurrent.MoreExecutors;
-import io.github.huatalk.parallelinscope.context.TaskGraphObservationContext;
-import io.github.huatalk.parallelinscope.scope.AsyncBatchResult;
-import io.github.huatalk.parallelinscope.scope.BatchExecutionOptions;
-import io.github.huatalk.parallelinscope.scope.ExecutorIdentity;
-import io.github.huatalk.parallelinscope.scope.GlobalPar;
-import io.github.huatalk.parallelinscope.scope.GlobalParDeadlockPolicy;
-import io.github.huatalk.parallelinscope.scope.TaskType;
+import io.github.huatalk.parallelinscope.context.TaskGraphObservationScope;
+import io.github.huatalk.parallelinscope.scope.*;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -19,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -41,31 +37,29 @@ class TaskGraphExportTest {
 
     @AfterEach
     void clearThreadState() {
-        TaskGraphObservationContext.restore(null);
+        TaskGraphObservationScope.restore(null);
     }
 
     @Test
     void acyclicChainAndBranchExportCleanGraph() throws Exception {
         GlobalPar global = GlobalPar.builder().build();
-        try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
-            TaskGraphObservationContext.logTaskPair(
-                    null, "root", "a", "task-a", legacyEdge("root-exec", "pool-a", true));
-            TaskGraphObservationContext.logTaskPair("a", "task-a", "b", "task-b", legacyEdge("pool-a", "pool-b", true));
-            TaskGraphObservationContext.logTaskPair(
-                    "b", "task-b", "c", "task-c", legacyEdge("pool-b", "pool-c", false));
-            TaskGraphObservationContext.logTaskPair("a", "task-a", "d", "task-d", legacyEdge("pool-a", "pool-d", true));
+        try (TaskGraphObservationScope ignored = global.openTaskGraphObservation()) {
+            TaskGraphObservationScope.logTaskPair(null, "root", "a", "task-a", legacyEdge("root-exec", "pool-a", true));
+            TaskGraphObservationScope.logTaskPair("a", "task-a", "b", "task-b", legacyEdge("pool-a", "pool-b", true));
+            TaskGraphObservationScope.logTaskPair("b", "task-b", "c", "task-c", legacyEdge("pool-b", "pool-c", false));
+            TaskGraphObservationScope.logTaskPair("a", "task-a", "d", "task-d", legacyEdge("pool-a", "pool-d", true));
 
-            TaskGraphData data = TaskGraphObservationContext.data();
-            assertThat(data.isTaskCycle()).isFalse();
-            assertThat(data.isSelfLoop()).isFalse();
-            assertThat(data.isExecutorCycle()).isFalse();
-            assertThat(data.isExecutorSelfLoop()).isFalse();
-            assertThat(data.getGraph().nodes()).containsExactlyInAnyOrder("root", "a", "b", "c", "d");
-            assertThat(data.getGraph().edges()).hasSize(4);
+            TaskGraphData data = TaskGraphObservationScope.data();
+            assertThat(data.taskCycle()).isFalse();
+            assertThat(data.selfLoop()).isFalse();
+            assertThat(data.executorCycle()).isFalse();
+            assertThat(data.executorSelfLoop()).isFalse();
+            assertThat(data.graph().nodes()).containsExactlyInAnyOrder("root", "a", "b", "c", "d");
+            assertThat(data.graph().edges()).hasSize(4);
             // Edges with null identities never enter the identity graph.
             assertThat(identityGraphOf(data).nodes()).isEmpty();
             // Only the three deadlock-prone edges land in the executor-name graph.
-            assertThat(data.getExecutorGraph().edges()).hasSize(3);
+            assertThat(data.executorGraph().edges()).hasSize(3);
 
             exportScenario("acyclic-chain", data);
         } finally {
@@ -76,20 +70,20 @@ class TaskGraphExportTest {
     @Test
     void taskCycleAndSelfLoopAreDetectedAndExported() throws Exception {
         GlobalPar global = GlobalPar.builder().build();
-        try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
-            TaskGraphObservationContext.logTaskPair("a", "task-a", "b", "task-b", legacyEdge("pool-a", "pool-b", true));
-            TaskGraphObservationContext.logTaskPair("b", "task-b", "a", "task-a", legacyEdge("pool-b", "pool-a", true));
-            TaskGraphObservationContext.logTaskPair("a", "task-a", "a", "task-a", legacyEdge("pool-a", "pool-a", true));
+        try (TaskGraphObservationScope ignored = global.openTaskGraphObservation()) {
+            TaskGraphObservationScope.logTaskPair("a", "task-a", "b", "task-b", legacyEdge("pool-a", "pool-b", true));
+            TaskGraphObservationScope.logTaskPair("b", "task-b", "a", "task-a", legacyEdge("pool-b", "pool-a", true));
+            TaskGraphObservationScope.logTaskPair("a", "task-a", "a", "task-a", legacyEdge("pool-a", "pool-a", true));
             // Parallel edge: same endpoint pair as the first entry, kept as a second TaskEdge.
-            TaskGraphObservationContext.logTaskPair("a", "task-a", "b", "task-b", legacyEdge("pool-a", "pool-b", true));
+            TaskGraphObservationScope.logTaskPair("a", "task-a", "b", "task-b", legacyEdge("pool-a", "pool-b", true));
 
-            TaskGraphData data = TaskGraphObservationContext.data();
-            assertThat(data.isTaskCycle()).isTrue();
-            assertThat(data.isSelfLoop()).isTrue();
-            assertThat(data.isExecutorCycle()).isTrue();
-            assertThat(data.isExecutorSelfLoop()).isTrue();
-            assertThat(data.getGraph().edges()).hasSize(3);
-            assertThat(data.getGraph().edgeValueOrDefault("a", "b", Collections.emptyList()))
+            TaskGraphData data = TaskGraphObservationScope.data();
+            assertThat(data.taskCycle()).isTrue();
+            assertThat(data.selfLoop()).isTrue();
+            assertThat(data.executorCycle()).isTrue();
+            assertThat(data.executorSelfLoop()).isTrue();
+            assertThat(data.graph().edges()).hasSize(3);
+            assertThat(data.graph().edgeValueOrDefault("a", "b", Collections.emptyList()))
                     .hasSize(2);
 
             exportScenario("task-cycle", data);
@@ -103,23 +97,23 @@ class TaskGraphExportTest {
         ExecutorService first = Executors.newSingleThreadExecutor();
         ExecutorService second = Executors.newSingleThreadExecutor();
         GlobalPar global = GlobalPar.builder().build();
-        try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
+        try (TaskGraphObservationScope ignored = global.openTaskGraphObservation()) {
             ExecutorIdentity firstIdentity = new ExecutorIdentity(first);
             ExecutorIdentity secondIdentity = new ExecutorIdentity(second);
-            TaskGraphObservationContext.logTaskPair(
+            TaskGraphObservationScope.logTaskPair(
                     "a", "task-a", "b", "task-b", identityEdge(firstIdentity, secondIdentity, "pool-b", "pool-a"));
-            TaskGraphObservationContext.logTaskPair(
+            TaskGraphObservationScope.logTaskPair(
                     "b", "task-b", "a", "task-a", identityEdge(secondIdentity, firstIdentity, "pool-a", "pool-b"));
 
-            TaskGraphData data = TaskGraphObservationContext.data();
-            assertThat(data.isTaskCycle()).isTrue();
-            assertThat(data.isExecutorCycle()).isTrue();
-            assertThat(data.isExecutorSelfLoop()).isFalse();
+            TaskGraphData data = TaskGraphObservationScope.data();
+            assertThat(data.taskCycle()).isTrue();
+            assertThat(data.executorCycle()).isTrue();
+            assertThat(data.executorSelfLoop()).isFalse();
 
             ValueGraph<ExecutorIdentity, List<TaskEdge>> identityGraph = identityGraphOf(data);
             assertThat(identityGraph.nodes()).containsExactlyInAnyOrder(firstIdentity, secondIdentity);
             assertThat(identityGraph.edges()).hasSize(2);
-            assertThat(data.getExecutorGraph().edges()).hasSize(2);
+            assertThat(data.executorGraph().edges()).hasSize(2);
 
             exportScenario("executor-cycle", data);
         } finally {
@@ -134,25 +128,25 @@ class TaskGraphExportTest {
         ExecutorService first = Executors.newSingleThreadExecutor();
         ExecutorService second = Executors.newSingleThreadExecutor();
         GlobalPar global = GlobalPar.builder().build();
-        try (TaskGraphObservationContext ignored = global.openTaskGraphObservation()) {
+        try (TaskGraphObservationScope ignored = global.openTaskGraphObservation()) {
             ExecutorIdentity firstIdentity = new ExecutorIdentity(first);
             ExecutorIdentity secondIdentity = new ExecutorIdentity(second);
             // Same executor NAME on both ends, but two distinct executor objects and a single
             // direction: the name graph must not be mistaken for a real resource cycle.
-            TaskGraphObservationContext.logTaskPair(
+            TaskGraphObservationScope.logTaskPair(
                     "a", "task-a", "b", "task-b", identityEdge(firstIdentity, secondIdentity, "pool", "pool"));
-            TaskGraphObservationContext.logTaskPair(
+            TaskGraphObservationScope.logTaskPair(
                     "b", "task-b", "c", "task-c", identityEdge(firstIdentity, secondIdentity, "pool", "pool"));
 
-            TaskGraphData data = TaskGraphObservationContext.data();
-            assertThat(data.isTaskCycle()).isFalse();
-            assertThat(data.isExecutorCycle()).isFalse();
-            assertThat(data.isExecutorSelfLoop()).isFalse();
+            TaskGraphData data = TaskGraphObservationScope.data();
+            assertThat(data.taskCycle()).isFalse();
+            assertThat(data.executorCycle()).isFalse();
+            assertThat(data.executorSelfLoop()).isFalse();
 
             // The legacy name graph DOES collapse both pools into one "pool" node with a self-loop;
             // the identity graph is what keeps detection accurate.
-            assertThat(data.getExecutorGraph().nodes()).containsExactly("pool");
-            assertThat(data.getExecutorGraph().edges()).hasSize(1);
+            assertThat(data.executorGraph().nodes()).containsExactly("pool");
+            assertThat(data.executorGraph().edges()).hasSize(1);
             ValueGraph<ExecutorIdentity, List<TaskEdge>> identityGraph = identityGraphOf(data);
             assertThat(identityGraph.nodes()).containsExactlyInAnyOrder(firstIdentity, secondIdentity);
             assertThat(identityGraph.edges()).hasSize(1);
@@ -183,35 +177,38 @@ class TaskGraphExportTest {
                         .build())
                 .build();
         TaskGraphData captured;
-        try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
-            AsyncBatchResult<Integer> outer = global.par("outer")
+        try (TaskGraphObservationScope observation = global.openTaskGraphObservation()) {
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
-                                                BatchExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
+                                                        .timeout(Duration.ofSeconds(30))
                                                         .build());
                                 try {
-                                    return inner.getResults().get(0).get(2, TimeUnit.SECONDS);
+                                    return inner.results().get(0).get(2, TimeUnit.SECONDS);
                                 } catch (Exception failure) {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            BatchExecutionOptions.of("outer").build());
+                            MultiTaskOptions.of("outer")
+                                    .timeout(Duration.ofSeconds(30))
+                                    .build());
 
-            assertThat(outer.getResults().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(3);
+            assertThat(outer.results().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(3);
 
-            captured = TaskGraphObservationContext.data();
+            captured = TaskGraphObservationScope.data();
             // root -> outer batch, outer batch -> inner batch.
-            assertThat(captured.getGraph().nodes()).hasSize(3);
-            assertThat(captured.getGraph().edges()).hasSize(2);
-            assertThat(captured.isTaskCycle()).isFalse();
-            assertThat(captured.isSelfLoop()).isFalse();
-            assertThat(captured.isExecutorCycle()).isFalse();
-            assertThat(captured.isExecutorSelfLoop()).isFalse();
+            assertThat(captured.graph().nodes()).hasSize(3);
+            assertThat(captured.graph().edges()).hasSize(2);
+            assertThat(captured.taskCycle()).isFalse();
+            assertThat(captured.selfLoop()).isFalse();
+            assertThat(captured.executorCycle()).isFalse();
+            assertThat(captured.executorSelfLoop()).isFalse();
             // Real path captures executor identities on both ends.
             assertThat(identityGraphOf(captured).nodes()).hasSize(2);
 
@@ -239,31 +236,34 @@ class TaskGraphExportTest {
                 .register("outer", outerExecutor)
                 .register("inner", innerExecutor)
                 .build();
-        try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
-            AsyncBatchResult<Integer> outer = global.par("outer")
+        try (TaskGraphObservationScope observation = global.openTaskGraphObservation()) {
+            TaskBatchResult<Integer> outer = global.par("outer")
                     .map(
                             Collections.singletonList(2),
                             value -> {
-                                AsyncBatchResult<Integer> inner = global.par("inner")
+                                TaskBatchResult<Integer> inner = global.par("inner")
                                         .map(
                                                 Collections.singletonList(value),
                                                 item -> item + 1,
-                                                BatchExecutionOptions.of("inner")
+                                                MultiTaskOptions.of("inner")
+                                                        .timeout(Duration.ofSeconds(30))
                                                         .build());
                                 try {
-                                    return inner.getResults().get(0).get(2, TimeUnit.SECONDS);
+                                    return inner.results().get(0).get(2, TimeUnit.SECONDS);
                                 } catch (Exception failure) {
                                     throw new RuntimeException(failure);
                                 }
                             },
-                            BatchExecutionOptions.of("outer").build());
+                            MultiTaskOptions.of("outer")
+                                    .timeout(Duration.ofSeconds(30))
+                                    .build());
 
-            assertThat(outer.getResults().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(3);
+            assertThat(outer.results().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(3);
 
-            TaskGraphData data = TaskGraphObservationContext.data();
+            TaskGraphData data = TaskGraphObservationScope.data();
             // Task graph is still recorded, but executor-level detection sees nothing.
-            assertThat(data.getGraph().edges()).hasSize(2);
-            assertThat(data.getExecutorGraph().edges()).isEmpty();
+            assertThat(data.graph().edges()).hasSize(2);
+            assertThat(data.executorGraph().edges()).isEmpty();
             assertThat(identityGraphOf(data).nodes()).isEmpty();
         } finally {
             global.close();
@@ -283,24 +283,26 @@ class TaskGraphExportTest {
     void directExecutorServiceRecordsTaskGraphButSkipsExecutorGraphs() throws Exception {
         ExecutorService direct = MoreExecutors.newDirectExecutorService();
         GlobalPar global = GlobalPar.builder().register("direct", direct).build();
-        try (TaskGraphObservationContext observation = global.openTaskGraphObservation()) {
-            AsyncBatchResult<Integer> batch = global.par("direct")
+        try (TaskGraphObservationScope observation = global.openTaskGraphObservation()) {
+            TaskBatchResult<Integer> batch = global.par("direct")
                     .map(
                             Collections.singletonList(1),
                             value -> value + 1,
-                            BatchExecutionOptions.of("direct").build());
+                            MultiTaskOptions.of("direct")
+                                    .timeout(Duration.ofSeconds(30))
+                                    .build());
 
-            assertThat(batch.getResults().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(2);
+            assertThat(batch.results().get(0).get(2, TimeUnit.SECONDS)).isEqualTo(2);
 
-            TaskGraphData data = TaskGraphObservationContext.data();
+            TaskGraphData data = TaskGraphObservationScope.data();
             // Fork edge is recorded regardless of executor implementation.
-            assertThat(data.getGraph().nodes()).hasSize(2);
-            assertThat(data.getGraph().edges()).hasSize(1);
+            assertThat(data.graph().nodes()).hasSize(2);
+            assertThat(data.graph().edges()).hasSize(1);
             // But the executor-level views stay empty: UNKNOWN risk is never deadlock-prone.
-            assertThat(data.getExecutorGraph().edges()).isEmpty();
+            assertThat(data.executorGraph().edges()).isEmpty();
             assertThat(identityGraphOf(data).nodes()).isEmpty();
-            assertThat(data.isExecutorCycle()).isFalse();
-            assertThat(data.isExecutorSelfLoop()).isFalse();
+            assertThat(data.executorCycle()).isFalse();
+            assertThat(data.executorSelfLoop()).isFalse();
 
             exportScenario("direct-executor", data);
         } finally {
@@ -316,18 +318,18 @@ class TaskGraphExportTest {
         field(json, 1, "scenario", quote(scenario));
         json.append(",\n");
         indent(json, 1).append("\"graphs\": {\n");
-        field(json, 2, "task", graphJson(data.getGraph(), labelsOf(data), 3));
+        field(json, 2, "task", graphJson(data.graph(), labelsOf(data), 3));
         json.append(",\n");
-        field(json, 2, "executorName", graphJson(data.getExecutorGraph(), null, 3));
+        field(json, 2, "executorName", graphJson(data.executorGraph(), null, 3));
         json.append(",\n");
         field(json, 2, "executorIdentity", identityGraphJson(identityGraphOf(data), 3));
         json.append('\n');
         indent(json, 1).append("},\n");
         indent(json, 1).append("\"predicates\": {");
-        json.append("\"taskCycle\": ").append(data.isTaskCycle());
-        json.append(", \"selfLoop\": ").append(data.isSelfLoop());
-        json.append(", \"executorCycle\": ").append(data.isExecutorCycle());
-        json.append(", \"executorSelfLoop\": ").append(data.isExecutorSelfLoop());
+        json.append("\"taskCycle\": ").append(data.taskCycle());
+        json.append(", \"selfLoop\": ").append(data.selfLoop());
+        json.append(", \"executorCycle\": ").append(data.executorCycle());
+        json.append(", \"executorSelfLoop\": ").append(data.executorSelfLoop());
         json.append("}\n}");
         Files.createDirectories(EXPORT_DIR);
         Files.write(EXPORT_DIR.resolve(scenario + ".json"), json.toString().getBytes(StandardCharsets.UTF_8));
@@ -401,23 +403,23 @@ class TaskGraphExportTest {
             if (!first) json.append(", ");
             first = false;
             json.append('{');
-            json.append("\"parallelism\": ").append(edge.getParallelism());
-            json.append(", \"taskType\": ").append(quote(String.valueOf(edge.getTaskType())));
-            json.append(", \"executorName\": ").append(quote(edge.getExecutorName()));
-            json.append(", \"sourceExecutorName\": ").append(quote(edge.getSourceExecutorName()));
-            json.append(", \"taskCount\": ").append(edge.getTaskCount());
-            json.append(", \"timeoutMillis\": ").append(edge.getTimeoutMillis());
-            json.append(", \"deadlockProne\": ").append(edge.isExecutorDeadlockProne());
+            json.append("\"parallelism\": ").append(edge.parallelism());
+            json.append(", \"taskType\": ").append(quote(String.valueOf(edge.taskType())));
+            json.append(", \"executorName\": ").append(quote(edge.executorName()));
+            json.append(", \"sourceExecutorName\": ").append(quote(edge.sourceExecutorName()));
+            json.append(", \"taskCount\": ").append(edge.taskCount());
+            json.append(", \"timeoutMillis\": ").append(edge.timeout().toMillis());
+            json.append(", \"deadlockProne\": ").append(edge.executorDeadlockProne());
             json.append(", \"executorIdentity\": ")
                     .append(quote(
-                            edge.getExecutorIdentity() == null
+                            edge.executorIdentity() == null
                                     ? null
-                                    : edge.getExecutorIdentity().toString()));
+                                    : edge.executorIdentity().toString()));
             json.append(", \"sourceExecutorIdentity\": ")
                     .append(quote(
-                            edge.getSourceExecutorIdentity() == null
+                            edge.sourceExecutorIdentity() == null
                                     ? null
-                                    : edge.getSourceExecutorIdentity().toString()));
+                                    : edge.sourceExecutorIdentity().toString()));
             json.append('}');
         }
         json.append(']');
@@ -464,12 +466,12 @@ class TaskGraphExportTest {
     // ==================== helpers ====================
 
     private static TaskEdge legacyEdge(String source, String target, boolean deadlockProne) {
-        return new TaskEdge(1, TaskType.CPU_BOUND, target, source, 1, 0, deadlockProne);
+        return new TaskEdge(1, TaskType.CPU_BOUND, target, source, 1, Duration.ZERO, deadlockProne);
     }
 
     private static TaskEdge identityEdge(
             ExecutorIdentity source, ExecutorIdentity target, String targetName, String sourceName) {
-        return new TaskEdge(1, TaskType.CPU_BOUND, target, source, targetName, sourceName, 1, 0, true);
+        return new TaskEdge(1, TaskType.CPU_BOUND, target, source, targetName, sourceName, 1, Duration.ZERO, true);
     }
 
     @SuppressWarnings("unchecked")
