@@ -9,8 +9,8 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 
 /**
- * Immutable resolved state for one {@code Par.map} invocation; never cached by a {@code Par} or
- * {@code GlobalPar}.
+ * Immutable resolved state for one multi-task scope — a {@code Par.map} batch or one task-group
+ * member; never cached by a {@code Par} or {@code GlobalPar}.
  *
  * <p>Resolution is the only place where user options become executable values: requested
  * parallelism is capped by task count, an explicit timeout uses the earlier of its own and any

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.alibaba.ttl.TransmittableThreadLocal;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.github.huatalk.parallelinscope.cancel.CancellationToken;
 import io.github.huatalk.parallelinscope.context.SubmissionScope;
@@ -126,8 +127,8 @@ class TaskGroupTest {
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.FAILED);
             assertThat(result.failedMemberName()).isEqualTo("failure");
-            assertThat(result.members().get("failure").completionReason()).isEqualTo(TaskOutcome.USER_FAILURE);
-            assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.FAIL_FAST);
+            assertThat(result.members().get("failure").outcome()).isEqualTo(TaskOutcome.USER_FAILURE);
+            assertThat(result.members().get("slow").outcome()).isEqualTo(TaskOutcome.FAIL_FAST);
         } finally {
             global.close();
             executor.shutdownNow();
@@ -154,7 +155,7 @@ class TaskGroupTest {
                     .completionFuture()
                     .get(2, TimeUnit.SECONDS);
             assertThat(first.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
-            assertThat(first.members().get("slow").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
+            assertThat(first.members().get("slow").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
 
             TaskGroupSpec.Builder memberDeadline = TaskGroupSpec.builder(MultiTaskOptions.of("member-timeout")
                     .timeout(Duration.ofSeconds(2))
@@ -171,7 +172,7 @@ class TaskGroupTest {
                     .completionFuture()
                     .get(2, TimeUnit.SECONDS);
             assertThat(second.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
-            assertThat(second.members().get("slow").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
+            assertThat(second.members().get("slow").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
         } finally {
             global.close();
             executor.shutdownNow();
@@ -206,8 +207,8 @@ class TaskGroupTest {
 
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
-            assertThat(result.members().get("canceled").completionReason()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
-            assertThat(result.members().get("sibling").completionReason()).isEqualTo(TaskOutcome.GROUP_CANCELED);
+            assertThat(result.members().get("canceled").outcome()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
+            assertThat(result.members().get("sibling").outcome()).isEqualTo(TaskOutcome.GROUP_CANCELED);
         } finally {
             release.countDown();
             global.close();
@@ -244,11 +245,124 @@ class TaskGroupTest {
                     TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
-            assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
-            assertThat(result.members().get("sibling").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
+            assertThat(result.members().get("slow").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
+            assertThat(result.members().get("sibling").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
         } finally {
             global.close();
             executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void mixedMemberDeadlinesAttributeBoundAndSkippedPathsCorrectly() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        GlobalPar global = GlobalPar.builder().register("worker", executor).build();
+        try {
+            // "tight" binds its own stricter deadline; "shared" resolves to exactly the group
+            // deadline and skips the member bind. Both paths must still attribute TIMEOUT.
+            TaskGroupSpec.Builder spec = TaskGroupSpec.builder(MultiTaskOptions.of("mixed-deadlines")
+                    .timeout(Duration.ofSeconds(2))
+                    .build());
+            spec.task(
+                    "tight",
+                    "worker",
+                    () -> {
+                        Thread.sleep(10_000);
+                        return 1;
+                    },
+                    MultiTaskOptions.of("tight").timeout(Duration.ofMillis(50)).build());
+            spec.task(
+                    "shared",
+                    "worker",
+                    () -> {
+                        Thread.sleep(10_000);
+                        return 2;
+                    },
+                    MultiTaskOptions.of("shared").timeout(Duration.ofSeconds(2)).build());
+
+            TaskGroupResult result =
+                    TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
+
+            assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
+            assertThat(result.members().get("tight").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
+            assertThat(result.members().get("shared").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
+        } finally {
+            global.close();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void groupTimeoutPropagatesThroughSkippedMemberBindIntoNestedBatch() throws Exception {
+        ExecutorService outer = Executors.newSingleThreadExecutor();
+        ExecutorService inner = Executors.newSingleThreadExecutor();
+        GlobalPar global = GlobalPar.builder()
+                .register("outer", outer)
+                .register("inner", inner)
+                .build();
+        AtomicReference<CancellationToken> memberToken = new AtomicReference<>();
+        AtomicReference<CancellationToken> nestedToken = new AtomicReference<>();
+        AtomicReference<ListenableFuture<?>> nestedFuture = new AtomicReference<>();
+        CountDownLatch nestedRunning = new CountDownLatch(1);
+        try {
+            // The member inherits the group deadline, so its token is never bound; propagation to
+            // the nested batch rides the token constructor listener chain alone.
+            TaskGroupSpec.Builder spec = TaskGroupSpec.builder(MultiTaskOptions.of("nested-propagation")
+                    .timeout(Duration.ofMillis(50))
+                    .build());
+            spec.task(
+                    "member",
+                    "outer",
+                    () -> {
+                        memberToken.set(
+                                TaskExecutionContext.current().batchContext().cancellationToken());
+                        AsyncBatchResult<Integer> nested = global.par("inner")
+                                .map(
+                                        Arrays.asList(1),
+                                        ignored -> {
+                                            nestedToken.set(TaskExecutionContext.current()
+                                                    .batchContext()
+                                                    .cancellationToken());
+                                            nestedRunning.countDown();
+                                            try {
+                                                new CountDownLatch(1).await(10, TimeUnit.SECONDS);
+                                            } catch (InterruptedException interrupted) {
+                                                Thread.currentThread().interrupt();
+                                            }
+                                            return 1;
+                                        },
+                                        MultiTaskOptions.of("nested")
+                                                .inheritTimeout()
+                                                .build());
+                        nestedFuture.set(nested.results().get(0));
+                        try {
+                            return nested.results().get(0).get(10, TimeUnit.SECONDS);
+                        } catch (Exception failure) {
+                            throw new RuntimeException(failure);
+                        }
+                    },
+                    MultiTaskOptions.of("member").inheritTimeout().build());
+
+            TaskGroup group = TaskGroup.submit(global, spec.build());
+            assertThat(nestedRunning.await(2, TimeUnit.SECONDS)).isTrue();
+            TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
+
+            assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
+            // The member token is never bound, so only constructor-listener propagation from the
+            // group token can move it; await the cascade, which runs after the group converges.
+            org.awaitility.Awaitility.await()
+                    .atMost(2, TimeUnit.SECONDS)
+                    .until(() -> memberToken.get().state() == CancellationToken.State.PROPAGATING_CANCELED
+                            && nestedToken.get().state() != CancellationToken.State.RUNNING
+                            && nestedFuture.get().isCancelled());
+            // The nested batch inherits the group deadline, so its own timer races the propagated
+            // cancellation; either terminal state attests the deadline reached the nested batch.
+            assertThat(nestedToken.get().state())
+                    .isIn(CancellationToken.State.PROPAGATING_CANCELED, CancellationToken.State.TIMEOUT_CANCELED);
+        } finally {
+            global.close();
+            outer.shutdownNow();
+            inner.shutdownNow();
         }
     }
 
@@ -279,7 +393,7 @@ class TaskGroupTest {
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
             assertThat(result.members().values())
-                    .extracting(TaskGroupMemberResult::completionReason)
+                    .extracting(TaskGroupMemberResult::outcome)
                     .containsOnly(TaskOutcome.GROUP_CANCELED);
         } finally {
             global.close();
@@ -343,8 +457,8 @@ class TaskGroupTest {
                     TaskGroup.submit(global, spec.build()).completionFuture().get(2, TimeUnit.SECONDS);
 
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.FAILED);
-            assertThat(result.members().get("rejected").completionReason()).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
-            assertThat(result.members().get("later").completionReason()).isEqualTo(TaskOutcome.FAIL_FAST);
+            assertThat(result.members().get("rejected").outcome()).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
+            assertThat(result.members().get("later").outcome()).isEqualTo(TaskOutcome.FAIL_FAST);
             assertThat(calls).hasValue(0);
             assertThat(SubmissionScope.currentBatch()).isNull();
         } finally {
@@ -668,7 +782,7 @@ class TaskGroupTest {
 
             assertThat(result.results().get(0)).isCancelled();
             assertThat(nested.completionReason()).isEqualTo(TaskGroupCompletionReason.TIMEOUT);
-            assertThat(nested.members().get("child").completionReason()).isEqualTo(TaskOutcome.TIMEOUT);
+            assertThat(nested.members().get("child").outcome()).isEqualTo(TaskOutcome.TIMEOUT);
         } finally {
             global.close();
             outer.shutdownNow();
@@ -723,7 +837,7 @@ class TaskGroupTest {
             unfinished.close();
             TaskGroupResult result = unfinished.completionFuture().get(2, TimeUnit.SECONDS);
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
-            assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.GROUP_CANCELED);
+            assertThat(result.members().get("slow").outcome()).isEqualTo(TaskOutcome.GROUP_CANCELED);
         } finally {
             global.close();
             executor.shutdownNow();
@@ -792,7 +906,7 @@ class TaskGroupTest {
 
             TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
             assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
-            assertThat(result.members().get("slow").completionReason()).isEqualTo(TaskOutcome.GROUP_CANCELED);
+            assertThat(result.members().get("slow").outcome()).isEqualTo(TaskOutcome.GROUP_CANCELED);
             org.awaitility.Awaitility.await()
                     .atMost(2, TimeUnit.SECONDS)
                     .until(() -> observedReason.get() != null

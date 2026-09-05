@@ -136,10 +136,20 @@ public final class TaskGroup implements AutoCloseable {
         // Group level: group deadline, unified fail-fast (any failure or member cancellation), and
         // all-success detection, in one bind over the member futures.
         groupToken.bind(memberFutures(), NO_SUBMISSION, global.timeoutScheduler());
-        // Member level: each member's own deadline. A member timeout escalates to the group token
-        // while the group bind is still pending, so the group converges on TIMEOUT, not FAILED.
+        // Member level: bind only members whose own deadline is strictly tighter than the group's.
+        // A member timeout escalates to the group token while the group bind is still pending, so
+        // the group converges on TIMEOUT, not FAILED. A member that inherits the group deadline
+        // resolves to exactly the same deadlineNanos and skips this step: downward propagation is
+        // wired by the CancellationToken constructor listener (group token -> member token
+        // PROPAGATING_CANCELED), and member future cancellation is covered by the group bind above,
+        // so a member bind would only arm a redundant timer for the same instant. Note that a
+        // skipped member token never binds, so it stays RUNNING forever (it never observes SUCCESS);
+        // attribution reads the group token instead (see classifyCancelled).
         for (MemberState member : memberStates.values()) {
             CancellationToken memberToken = member.context.batchContext().cancellationToken();
+            if (memberToken.deadlineNanos() >= groupToken.deadlineNanos()) {
+                continue;
+            }
             memberToken.addStateListener(state -> {
                 if (state == CancellationToken.State.TIMEOUT_CANCELED) {
                     groupToken.timeoutCancel();

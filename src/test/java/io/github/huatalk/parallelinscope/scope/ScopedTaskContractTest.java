@@ -99,7 +99,7 @@ class ScopedTaskContractTest {
                 // CANCELED, with the failure attributed to the member.
                 assertThat(result.completionReason()).isEqualTo(TaskGroupCompletionReason.CANCELED);
                 assertThat(result.failedMemberName()).isEqualTo("task");
-                assertThat(result.members().get("task").completionReason()).isEqualTo(TaskOutcome.USER_FAILURE);
+                assertThat(result.members().get("task").outcome()).isEqualTo(TaskOutcome.USER_FAILURE);
                 assertThat(result.members().get("task").failure()).isSameAs(boom);
             }
             assertThat(events).hasSize(1);
@@ -185,7 +185,7 @@ class ScopedTaskContractTest {
             assertThat(phases).doesNotContain(ExecutionPhase.RUNNING);
             if (entry == Entry.GROUP) {
                 TaskGroupResult result = lastGroupResult(global);
-                assertThat(result.members().get("task").completionReason()).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
+                assertThat(result.members().get("task").outcome()).isEqualTo(TaskOutcome.SUBMISSION_FAILURE);
                 assertThat(result.members().get("task").failure()).isInstanceOf(SubmissionException.class);
             }
         } finally {
@@ -237,7 +237,7 @@ class ScopedTaskContractTest {
                 TaskGroup group = TaskGroup.submit(global, spec.build());
                 assertThat(group.future(queued).cancel(true)).isTrue();
                 TaskGroupResult result = group.completionFuture().get(2, TimeUnit.SECONDS);
-                assertThat(result.members().get("queued").completionReason()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
+                assertThat(result.members().get("queued").outcome()).isEqualTo(TaskOutcome.MEMBER_CANCELED);
             }
             assertThat(phases).contains(ExecutionPhase.CANCELLED_BEFORE_RUN);
             assertThat(queuedRuns).hasValue(0);
