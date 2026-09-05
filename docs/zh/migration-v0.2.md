@@ -62,6 +62,7 @@ null，因此不要用 result 是否为 null 判断成败。监听器回调不�
 `TaskOutcome.USER_FAILURE`，`FutureState.CANCELLED` → `TaskOutcome.MEMBER_CANCELED`，
 `TaskGroupMemberReason.X` → `TaskOutcome.X`（同名）。相应地，
 `AsyncBatchResult.BatchReport.stateCounts()` 现在以 `TaskOutcome` 为键，
-`TaskGroupMemberResult.completionReason()` 返回 `TaskOutcome`。
+`TaskGroupMemberResult` 的成员终态由 `outcome()` 暴露并返回 `TaskOutcome`（由早期的
+`completionReason()` 改名而来，后者与 `TaskGroupResult.completionReason()` 同名但返回类型不同）。
 
 旧的 `ParConfig`、`ParOptions`、`ExecutorResolver`、`GlobalParConfig` 及旧版 `Par` 入口都不是兼容别名。迁移时请同时更新 import、构建方式和调用方式。注册的执行器仍由应用拥有并负责关闭。

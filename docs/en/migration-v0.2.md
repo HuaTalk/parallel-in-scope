@@ -70,7 +70,9 @@ former member-reason values so it serves both batch reports and group member res
 the removed enums: `FutureState.FAILED` → `TaskOutcome.USER_FAILURE`, `FutureState.CANCELLED` →
 `TaskOutcome.MEMBER_CANCELED`, and `TaskGroupMemberReason.X` → `TaskOutcome.X` (same names).
 Consequently `AsyncBatchResult.BatchReport.stateCounts()` is now keyed by `TaskOutcome`, and
-`TaskGroupMemberResult.completionReason()` returns `TaskOutcome`.
+`TaskGroupMemberResult` exposes its member outcome as `outcome()` returning `TaskOutcome` (renamed
+from the earlier `completionReason()`, which collided in name but not in type with
+`TaskGroupResult.completionReason()`).
 
 Accessors converge on the bare `x()` style; no `getX()`/`isX()` forms remain in the public API or
 internals. Earlier `0.2.0-SNAPSHOT` builds used bean-style names; rename call sites mechanically:
@@ -85,6 +87,7 @@ internals. Earlier `0.2.0-SNAPSHOT` builds used bean-style names; rename call si
 | `AsyncBatchResult.BatchReport.getFirstException()` | `BatchReport.firstException()` |
 | `GlobalPar.isClosed()/isShutdown()/isTerminated()` | `GlobalPar.closed()/shutdown()/terminated()` |
 | `CancellationToken.getState()` / `State.getCode()` | `state()` / `code()` |
+| `TaskGroupMemberResult.completionReason()` | `TaskGroupMemberResult.outcome()` |
 | `TaskEvent.getTaskContext()/getTaskName()` | `taskContext()` / `taskName()` |
 | `TaskEvent.getSubmitTimeNanos()/getStartTimeNanos()/getEndTimeNanos()` | `submitTimeNanos()` / `startTimeNanos()` / `endTimeNanos()` |
 | `TaskEvent.isSuccessful()/getResult()/isEnqueued()/getException()` | `successful()` / `result()` / `enqueued()` / `exception()` |

@@ -72,10 +72,12 @@ it does not create execution contexts, capture TTL values, start timers, or subm
 freezes the complete member set, prepares every member, and then submits them.
 
 Groups and batches share one option type, `MultiTaskOptions`: the group reads name, timeout,
-and listeners, while each member reads the execution subset (parallelism, task type, enqueue
-policy, timeout). Members typically declare `inheritTimeout()` so they run under the group
-deadline; an explicit member timeout is capped by it. A group that declares `inheritTimeout()`
-must be submitted from inside a scoped task, otherwise `submit` is rejected.
+and listeners, while each member reads the execution subset (task type, enqueue policy, timeout).
+A member is a single task, so its `parallelism` is resolved but never read — nested work submitted
+inside a member reads the parallelism of that nested submission's own options. Members typically
+declare `inheritTimeout()` so they run under the group deadline; an explicit member timeout is
+capped by it. A group that declares `inheritTimeout()` must be submitted from inside a scoped
+task, otherwise `submit` is rejected.
 
 ```java
 TaskGroupSpec.Builder spec = TaskGroupSpec.builder(

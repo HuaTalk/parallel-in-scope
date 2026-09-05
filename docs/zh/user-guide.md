@@ -51,7 +51,7 @@ AsyncBatchResult<Account> result = httpPar.map(
         client::fetchAccount,
         options);
 
-List<ListenableFuture<Account>> futures = result.getResults();
+List<ListenableFuture<Account>> futures = result.results();
 ```
 
 `parallelism` 限制该批次的活跃提交窗口。负数表示让策略解析有效限制；timeout 必须显式二选一：调用 `timeout(Duration)` 设置正数超时，或调用 `inheritTimeout()` 继承外层作用域的 deadline——两者都未声明或同时声明时 `build()` 拒绝。显式 timeout 会被外层 deadline 截断；在没有外层 scoped task 时声明继承会在入口点被拒绝。`TaskType.CPU_BOUND` 与 `TaskType.IO_BOUND` 描述调度意图。`rejectEnqueue` 控制绑定执行器支持时是否拒绝排队。
